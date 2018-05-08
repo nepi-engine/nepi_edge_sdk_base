@@ -119,6 +119,7 @@ include_directories(
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
    src/register.cpp
+   src/configurable_trigger.cpp
 )
 
 ## Add cmake target dependencies of the library
