@@ -11,7 +11,7 @@
 namespace numurus
 {
 
-void usecsToTimespec(uint32_t usecs, timespec *timespecOut)
+static void usecsToTimespec(uint32_t usecs, timespec *timespecOut)
 {
 	static const uint32_t USECS_PER_SEC = 1e6;
 	static const uint32_t NSECS_PER_USEC = 1000; 
@@ -28,7 +28,7 @@ void usecsToTimespec(uint32_t usecs, timespec *timespecOut)
 	}
 }
 
-Register::Register(uint32_t address, bool single_writer) :
+Register::Register(reg_addr_t address, bool single_writer) :
 	addr{address},
 	sem{SEM_FAILED},
 	writable{false},

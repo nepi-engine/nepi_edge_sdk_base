@@ -5,11 +5,12 @@ namespace numurus
 {
 
 typedef uint32_t reg_val_t;
+typedef uint32_t reg_addr_t;
 
 class Register
 {
 public:
-	Register(uint32_t address, bool single_writer = true);
+	Register(reg_addr_t address, bool single_writer = true);
 	~Register();
 	
 	inline bool isWritable(){return writable;}
@@ -24,7 +25,7 @@ private:
 	bool waitForLock(uint32_t timeout_usecs);
 	inline void releaseLock(void){sem_post(sem);}
 
-	uint32_t addr;
+	reg_addr_t addr;
 	sem_t *sem;
 	bool writable;
 	bool readable;
