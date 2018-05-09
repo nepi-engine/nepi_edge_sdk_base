@@ -13,11 +13,11 @@ public:
 	Register(reg_addr_t address, bool single_writer = true);
 	~Register();
 	
-	inline bool isWritable(){return writable;}
-	inline bool isReadable(){return readable;}
+	inline bool isWritable() const {return writable;}
+	inline bool isReadable() const {return readable;}
 	
-	bool setVal(reg_val_t val, uint32_t timeout_usecs=WAIT_FOREVER);
-	bool getVal(reg_val_t *val_out, uint32_t timeout_usecs=WAIT_FOREVER);
+	bool setVal (reg_val_t val, uint32_t timeout_usecs=WAIT_FOREVER);
+	bool getVal (reg_val_t *val_out, uint32_t timeout_usecs=WAIT_FOREVER);
 
 	static constexpr uint32_t WAIT_FOREVER = 0xffffffff;
 	static constexpr uint32_t WAIT_NONBLOCKING = 0xfffffffe;

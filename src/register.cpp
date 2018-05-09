@@ -48,7 +48,7 @@ Register::Register(reg_addr_t address, bool single_writer) :
 	{
 		sem_oflag |= O_EXCL;
 	}
-	sem = sem_open(sem_name, sem_oflag, 0x777, 1);
+	sem = sem_open(sem_name, sem_oflag, 0644, 1);
 	if (SEM_FAILED == sem)
 	{
 		if (EEXIST == errno) // Caller is not the owner/writer of the register 
@@ -74,7 +74,7 @@ Register::Register(reg_addr_t address, bool single_writer) :
 	{
 		writable = true;
 	}
-
+	
 	// Now mmap the register
 	// Truncate addr to a multiple of the page size, or mmap will fail.
     const size_t pagesize = sysconf(_SC_PAGE_SIZE);
@@ -93,7 +93,11 @@ Register::Register(reg_addr_t address, bool single_writer) :
     }
     close(fd);
 
-    ROS_INFO("%s mem-mapped register interface at 0x%x (read=%d, write=%d)", (true == writable)? "Created" : "Linked to", addr, readable, writable);
+    ROS_DEBUG("%s mem-mapped register interface at 0x%x (read=%d, write=%d)", (true == writable)? "Created" : "Linked to", addr, readable, writable);
+
+    // Debugging
+    //waitForLock(WAIT_FOREVER);
+    //releaseLock();
 }
 
 Register::~Register()
@@ -118,6 +122,7 @@ Register::~Register()
 
 bool Register::setVal(reg_val_t val, uint32_t timeout_usecs)
 {
+	ROS_DEBUG("Setting value %d to 0x%x", val, addr);
 	if (false == writable)
 	{
 		ROS_ERROR_THROTTLE(5, "Register at 0x%x is not writable from this caller", addr);	
@@ -135,6 +140,7 @@ bool Register::setVal(reg_val_t val, uint32_t timeout_usecs)
 
 	// Unlock
 	releaseLock();
+	return true;
 }
 
 bool Register::getVal(reg_val_t *val_out, uint32_t timeout_usecs)
@@ -156,6 +162,7 @@ bool Register::getVal(reg_val_t *val_out, uint32_t timeout_usecs)
 
 	// Unlock
 	releaseLock();
+	return true;
 }
 
 bool Register::waitForLock(uint32_t timeout_usecs)
@@ -165,7 +172,7 @@ bool Register::waitForLock(uint32_t timeout_usecs)
 	{
 		wait_return = sem_wait(sem);
 	}
-	if (WAIT_NONBLOCKING == timeout_usecs)
+	else if (WAIT_NONBLOCKING == timeout_usecs)
 	{
 		wait_return = sem_trywait(sem);
 		if (EAGAIN == errno)
@@ -181,7 +188,7 @@ bool Register::waitForLock(uint32_t timeout_usecs)
 	}
 	if (0 != wait_return)
 	{
-		ROS_ERROR_THROTTLE(1, "Semaphore wait failed while attempting to write register 0x%x (%s)", addr, strerror(errno));
+		ROS_ERROR_THROTTLE(1, "Semaphore (%p) wait failed while attempting to write register 0x%x (%s)", sem, addr, strerror(errno));
 		return false;
 	}
 	return true;	
