@@ -118,10 +118,10 @@ include_directories(
 )
 
 ## Declare a C++ library
-add_library(${PROJECT_NAME}
-   src/register.cpp
-   src/configurable_trigger.cpp
-)
+#add_library(${PROJECT_NAME}
+#   src/register.cpp
+#   src/configurable_trigger.cpp
+#)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -131,7 +131,10 @@ add_library(${PROJECT_NAME}
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/sdk_node.cpp)
+add_executable(trigger_mgr_node 
+	src/trigger_mgr.cpp 
+	src/register.cpp 
+	src/configurable_trigger.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -144,9 +147,9 @@ add_library(${PROJECT_NAME}
 add_dependencies(trigger_mgr_node ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(trigger_mgr_node
+	${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
