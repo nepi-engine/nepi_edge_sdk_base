@@ -8,12 +8,12 @@ namespace numurus
 {
 
 TriggerMgr::TriggerMgr() :
-	sw_in{ADR_TRIG_SW_IN, true},
-	hw_in_enable{ADR_TRIG_HW_IN_ENABLE, true},
-	hw_in_param{ADR_TRIG_HW_IN_PARAM, true},
-	hw_out_enable{ADR_TRIG_HW_OUT_ENABLE, true},
-	hw_out_param{ADR_TRIG_HW_OUT_PARAM, true},
-	hw_out_delay{ADR_TRIG_HW_OUT_DLY, true}
+	sw_in{ADR_TRIG_SW_IN},
+	hw_in_enable{ADR_TRIG_HW_IN_ENABLE},
+	hw_in_param{ADR_TRIG_HW_IN_PARAM},
+	hw_out_enable{ADR_TRIG_HW_OUT_ENABLE},
+	hw_out_param{ADR_TRIG_HW_OUT_PARAM},
+	hw_out_delay{ADR_TRIG_HW_OUT_DLY}
 {
 }
 

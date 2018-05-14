@@ -28,51 +28,29 @@ static void usecsToTimespec(uint32_t usecs, timespec *timespecOut)
 	}
 }
 
-Register::Register(reg_addr_t address, bool single_writer) :
+Register::Register(reg_addr_t address) :
 	addr{address},
 	sem{SEM_FAILED},
-	writable{false},
-	readable{true},
+	ready{false},
 	reg_mem{static_cast<unsigned char*>(MAP_FAILED)},
 	page_base{0},
 	page_offset{0}
 {
-	ROS_DEBUG("Register Constructor (addr:0x%x, single_writer = %d)", addr, single_writer);
+	ROS_DEBUG("Register Constructor (addr:0x%x)", addr);
 	// Construct the semaphore name from the address
 	char sem_name[64];
 	snprintf(sem_name, 64, "/sem_reg_%X", address);
 	
-	// Set the initial flags based on whether this is an exclusive-write register
-	int sem_oflag = O_CREAT;
-	if (true == single_writer)
+	// Open (or create and open) the semaphore
+	sem = sem_open(sem_name, O_CREAT, 0644, 1);
+	if (SEM_FAILED != sem)
 	{
-		sem_oflag |= O_EXCL;
-	}
-	sem = sem_open(sem_name, sem_oflag, 0644, 1);
-	if (SEM_FAILED == sem)
-	{
-		if (EEXIST == errno) // Caller is not the owner/writer of the register 
-		{
-			constexpr int NO_FLAGS = 0;
-			sem = sem_open(sem_name, NO_FLAGS);
-			if (SEM_FAILED == sem)
-			{
-				ROS_ERROR("Unable to open existing semaphore %s (%s)", sem_name, strerror(errno));
-				readable = false;
-				return;
-			}
-			// The state here is readable/not writable
-		}
-		else // Unexpected sem_open error
-		{
-			ROS_ERROR("Unable to open semaphore %s (%s)", sem_name, strerror(errno));
-			readable = false;
-			return;
-		}
+		ready = true;
 	}
 	else
 	{
-		writable = true;
+		ROS_ERROR("Unable to open semaphore %s (%s)", sem_name, strerror(errno));
+		return;
 	}
 	
 	// Now mmap the register
@@ -82,18 +60,16 @@ Register::Register(reg_addr_t address, bool single_writer) :
     page_offset = addr - page_base;
 
     int fd = open("/dev/mem", O_SYNC | O_RDWR);
-    const int prot = (true == writable)? 
-    	PROT_READ | PROT_WRITE : PROT_READ;
+    const int prot = PROT_READ | PROT_WRITE;
     // Must set MAP_SHARED to get writes back to the hardware
     reg_mem = static_cast<unsigned char*>(mmap(NULL, page_offset + sizeof(reg_val_t), prot, MAP_SHARED, fd, page_base));
     if (static_cast<unsigned char*>(MAP_FAILED) == reg_mem) {
         ROS_ERROR("Unable to map register memory for 0x%x (%s)", addr, strerror(errno));
-        readable = false;
-        writable = false;
+        ready = false;
     }
     close(fd);
 
-    ROS_DEBUG("%s mem-mapped register interface at 0x%x (read=%d, write=%d)", (true == writable)? "Created" : "Linked to", addr, readable, writable);
+    ROS_DEBUG("mem-mapped register interface at 0x%x (ready=%d)", addr, ready);
 
     // Debugging
     //waitForLock(WAIT_FOREVER);
@@ -123,9 +99,9 @@ Register::~Register()
 bool Register::setVal(reg_val_t val, uint32_t timeout_usecs)
 {
 	ROS_DEBUG("Setting value %d to 0x%x", val, addr);
-	if (false == writable)
+	if (false == ready)
 	{
-		ROS_ERROR_THROTTLE(5, "Register at 0x%x is not writable from this caller", addr);	
+		ROS_ERROR_THROTTLE(5, "Register at 0x%x is not ready to write", addr);	
 		return false;
 	} 
 
@@ -145,9 +121,9 @@ bool Register::setVal(reg_val_t val, uint32_t timeout_usecs)
 
 bool Register::getVal(reg_val_t *val_out, uint32_t timeout_usecs)
 {
-	if (false == readable)
+	if (false == ready)
 	{
-		ROS_ERROR_THROTTLE(5, "Register at 0x%x is not readable", addr);
+		ROS_ERROR_THROTTLE(5, "Register at 0x%x is not ready to read", addr);
 		return false;
 	}
 

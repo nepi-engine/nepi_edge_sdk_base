@@ -10,11 +10,10 @@ typedef uint32_t reg_addr_t;
 class Register
 {
 public:
-	Register(reg_addr_t address, bool single_writer = true);
+	Register(reg_addr_t address);
 	~Register();
 	
-	inline bool isWritable() const {return writable;}
-	inline bool isReadable() const {return readable;}
+	inline bool isReady() const {return ready;}
 	
 	bool setVal (reg_val_t val, uint32_t timeout_usecs=WAIT_FOREVER);
 	bool getVal (reg_val_t *val_out, uint32_t timeout_usecs=WAIT_FOREVER);
@@ -27,9 +26,7 @@ private:
 
 	reg_addr_t addr;
 	sem_t *sem;
-	bool writable;
-	bool readable;
-	
+	bool ready;	
 	unsigned char* reg_mem;
 	off_t page_base;
     off_t page_offset;
