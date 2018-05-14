@@ -8,6 +8,11 @@
 #define ADR_BASE_TPAT                   (ADR_BASE_CPUBUS + 0x00008000)      
 #define ADR_BASE_MISC                   (ADR_BASE_CPUBUS + 0x0000C000)
 
+// Tstamp manager regs
+#define ADR_TSTAMP_CTRL                 ADR_BASE_TSTAMP + ( 0 * 4)  // Self-clearing Bit-0 resets timestamp
+#define ADR_TSTAMP_CNT                  ADR_BASE_TSTAMP + ( 1 * 4)  // Current timestamp
+#define ADR_TSTAMP_DIVISOR              ADR_BASE_TSTAMP + ( 2 * 4)  // Read only clock freq in MHz 
+
 // Trigger manager regs
 #define ADR_TRIG_SW_IN                  ADR_BASE_TRIG   + ( 0 * 4) 
 #define ADR_TRIG_HW_IN_ENABLE           ADR_BASE_TRIG   + ( 2 * 4) 
@@ -35,8 +40,5 @@
 #define ADR_TPAT_SW_TRIG_DLY			ADR_BASE_TRIG_SW_OUT_DLY \
 											+ ( TRIG_ID_TPAT_GENERATOR * 4) 
 
-// Tstamp manager regs
-#define ADR_TSTAMP_CTRL                 ADR_BASE_TSTAMP + ( 0 * 4)  // Self-clearing Bit-0 resets timestamp
-#define ADR_TSTAMP_CNT                  ADR_BASE_TSTAMP + ( 1 * 4)  // Current timestamp
-#define ADR_TSTAMP_DIVISOR              ADR_BASE_TSTAMP + ( 2 * 4)  // Read only clock freq in MHz 
+
 

@@ -1,0 +1,42 @@
+#include <ros/time.h>
+#include "std_msgs/Empty.h"
+
+#include "register.h"
+#include "num_sdk_base/ConvertRawTstamp.h"
+
+namespace numurus
+{
+
+class TimestampMgr
+{
+public:
+	TimestampMgr();
+	~TimestampMgr();
+
+	// System timestamp access
+	inline bool getCurrentTstampRaw(uint32_t *p_raw_tstamp_out){return tstamp.getVal(p_raw_tstamp_out);}
+	bool getCurrentTstamp(ros::Time& ros_time_out);
+	bool getCurrentTstamp(double *p_secs_out);
+
+	// Msg Callbacks
+	void resyncToSysClock(const std_msgs::Empty::ConstPtr& empty);
+
+	// Service Callbacks
+	bool convertRawTstamp(num_sdk_base::ConvertRawTstamp::Request &raw_tstamp, num_sdk_base::ConvertRawTstamp::Response &converted_tstamp);
+
+	// Utilities
+	bool getSecsSinceSync(double *p_secs_out);
+
+
+private:
+	bool syncFPGA();
+	
+	ros::Time sync_time;
+	ros::Time sync_time_prev;
+
+	Register tstamp_ctrl;
+	Register tstamp;
+	//Register tstamp_rate;
+};
+
+} // namespace numurus

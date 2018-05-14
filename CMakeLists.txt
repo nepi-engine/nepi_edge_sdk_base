@@ -51,11 +51,10 @@ add_message_files(
 )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+    FILES
+    ConvertRawTstamp.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -150,6 +149,16 @@ add_dependencies(trigger_mgr_node ${PROJECT_NAME}_generate_messages_cpp ${catkin
 target_link_libraries(trigger_mgr_node
 	${catkin_LIBRARIES}
 )
+
+## Timestamp Manager Node
+add_executable(timestamp_mgr_node
+	src/timestamp_mgr.cpp
+	src/register.cpp)
+
+add_dependencies(timestamp_mgr_node ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+
+target_link_libraries(timestamp_mgr_node
+	${catkin_LIBRARIES})
 
 #############
 ## Install ##
