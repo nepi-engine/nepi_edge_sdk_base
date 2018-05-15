@@ -1,24 +1,50 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 
+#include "num_common.h"
 #include "num_fpga.h"
 #include "trigger_mgr.h"
+
+#define NODE_NAME	"trigger_mgr"
 
 namespace numurus
 {
 
-TriggerMgr::TriggerMgr() :
+TriggerMgr::TriggerMgr(const std::string my_name) :
+	SDKNode{my_name},
 	sw_in{ADR_TRIG_SW_IN},
 	hw_in_enable{ADR_TRIG_HW_IN_ENABLE},
 	hw_in_param{ADR_TRIG_HW_IN_PARAM},
 	hw_out_enable{ADR_TRIG_HW_OUT_ENABLE},
 	hw_out_param{ADR_TRIG_HW_OUT_PARAM},
 	hw_out_delay{ADR_TRIG_HW_OUT_DLY}
-{
-}
+{}
 
 TriggerMgr::~TriggerMgr()
+{}
+
+void TriggerMgr::run()
 {
+	if (false == initParams())
+	{
+		ROS_ERROR("%s: Unable to run because parameters were not properly initialized", name.c_str());
+	}
+
+	// Setup messages, services, and actions
+	ros::Subscriber sw_trig_sub = n.subscribe("sw_trigger", 5, &numurus::TriggerMgr::executeSwTrig, this);
+	ros::Subscriber hw_trig_in_enab_sub = n.subscribe("hw_trigger_in_enab", 5, &numurus::TriggerMgr::setHwTrigInEnab, this);
+	ros::Subscriber hw_trig_in_cfg_sub = n.subscribe("hw_trigger_in_cfg", 1, &numurus::TriggerMgr::configureHwTrigIn, this);
+	ros::Subscriber hw_trig_out_enab_sub = n.subscribe("hw_trigger_out_enab", 5, &numurus::TriggerMgr::setHwTrigOutEnab, this);
+	ros::Subscriber hw_trig_out_cfg_sub = n.subscribe("hw_trigger_out_cfg", 1, &numurus::TriggerMgr::configureHwTrigOut, this); 
+	ros::Subscriber hw_trig_out_dly_sub = n.subscribe("hw_trigger_out_dly", 1, &numurus::TriggerMgr::setHwTrigOutDly, this);
+	if (!sw_trig_sub || !hw_trig_in_enab_sub || !hw_trig_in_cfg_sub || !hw_trig_out_enab_sub ||
+		!hw_trig_out_cfg_sub || !hw_trig_out_dly_sub || !hw_trig_out_dly_sub)
+	{
+		ROS_ERROR("%s: unable to subscribe to required topics", name.c_str());
+		return;
+	}
+	
+	ros::spin();
 }
 
 void TriggerMgr::executeSwTrig(const std_msgs::UInt32::ConstPtr& trig_val)
@@ -82,25 +108,9 @@ void TriggerMgr::setHwTrigOutDly(const std_msgs::UInt32::ConstPtr& dly_usecs)
 
 int main(int argc, char **argv)
 {
-	ROS_INFO("Starting the Trigger Manager Node");
-	ros::init(argc, argv, "trigger_mgr");
-	ros::NodeHandle n;
-
-	// Initialize the trigger manager
-	numurus::TriggerMgr trig_mgr;
-
-	ros::Subscriber sw_trig_sub = n.subscribe("sw_trigger", 5, &numurus::TriggerMgr::executeSwTrig, &trig_mgr);
-	ros::Subscriber hw_trig_in_enab_sub = n.subscribe("hw_trigger_in_enab", 5, &numurus::TriggerMgr::setHwTrigInEnab, &trig_mgr);
-	ros::Subscriber hw_trig_in_cfg_sub = n.subscribe("hw_trigger_in_cfg", 1, &numurus::TriggerMgr::configureHwTrigIn, &trig_mgr);
-	ros::Subscriber hw_trig_out_enab_sub = n.subscribe("hw_trigger_out_enab", 5, &numurus::TriggerMgr::setHwTrigOutEnab, &trig_mgr);
-	ros::Subscriber hw_trig_out_cfg_sub = n.subscribe("hw_trigger_out_cfg", 1, &numurus::TriggerMgr::configureHwTrigOut, &trig_mgr); 
-	ros::Subscriber hw_trig_out_dly_sub = n.subscribe("hw_trigger_out_dly", 1, &numurus::TriggerMgr::setHwTrigOutDly, &trig_mgr);
-	if (!sw_trig_sub || !hw_trig_in_enab_sub || !hw_trig_in_cfg_sub || !hw_trig_out_enab_sub ||
-		!hw_trig_out_cfg_sub || !hw_trig_out_dly_sub || !hw_trig_out_dly_sub)
-	{
-		ROS_ERROR("Trigger Manager unable to subscribe to required topics");
-		return -1;
-	}
+	ros::init(argc, argv, NODE_NAME);
+	ROS_INFO("Starting the %s node", NODE_NAME);
 	
-	ros::spin();	
+	numurus::TriggerMgr trig_mgr(NODE_NAME);
+	trig_mgr.run();	
 }

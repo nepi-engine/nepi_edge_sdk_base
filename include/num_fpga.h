@@ -1,3 +1,6 @@
+#ifndef _NUM_FPGA_H
+#define _NUM_FPGA_H
+
 #define ADR_BASE_CPUBUS                0x48000000       
 
 //------------------------------------------------------------------------
@@ -41,4 +44,5 @@
 											+ ( TRIG_ID_TPAT_GENERATOR * 4) 
 
 
+#endif //_NUM_FPGA_H
 

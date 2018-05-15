@@ -4,10 +4,13 @@
 #include "num_fpga.h"
 #include "timestamp_mgr.h"
 
+#define NODE_NAME	"timestamp_mgr"
+
 namespace numurus
 {
 
-TimestampMgr::TimestampMgr() :
+TimestampMgr::TimestampMgr(const std::string my_name) :
+	SDKNode{my_name},
 	sync_time{0},
 	sync_time_prev{0},
 	tstamp_ctrl{ADR_TSTAMP_CTRL},
@@ -34,6 +37,18 @@ TimestampMgr::TimestampMgr() :
 TimestampMgr::~TimestampMgr()
 {
 	ROS_DEBUG("TimestampMgr Destructor");
+}
+
+void TimestampMgr::run()
+{
+
+	// Register for the resync topic
+	ros::Subscriber resync_tstamps_sub = n.subscribe("resync_tstamp_req", 1, &numurus::TimestampMgr::resyncToSysClock, this);
+	
+	// Advertise conversion service
+	ros::ServiceServer tstamp_conversion_service = n.advertiseService("convert_raw_tstamp", &numurus::TimestampMgr::convertRawTstamp, this);
+	
+	ros::spin();
 }
 
 bool TimestampMgr::getCurrentTstamp(ros::Time& ros_time_out)
@@ -117,18 +132,10 @@ bool TimestampMgr::syncFPGA()
 
 int main(int argc, char **argv)
 {
-	ROS_INFO("Starting the Timestamp Manager Node");
-	ros::init(argc, argv, "timestamp_mgr");
-	ros::NodeHandle n;
-
-	// Initialize the timestamp manager
-	numurus::TimestampMgr timestamp_mgr;
-
-	// Register for the resync topic
-	ros::Subscriber resync_tstamps_sub = n.subscribe("resync_tstamp_req", 1, &numurus::TimestampMgr::resyncToSysClock, &timestamp_mgr);
+	ROS_INFO("Starting the %s Node", NODE_NAME);
+	ros::init(argc, argv, NODE_NAME);
 	
-	// Advertise conversion service
-	ros::ServiceServer tstamp_conversion_service = n.advertiseService("convert_raw_tstamp", &numurus::TimestampMgr::convertRawTstamp, &timestamp_mgr);
-	
-	ros::spin();	
+	// The class instance does the work
+	numurus::TimestampMgr timestamp_mgr(NODE_NAME);
+	timestamp_mgr.run();
 }

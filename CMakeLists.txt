@@ -100,8 +100,9 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES sdk
+#  LIBRARIES ${PROJECT_NAME}
    CATKIN_DEPENDS message_runtime
+
 #  DEPENDS system_lib
 )
 
@@ -117,10 +118,11 @@ include_directories(
 )
 
 ## Declare a C++ library
-#add_library(${PROJECT_NAME}
-#   src/register.cpp
-#   src/configurable_trigger.cpp
-#)
+add_library(${PROJECT_NAME}
+   src/register.cpp
+   src/configurable_trigger.cpp
+   src/sdk_node.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -131,9 +133,8 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(trigger_mgr_node 
-	src/trigger_mgr.cpp 
-	src/register.cpp 
-	src/configurable_trigger.cpp)
+	src/trigger_mgr.cpp
+) 
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -148,17 +149,20 @@ add_dependencies(trigger_mgr_node ${PROJECT_NAME}_generate_messages_cpp ${catkin
 ## Specify libraries to link a library or executable target against
 target_link_libraries(trigger_mgr_node
 	${catkin_LIBRARIES}
+	${PROJECT_NAME}
 )
 
 ## Timestamp Manager Node
 add_executable(timestamp_mgr_node
 	src/timestamp_mgr.cpp
-	src/register.cpp)
+)
 
 add_dependencies(timestamp_mgr_node ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 
 target_link_libraries(timestamp_mgr_node
-	${catkin_LIBRARIES})
+	${catkin_LIBRARIES}
+	${PROJECT_NAME}
+)
 
 #############
 ## Install ##

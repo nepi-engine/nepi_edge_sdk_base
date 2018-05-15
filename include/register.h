@@ -1,3 +1,6 @@
+#ifndef _REGISTER_H
+#define _REGISTER_H
+
 #include <stdint.h>
 #include <semaphore.h>
 
@@ -33,3 +36,5 @@ private:
 };
 
 } // namespace numurus
+
+#endif //_REGISTER_H

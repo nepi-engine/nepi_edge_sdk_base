@@ -1,17 +1,23 @@
+#ifndef _TIMESTAMP_MGR_H
+#define _TIMESTAMP_MGR_H
+
 #include <ros/time.h>
 #include "std_msgs/Empty.h"
 
+#include "sdk_node.h"
 #include "register.h"
 #include "num_sdk_base/ConvertRawTstamp.h"
 
 namespace numurus
 {
 
-class TimestampMgr
+class TimestampMgr : public SDKNode
 {
 public:
-	TimestampMgr();
+	TimestampMgr(const std::string name);
 	~TimestampMgr();
+
+	void run() override;
 
 	// System timestamp access
 	inline bool getCurrentTstampRaw(uint32_t *p_raw_tstamp_out){return tstamp.getVal(p_raw_tstamp_out);}
@@ -40,3 +46,5 @@ private:
 };
 
 } // namespace numurus
+
+#endif //_TIMESTAMP_MGR_H

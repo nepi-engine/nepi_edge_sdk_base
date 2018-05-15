@@ -1,22 +1,28 @@
+#ifndef _TRIGGER_MGR_H
+#define _TRIGGER_MGR_H
+
+#include <string>
 
 #include "std_msgs/UInt32.h"
 
 #include "num_sdk_base/HwTrigInCfg.h"
 #include "num_sdk_base/HwTrigOutCfg.h"
 #include "register.h"
+#include "sdk_node.h"
 
 using namespace num_sdk_base; // Messages are automatically namespaced by their project's name
 
 namespace numurus
 {
 
-
-class TriggerMgr
+class TriggerMgr : public SDKNode
 {
 public:
-	TriggerMgr();
+	TriggerMgr(const std::string name);
 	~TriggerMgr();
 
+	void run() override;
+	
 	// Message Callbacks
 	// S/W Trig.
 	void executeSwTrig(const std_msgs::UInt32::ConstPtr& trig_mask);
@@ -41,3 +47,5 @@ private:
 };
 
 } // namespace numurus
+
+#endif //_TRIGGER_MGR_H

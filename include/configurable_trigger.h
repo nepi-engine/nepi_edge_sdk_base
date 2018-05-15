@@ -1,3 +1,6 @@
+#ifndef _CONFIGURABLE_TRIGGER_H
+#define _CONFIGURABLE_TRIGGER_H
+
 #include "register.h"
 
 namespace numurus
@@ -22,3 +25,5 @@ private:
 };
 
 } // namespace numurus
+
+#endif //_CONFIGURABLE_TRIGGER_H
