@@ -48,12 +48,14 @@ add_message_files(
     FILES
     HwTrigInCfg.msg
     HwTrigOutCfg.msg
+    FactoryReset.msg
 )
 
 ## Generate services in the 'srv' folder
 add_service_files(
     FILES
     ConvertRawTstamp.srv
+    ListNTPServers.srv
 )
 
 ## Generate actions in the 'action' folder
