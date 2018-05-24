@@ -5,6 +5,8 @@
 
 #include <ros/ros.h>
 
+#include "register.h"
+
 namespace numurus
 {
 
@@ -16,14 +18,20 @@ public:
 
 	virtual void run() = 0;
 	
-	inline const std::string getName() const {return name;} 
+	inline const std::string& getName() const {return name;} 
 
 protected:
 	ros::NodeHandle n;
 	const std::string name;
+	std::vector<Register*> configurable_regs;
 
-	virtual bool initParams() {return true;}
-	virtual bool saveParams() {return true;}
+	void initParams();
+	void updateParams();
+
+private:
+
+	void initRegisterParams();
+	void updateRegisterParams();
 };
 
 } // namespace numurus

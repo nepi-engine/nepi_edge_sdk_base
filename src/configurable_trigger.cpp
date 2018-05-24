@@ -6,8 +6,8 @@ namespace numurus
 {
 
 ConfigurableTrigger::ConfigurableTrigger(reg_addr_t mask_reg_addr, reg_addr_t delay_reg_addr) :
-	mask_register{mask_reg_addr},
-	delay_register{delay_reg_addr}
+	mask_register{"trigger_mask", mask_reg_addr},
+	delay_register{"trigger_delay", delay_reg_addr}
 {
 	// Validate the setup and report error if it's wrong
 	if (!mask_register.isReady() || !delay_register.isReady())

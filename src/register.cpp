@@ -28,7 +28,8 @@ static void usecsToTimespec(uint32_t usecs, timespec *timespecOut)
 	}
 }
 
-Register::Register(reg_addr_t address) :
+Register::Register(const std::string &reg_name, reg_addr_t address) :
+	name{reg_name},
 	addr{address},
 	sem{SEM_FAILED},
 	ready{false},

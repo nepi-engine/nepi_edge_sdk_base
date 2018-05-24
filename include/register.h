@@ -7,14 +7,16 @@
 namespace numurus
 {
 
-typedef uint32_t reg_val_t;
-typedef uint32_t reg_addr_t;
+typedef int32_t reg_val_t;
+typedef int32_t reg_addr_t;
 
 class Register
 {
 public:
-	Register(reg_addr_t address);
+	Register(const std::string &name, reg_addr_t address);
 	~Register();
+
+	inline const std::string& getName() const {return name;}
 	
 	inline bool isReady() const {return ready;}
 	
@@ -27,6 +29,7 @@ private:
 	bool waitForLock(uint32_t timeout_usecs);
 	inline void releaseLock(void){sem_post(sem);}
 
+	const std::string name;
 	reg_addr_t addr;
 	sem_t *sem;
 	bool ready;	

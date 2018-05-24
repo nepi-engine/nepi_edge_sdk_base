@@ -35,7 +35,7 @@ public:
 	void setHwTrigOutEnab(const std_msgs::UInt32::ConstPtr& enab_mask);
 	void configureHwTrigOut(const HwTrigOutCfg::ConstPtr& cfg);
 	void setHwTrigOutDly(const std_msgs::UInt32::ConstPtr& dly_usecs);
-	
+
 private:
 	Register sw_in;
 	Register hw_in_enable;

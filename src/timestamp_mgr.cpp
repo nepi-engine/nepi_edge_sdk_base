@@ -13,8 +13,8 @@ TimestampMgr::TimestampMgr(const std::string my_name) :
 	SDKNode{my_name},
 	sync_time{0},
 	sync_time_prev{0},
-	tstamp_ctrl{ADR_TSTAMP_CTRL},
-	tstamp{ADR_TSTAMP_CNT}
+	tstamp_ctrl{"timestamp_ctrl", ADR_TSTAMP_CTRL},
+	tstamp{"timestamp", ADR_TSTAMP_CNT}
 {
 	ROS_DEBUG("TimestampMgr Constructor");
 

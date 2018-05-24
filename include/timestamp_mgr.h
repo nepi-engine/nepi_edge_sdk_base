@@ -20,7 +20,11 @@ public:
 	void run() override;
 
 	// System timestamp access
-	inline bool getCurrentTstampRaw(uint32_t *p_raw_tstamp_out){return tstamp.getVal(p_raw_tstamp_out);}
+	inline bool getCurrentTstampRaw(uint32_t *p_raw_tstamp_out)
+	{
+
+		return tstamp.getVal(reinterpret_cast<reg_val_t*>(p_raw_tstamp_out));
+	}
 	bool getCurrentTstamp(ros::Time& ros_time_out);
 	bool getCurrentTstamp(double *p_secs_out);
 

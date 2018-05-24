@@ -1,3 +1,5 @@
+#include <vector>
+
 #include <ros/ros.h>
 #include <ros/console.h>
 
@@ -12,23 +14,28 @@ namespace numurus
 
 TriggerMgr::TriggerMgr(const std::string my_name) :
 	SDKNode{my_name},
-	sw_in{ADR_TRIG_SW_IN},
-	hw_in_enable{ADR_TRIG_HW_IN_ENABLE},
-	hw_in_param{ADR_TRIG_HW_IN_PARAM},
-	hw_out_enable{ADR_TRIG_HW_OUT_ENABLE},
-	hw_out_param{ADR_TRIG_HW_OUT_PARAM},
-	hw_out_delay{ADR_TRIG_HW_OUT_DLY}
-{}
+	sw_in{"sw_trig_in", ADR_TRIG_SW_IN},
+	hw_in_enable{"hw_trig_in_enab", ADR_TRIG_HW_IN_ENABLE},
+	hw_in_param{"hw_trig_in_param", ADR_TRIG_HW_IN_PARAM},
+	hw_out_enable{"hw_trig_out_enab", ADR_TRIG_HW_OUT_ENABLE},
+	hw_out_param{"hw_trig_out_param", ADR_TRIG_HW_OUT_PARAM},
+	hw_out_delay{"hw_trig_out_delay", ADR_TRIG_HW_OUT_DLY}
+{
+	configurable_regs.push_back(&hw_in_enable);
+	configurable_regs.push_back(&hw_in_param);
+	configurable_regs.push_back(&hw_out_enable);
+	configurable_regs.push_back(&hw_out_param);
+	configurable_regs.push_back(&hw_out_delay);
+}
 
 TriggerMgr::~TriggerMgr()
 {}
 
 void TriggerMgr::run()
 {
-	if (false == initParams())
-	{
-		ROS_ERROR("%s: Unable to run because parameters were not properly initialized", name.c_str());
-	}
+	initParams();
+
+	TODO: Must advertise services like updateParams(definitely) and reinitParams(maybe)
 
 	// Setup messages, services, and actions
 	ros::Subscriber sw_trig_sub = n.subscribe("sw_trigger", 5, &numurus::TriggerMgr::executeSwTrig, this);
@@ -51,7 +58,7 @@ void TriggerMgr::executeSwTrig(const std_msgs::UInt32::ConstPtr& trig_val)
 {
 	if (false == sw_in.setVal(trig_val->data))
 	{
-		ROS_ERROR_THROTTLE(1, "Trigger mgr. unable to execute s/w trigger 0x%x", trig_val->data);
+		ROS_ERROR_THROTTLE(1, "%s unable to execute s/w trigger 0x%x", name.c_str(), trig_val->data);
 	}
 }
 
@@ -60,7 +67,7 @@ void TriggerMgr::setHwTrigInEnab(const std_msgs::UInt32::ConstPtr& enab_mask)
 {
 	if (false == hw_in_enable.setVal(enab_mask->data))
 	{
-		ROS_ERROR("Trigger mgr. unable to set h/w trigger in enable mask");
+		ROS_ERROR("%s unable to set h/w trigger in enable mask", name.c_str());
 	}
 }
 
@@ -72,7 +79,7 @@ void TriggerMgr::configureHwTrigIn(const HwTrigInCfg::ConstPtr& cfg)
 								((cfg->neg_polarity		& 0x1)			<< 0);
 	if (false == hw_in_param.setVal(cfg_val))
 	{
-		ROS_ERROR("Trigger mgr. unable to set h/w trigger in config.");
+		ROS_ERROR("%s unable to set h/w trigger in config.", name.c_str());
 	}
 }
 
@@ -81,7 +88,7 @@ void TriggerMgr::setHwTrigOutEnab(const std_msgs::UInt32::ConstPtr& enab_mask)
 {
 	if (false == hw_out_enable.setVal(enab_mask->data))
 	{
-		ROS_ERROR("Trigger mgr. unable to set h/w trigger in enable mask");
+		ROS_ERROR("%s unable to set h/w trigger in enable mask", name.c_str());
 	}	
 }
 
@@ -92,7 +99,7 @@ void TriggerMgr::configureHwTrigOut(const HwTrigOutCfg::ConstPtr& cfg)
 								((cfg->neg_polarity		& 0x1)			<< 0);
 	if (false == hw_out_param.setVal(cfg_val))
 	{
-		ROS_ERROR("Trigger mgr. unable to set h/w trigger out config.");
+		ROS_ERROR("%s unable to set h/w trigger out config.", name.c_str());
 	}
 }
 
@@ -100,7 +107,7 @@ void TriggerMgr::setHwTrigOutDly(const std_msgs::UInt32::ConstPtr& dly_usecs)
 {
 	if (false == hw_out_delay.setVal(dly_usecs->data))
 	{
-		ROS_ERROR("Trigger mgr. unable to set h/w trigger out delay");
+		ROS_ERROR("%s unable to set h/w trigger out delay", name.c_str());
 	}
 }
 
