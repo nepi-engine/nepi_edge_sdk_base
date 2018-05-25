@@ -41,13 +41,20 @@ TimestampMgr::~TimestampMgr()
 
 void TimestampMgr::run()
 {
+	initParams();
 
 	// Register for the resync topic
-	ros::Subscriber resync_tstamps_sub = n.subscribe("resync_tstamp_req", 1, &numurus::TimestampMgr::resyncToSysClock, this);
+	subscribers.push_back(n.subscribe("resync_tstamp_req", 1, &numurus::TimestampMgr::resyncToSysClock, this));
 	
 	// Advertise conversion service
-	ros::ServiceServer tstamp_conversion_service = n.advertiseService("convert_raw_tstamp", &numurus::TimestampMgr::convertRawTstamp, this);
-	
+	servicers.push_back(n.advertiseService("convert_raw_tstamp", &numurus::TimestampMgr::convertRawTstamp, this));
+
+	if (false == ready())
+	{
+		ROS_ERROR("%s: Not properly initialized... exiting", name.c_str());
+		return;		
+	}
+
 	ros::spin();
 }
 

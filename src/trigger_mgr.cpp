@@ -35,20 +35,19 @@ void TriggerMgr::run()
 {
 	initParams();
 
-	TODO: Must advertise services like updateParams(definitely) and reinitParams(maybe)
+	//TODO: Must advertise services like updateParams(definitely) and reinitParams(maybe)
 
 	// Setup messages, services, and actions
-	ros::Subscriber sw_trig_sub = n.subscribe("sw_trigger", 5, &numurus::TriggerMgr::executeSwTrig, this);
-	ros::Subscriber hw_trig_in_enab_sub = n.subscribe("hw_trigger_in_enab", 5, &numurus::TriggerMgr::setHwTrigInEnab, this);
-	ros::Subscriber hw_trig_in_cfg_sub = n.subscribe("hw_trigger_in_cfg", 1, &numurus::TriggerMgr::configureHwTrigIn, this);
-	ros::Subscriber hw_trig_out_enab_sub = n.subscribe("hw_trigger_out_enab", 5, &numurus::TriggerMgr::setHwTrigOutEnab, this);
-	ros::Subscriber hw_trig_out_cfg_sub = n.subscribe("hw_trigger_out_cfg", 1, &numurus::TriggerMgr::configureHwTrigOut, this); 
-	ros::Subscriber hw_trig_out_dly_sub = n.subscribe("hw_trigger_out_dly", 1, &numurus::TriggerMgr::setHwTrigOutDly, this);
-	if (!sw_trig_sub || !hw_trig_in_enab_sub || !hw_trig_in_cfg_sub || !hw_trig_out_enab_sub ||
-		!hw_trig_out_cfg_sub || !hw_trig_out_dly_sub || !hw_trig_out_dly_sub)
+	subscribers.push_back(n.subscribe("sw_trigger", 5, &numurus::TriggerMgr::executeSwTrig, this));
+	subscribers.push_back(n.subscribe("hw_trigger_in_enab", 5, &numurus::TriggerMgr::setHwTrigInEnab, this));
+	subscribers.push_back(n.subscribe("hw_trigger_in_cfg", 1, &numurus::TriggerMgr::configureHwTrigIn, this));
+	subscribers.push_back(n.subscribe("hw_trigger_out_enab", 5, &numurus::TriggerMgr::setHwTrigOutEnab, this));
+	subscribers.push_back(n.subscribe("hw_trigger_out_cfg", 1, &numurus::TriggerMgr::configureHwTrigOut, this)); 
+	subscribers.push_back(n.subscribe("hw_trigger_out_dly", 1, &numurus::TriggerMgr::setHwTrigOutDly, this));
+	if (false == ready())
 	{
-		ROS_ERROR("%s: unable to subscribe to required topics", name.c_str());
-		return;
+		ROS_ERROR("%s: not properly initialized... exiting", name.c_str());
+		return;		
 	}
 	
 	ros::spin();
