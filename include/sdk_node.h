@@ -36,7 +36,7 @@ protected:
 		return BASE_ROS_NAMESPACE + ns_separator + name + ns_separator + param;
 	}
 
-	void initParams();
+	virtual void init();
 
 	void reinitParams(const std_msgs::String::ConstPtr& id);
 	void updateParams(const std_msgs::String::ConstPtr& id);
@@ -46,6 +46,7 @@ protected:
 private:
 	bool initialized;
 
+	void initParams();
 	void initRegisterParams();
 	void updateRegisterParams();
 };

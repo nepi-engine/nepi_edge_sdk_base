@@ -33,7 +33,7 @@ TriggerMgr::~TriggerMgr()
 
 void TriggerMgr::run()
 {
-	initParams();
+	init();
 
 	//TODO: Must advertise services like updateParams(definitely) and reinitParams(maybe)
 
@@ -119,4 +119,6 @@ int main(int argc, char **argv)
 	
 	numurus::TriggerMgr trig_mgr(NODE_NAME);
 	trig_mgr.run();	
+
+	return 0;
 }

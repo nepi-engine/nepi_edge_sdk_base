@@ -41,7 +41,7 @@ TimestampMgr::~TimestampMgr()
 
 void TimestampMgr::run()
 {
-	initParams();
+	init();
 
 	// Register for the resync topic
 	subscribers.push_back(n.subscribe("resync_tstamp_req", 1, &numurus::TimestampMgr::resyncToSysClock, this));
@@ -145,4 +145,6 @@ int main(int argc, char **argv)
 	// The class instance does the work
 	numurus::TimestampMgr timestamp_mgr(NODE_NAME);
 	timestamp_mgr.run();
+
+	return 0;
 }

@@ -14,7 +14,7 @@ SDKNode::SDKNode(const std::string my_name) :
 SDKNode::~SDKNode()
 {}
 
-void SDKNode::initParams()
+void SDKNode::init()
 {
 	// First, subscribe to the generic param messages as long as this is the first entry into this function
 	if (false == initialized)
@@ -22,11 +22,19 @@ void SDKNode::initParams()
 		// TODO: Should we do these as services? Would be better to report success/failure to caller, but 
 		// would have to have unique srv names (ROS doesn't allow multiple nodes to provide the same service)
 		// and awkward for service clients.
+		
+		// Keep these in the public namespace so that we can support param reinit and update
+		// messages to ALL of the SDK nodes
 		subscribers.push_back(n.subscribe("reinit_params", 1, &SDKNode::reinitParams, this));
 		subscribers.push_back(n.subscribe("update_params", 1, &SDKNode::updateParams, this));
 		initialized = true;
 	}
 
+	initParams();
+}
+
+void SDKNode::initParams()
+{
 	initRegisterParams();
 	// TODO: Non-register params
 }
