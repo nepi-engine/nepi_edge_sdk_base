@@ -24,6 +24,7 @@ public:
 
 protected:
 	ros::NodeHandle n;
+	ros::NodeHandle n_priv; // Private node handle for namespace resolution
 	const std::string name;
 	std::vector<Register*> configurable_regs;
 	std::vector<ros::ServiceServer> servicers;
@@ -31,7 +32,7 @@ protected:
 
 	inline const std::string getNodeParamName(const std::string &param) const
 	{
-		const std::string ns_separator("/");
+		static const std::string ns_separator("/");
 		return BASE_ROS_NAMESPACE + ns_separator + name + ns_separator + param;
 	}
 

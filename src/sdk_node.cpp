@@ -6,6 +6,7 @@ namespace numurus
 {
 
 SDKNode::SDKNode(const std::string my_name) :
+	n_priv{"~"}, // Create a private namespace for this node 
 	name{my_name},
 	initialized{false}
 {}
@@ -80,7 +81,8 @@ void SDKNode::initRegisterParams()
 		reg_val_t tmp;
 		const std::string reg_name = reg->getName();
 		const std::string param_name = getNodeParamName(reg_name);
-		if (true == n.getParam(param_name, tmp))
+		// Parameters for register values are always in the node's "private" namespace, so use n_priv
+		if (true == n_priv.getParam(param_name, tmp))
 		{
 			ROS_INFO("Setting %s register to 0x%x from param %s", reg_name.c_str(), tmp, param_name.c_str());
 			reg->setVal(tmp, REG_INIT_TIMEOUT_VAL);
@@ -90,7 +92,7 @@ void SDKNode::initRegisterParams()
 			reg->getVal(&tmp, REG_INIT_TIMEOUT_VAL);
 			ROS_WARN("Unable to init %s register from param %s, using existing val 0x%x instead", reg_name.c_str(), param_name.c_str(), tmp);
 			// And attempt write it back so that the config file has something for next time
-			n.setParam(param_name, tmp);
+			n_priv.setParam(param_name, tmp);
 		}
 	}
 }
@@ -105,7 +107,7 @@ void SDKNode::updateRegisterParams()
 		const std::string param_name = getNodeParamName(reg_name);
 		if (true == reg->getVal(&tmp, REG_SAVE_TIMEOUT_VAL))
 		{
-			n.setParam(param_name, tmp);
+			n_priv.setParam(param_name, tmp);
 			continue;
 		}
 		else
