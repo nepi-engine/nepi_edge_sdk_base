@@ -124,6 +124,7 @@ add_library(${PROJECT_NAME}
    src/register.cpp
    src/configurable_trigger.cpp
    src/sdk_node.cpp
+   src/triggerable_node.cpp
 )
 
 ## Add cmake target dependencies of the library
