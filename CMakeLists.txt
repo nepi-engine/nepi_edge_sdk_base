@@ -13,6 +13,8 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs message_generation)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+## Use the verbose version of make
+#set(CMAKE_VERBOSE_MAKEFILE ON)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -117,6 +119,7 @@ catkin_package(
 include_directories(
    include
    ${catkin_INCLUDE_DIRS}
+   /home/josh/Desktop/Work/repos/numurus/num_zynq_fw/drivers/
 )
 
 ## Declare a C++ library
@@ -166,6 +169,19 @@ target_link_libraries(timestamp_mgr_node
 	${catkin_LIBRARIES}
 	${PROJECT_NAME}
 )
+
+## Test Pattern Generator Node
+add_executable(test_pat_generator_node
+  src/test_pat_generator.cpp
+)
+
+add_dependencies(test_pat_generator_node ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+
+target_link_libraries(test_pat_generator_node
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
+)
+
 
 #############
 ## Install ##

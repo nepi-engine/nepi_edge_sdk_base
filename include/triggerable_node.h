@@ -14,7 +14,7 @@ public:
 	~TriggerableNode();
 
 protected:
-	void init() override;
+	virtual void init() override;
 
 private:
 	void setTrigMask(const std_msgs::UInt32::ConstPtr& trig_mask_val);
