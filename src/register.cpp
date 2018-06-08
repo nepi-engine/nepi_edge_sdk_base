@@ -11,6 +11,12 @@
 namespace Numurus
 {
 
+/**
+ * @brief      Convenience functions to conver usecs to a timespec for timeout args.
+ *
+ * @param[in]  usecs        Absolute usecs
+ * @param      timespecOut  The equivalent timespec after evaluation
+ */
 static void usecsToTimespec(uint32_t usecs, timespec *timespecOut)
 {
 	static const uint32_t USECS_PER_SEC = 1e6;

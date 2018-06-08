@@ -41,8 +41,14 @@
 #define ADR_TPAT_SW_TRIG_MASK			ADR_BASE_TRIG_SW_OUT_ENABLE \
 									  		+ ( TRIG_ID_TPAT_GENERATOR * 4)
 #define ADR_TPAT_SW_TRIG_DLY			ADR_BASE_TRIG_SW_OUT_DLY \
-											+ ( TRIG_ID_TPAT_GENERATOR * 4) 
+											+ ( TRIG_ID_TPAT_GENERATOR * 4)
 
+
+//------------------------------------------------------------------------
+// Register value extraction
+//------------------------------------------------------------------------
+#define TPAT_STAT_GET_DONE_BIT(val)		((val) & 0x1)
+#define TPAT_STAT_GET_OUTPUT_CNT(val)	(((val) & 0xFFF) >> 8)											
 
 #endif //_NUM_FPGA_H
 

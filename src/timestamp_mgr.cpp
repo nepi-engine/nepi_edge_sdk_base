@@ -9,8 +9,8 @@
 namespace Numurus
 {
 
-TimestampMgr::TimestampMgr(const std::string my_name) :
-	SDKNode{my_name},
+TimestampMgr::TimestampMgr() :
+	SDKNode{NODE_NAME},
 	sync_time{0},
 	sync_time_prev{0},
 	tstamp_ctrl{"timestamp_ctrl", ADR_TSTAMP_CTRL},
@@ -44,10 +44,10 @@ void TimestampMgr::run()
 	init();
 
 	// Register for the resync topic
-	subscribers.push_back(n.subscribe("resync_tstamp_req", 1, &numurus::TimestampMgr::resyncToSysClock, this));
+	subscribers.push_back(n.subscribe("resync_tstamp_req", 1, &Numurus::TimestampMgr::resyncToSysClock, this));
 	
 	// Advertise conversion service
-	servicers.push_back(n.advertiseService("convert_raw_tstamp", &numurus::TimestampMgr::convertRawTstamp, this));
+	servicers.push_back(n.advertiseService("convert_raw_tstamp", &Numurus::TimestampMgr::convertRawTstamp, this));
 
 	if (false == ready())
 	{
@@ -97,7 +97,19 @@ bool TimestampMgr::convertRawTstamp(num_sdk_base::ConvertRawTstamp::Request &req
 
 	const double tstamp_secs_since_sync = req.raw / USECS_PER_SEC;
 	const ros::Duration tstamp_since_sync(tstamp_secs_since_sync);
-	resp.converted = sync_time + tstamp_since_sync;
+	reg_val_t curr_tstamp;
+	if (false == tstamp.getVal(&curr_tstamp))
+	{
+		// Error logged upstream
+		return false;
+	}
+
+	// Determine if the caller's timestamp was from before the most recent resync and adjust accordingly
+	const ros::Time &offset = (req.raw > (uint32_t) curr_tstamp)?
+		sync_time_prev : sync_time;
+		
+	resp.converted = offset + tstamp_since_sync;
+
 	return true;
 }
 
@@ -143,7 +155,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, NODE_NAME);
 	
 	// The class instance does the work
-	numurus::TimestampMgr timestamp_mgr(NODE_NAME);
+	Numurus::TimestampMgr timestamp_mgr;
 	timestamp_mgr.run();
 
 	return 0;

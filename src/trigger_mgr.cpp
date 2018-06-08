@@ -12,8 +12,8 @@
 namespace Numurus
 {
 
-TriggerMgr::TriggerMgr(const std::string my_name) :
-	SDKNode{my_name},
+TriggerMgr::TriggerMgr() :
+	SDKNode{NODE_NAME},
 	sw_in{"sw_trig_in", ADR_TRIG_SW_IN},
 	hw_in_enable{"hw_trig_in_enab", ADR_TRIG_HW_IN_ENABLE},
 	hw_in_param{"hw_trig_in_param", ADR_TRIG_HW_IN_PARAM},
@@ -35,15 +35,13 @@ void TriggerMgr::run()
 {
 	init();
 
-	//TODO: Must advertise services like updateParams(definitely) and reinitParams(maybe)
-
 	// Setup messages, services, and actions
-	subscribers.push_back(n.subscribe("sw_trigger", 5, &numurus::TriggerMgr::executeSwTrig, this));
-	subscribers.push_back(n.subscribe("hw_trigger_in_enab", 5, &numurus::TriggerMgr::setHwTrigInEnab, this));
-	subscribers.push_back(n.subscribe("hw_trigger_in_cfg", 1, &numurus::TriggerMgr::configureHwTrigIn, this));
-	subscribers.push_back(n.subscribe("hw_trigger_out_enab", 5, &numurus::TriggerMgr::setHwTrigOutEnab, this));
-	subscribers.push_back(n.subscribe("hw_trigger_out_cfg", 1, &numurus::TriggerMgr::configureHwTrigOut, this)); 
-	subscribers.push_back(n.subscribe("hw_trigger_out_dly", 1, &numurus::TriggerMgr::setHwTrigOutDly, this));
+	subscribers.push_back(n.subscribe("sw_trigger", 5, &Numurus::TriggerMgr::executeSwTrig, this));
+	subscribers.push_back(n.subscribe("hw_trigger_in_enab", 5, &Numurus::TriggerMgr::setHwTrigInEnab, this));
+	subscribers.push_back(n.subscribe("hw_trigger_in_cfg", 1, &Numurus::TriggerMgr::configureHwTrigIn, this));
+	subscribers.push_back(n.subscribe("hw_trigger_out_enab", 5, &Numurus::TriggerMgr::setHwTrigOutEnab, this));
+	subscribers.push_back(n.subscribe("hw_trigger_out_cfg", 1, &Numurus::TriggerMgr::configureHwTrigOut, this)); 
+	subscribers.push_back(n.subscribe("hw_trigger_out_dly", 1, &Numurus::TriggerMgr::setHwTrigOutDly, this));
 	if (false == ready())
 	{
 		ROS_ERROR("%s: not properly initialized... exiting", name.c_str());
@@ -117,7 +115,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, NODE_NAME);
 	ROS_INFO("Starting the %s node", NODE_NAME);
 	
-	numurus::TriggerMgr trig_mgr(NODE_NAME);
+	Numurus::TriggerMgr trig_mgr;
 	trig_mgr.run();	
 
 	return 0;

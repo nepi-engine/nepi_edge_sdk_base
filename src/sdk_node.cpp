@@ -23,10 +23,15 @@ void SDKNode::init()
 		// would have to have unique srv names (ROS doesn't allow multiple nodes to provide the same service)
 		// and awkward for service clients.
 		
-		// Keep these in the public namespace so that we can support param reinit and update
-		// messages to ALL of the SDK nodes
+		// These versions are in the public namespace so that we can support param reinit and update
+		// messages to ALL of the SDK nodes simultaneously
 		subscribers.push_back(n.subscribe("reinit_params", 1, &SDKNode::reinitParams, this));
 		subscribers.push_back(n.subscribe("update_params", 1, &SDKNode::updateParams, this));
+
+		// These versions are in this nodes private namespace so that just this node can be reinit'd and/or updated
+		subscribers.push_back(n_priv.subscribe("reinit_params", 1, &SDKNode::reinitParams, this));
+		subscribers.push_back(n_priv.subscribe("update_params", 1, &SDKNode::updateParams, this));
+
 		initialized = true;
 	}
 
@@ -39,25 +44,16 @@ void SDKNode::initParams()
 	// TODO: Non-register params
 }
 
-void SDKNode::reinitParams(const std_msgs::String::ConstPtr& id)
+void SDKNode::reinitParams(const std_msgs::Empty::ConstPtr& empty)
 {
-	// Ensure the broadcast was intended for this node
-	if ("all" == id->data || name == id->data)
-	{
-		ROS_INFO("%s: Reinitializing param vals. from parameter server", name.c_str());
-		initParams();
-	}
+	ROS_INFO("%s: Reinitializing param vals. from parameter server", name.c_str());
+	initParams();
 }
 
-void SDKNode::updateParams(const std_msgs::String::ConstPtr& id) 
+void SDKNode::updateParams(const std_msgs::Empty::ConstPtr& empty) 
 {
-	// Ensure the broadcast was intended for this node
-	if ("all" == id->data || name == id->data)
-	{
-		ROS_INFO("%s: Updating parameter server with current param vals", name.c_str());
-		updateRegisterParams();
-		// TODO: Non-register params
-	}
+	ROS_INFO("%s: Updating parameter server with current param vals", name.c_str());
+	updateRegisterParams();
 }
 
 bool SDKNode::ready()

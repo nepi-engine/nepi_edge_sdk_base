@@ -15,8 +15,8 @@
 
 namespace Numurus {
 
-TestPatGenerator::TestPatGenerator(const std::string my_name) :
-	TriggerableNode{my_name, ADR_TPAT_SW_TRIG_MASK, ADR_TPAT_SW_TRIG_DLY},
+TestPatGenerator::TestPatGenerator() :
+	TriggerableNode{NODE_NAME, ADR_TPAT_SW_TRIG_MASK, ADR_TPAT_SW_TRIG_DLY},
 	tpat_ctrl{"test_pat_ctrl", ADR_TPAT_CTRL},
 	tpat_stat{"test_pat_stat", ADR_TPAT_STAT},
 	tpat_data{"test_pat_data", ADR_TPAT_DATA},
@@ -79,6 +79,22 @@ void TestPatGenerator::acquireData()
 
 		// TODO: Publish the relevant message
 		ROS_INFO("Got %u bytes of test pattern data", count);
+		static constexpr uint32_t TIMEOUT_USECS = 1e6;
+		reg_val_t status_reg_val;
+		if (false == tpat_stat.getVal(&status_reg_val, TIMEOUT_USECS))
+		{
+			// Error logged upstream
+			continue;
+		}
+		ROS_INFO("Test Pat Status: Done=%u, Output Count=%u", TPAT_STAT_GET_DONE_BIT(status_reg_val), TPAT_STAT_GET_OUTPUT_CNT(status_reg_val));
+
+		reg_val_t tstamp_reg_val;
+		if (false == tpat_tstamp.getVal(&tstamp_reg_val, TIMEOUT_USECS))
+		{
+			// Error logged upstream
+			continue;
+		}
+		ROS_INFO("Test Pat Tstamp: %u us", tstamp_reg_val);
 	}
 
 	// Release resources
@@ -92,7 +108,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, NODE_NAME);
 	
 	// The class instance does the work
-	numurus::TestPatGenerator tpat_generator(NODE_NAME);
+	Numurus::TestPatGenerator tpat_generator;
 	tpat_generator.run();
 
 	return 0;
