@@ -125,7 +125,6 @@ include_directories(
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
    src/register.cpp
-   src/configurable_trigger.cpp
    src/sdk_node.cpp
    src/triggerable_node.cpp
 )
