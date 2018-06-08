@@ -8,7 +8,7 @@
 
 #include "register.h"
 
-namespace numurus
+namespace Numurus
 {
 
 static void usecsToTimespec(uint32_t usecs, timespec *timespecOut)
@@ -171,4 +171,4 @@ bool Register::waitForLock(uint32_t timeout_usecs)
 	return true;	
 }
 
-} // namespace numurus
+} // namespace Numurus

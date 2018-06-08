@@ -5,7 +5,7 @@
 
 #include "sdk_node.h"
 
-namespace numurus 
+namespace Numurus 
 {
 class TriggerableNode : public SDKNode
 {
@@ -24,5 +24,5 @@ private:
 	Register trig_delay;
 };
 
-} // namespace numurus
+} // namespace Numurus
 #endif

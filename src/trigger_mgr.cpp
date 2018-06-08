@@ -9,7 +9,7 @@
 
 #define NODE_NAME	"trigger_mgr"
 
-namespace numurus
+namespace Numurus
 {
 
 TriggerMgr::TriggerMgr(const std::string my_name) :
@@ -110,7 +110,7 @@ void TriggerMgr::setHwTrigOutDly(const std_msgs::UInt32::ConstPtr& dly_usecs)
 	}
 }
 
-} // namespace numurus
+} // namespace Numurus
 
 int main(int argc, char **argv)
 {

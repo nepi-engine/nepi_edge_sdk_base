@@ -6,7 +6,7 @@
 
 #define NODE_NAME	"timestamp_mgr"
 
-namespace numurus
+namespace Numurus
 {
 
 TimestampMgr::TimestampMgr(const std::string my_name) :
@@ -135,7 +135,7 @@ bool TimestampMgr::syncFPGA()
 	return true;
 }
 
-} // namespace numurus
+} // namespace Numurus
 
 int main(int argc, char **argv)
 {

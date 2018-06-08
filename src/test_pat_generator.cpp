@@ -13,7 +13,7 @@
 
 #define NODE_NAME	"test_pat_generator"
 
-namespace numurus {
+namespace Numurus {
 
 TestPatGenerator::TestPatGenerator(const std::string my_name) :
 	TriggerableNode{my_name, ADR_TPAT_SW_TRIG_MASK, ADR_TPAT_SW_TRIG_DLY},
@@ -84,7 +84,7 @@ void TestPatGenerator::acquireData()
 	// Release resources
 }
 
-} // namespace numurus
+} // namespace Numurus
 
 int main(int argc, char **argv)
 {

@@ -8,7 +8,7 @@
 #include "register.h"
 #include "num_sdk_base/ConvertRawTstamp.h"
 
-namespace numurus
+namespace Numurus
 {
 
 class TimestampMgr : public SDKNode
@@ -49,6 +49,6 @@ private:
 	//Register tstamp_rate;
 };
 
-} // namespace numurus
+} // namespace Numurus
 
 #endif //_TIMESTAMP_MGR_H

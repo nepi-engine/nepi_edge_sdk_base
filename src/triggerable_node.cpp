@@ -1,6 +1,6 @@
 #include "triggerable_node.h"
 
-namespace numurus
+namespace Numurus
 {
 TriggerableNode::TriggerableNode(const std::string name, reg_addr_t trig_mask_reg_addr, reg_addr_t trig_delay_reg_addr) :
 	SDKNode{name},
@@ -39,4 +39,4 @@ void TriggerableNode::setTrigDelay(const std_msgs::UInt32::ConstPtr& trig_delay_
 	}
 }
 
-} // namespace numurus
+} // namespace Numurus

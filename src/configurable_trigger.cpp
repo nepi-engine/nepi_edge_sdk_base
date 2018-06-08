@@ -2,7 +2,7 @@
 
 #include "configurable_trigger.h"
 
-namespace numurus
+namespace Numurus
 {
 
 ConfigurableTrigger::ConfigurableTrigger(reg_addr_t mask_reg_addr, reg_addr_t delay_reg_addr) :

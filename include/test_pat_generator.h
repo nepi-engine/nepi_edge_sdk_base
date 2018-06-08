@@ -6,7 +6,7 @@
 
 #include "triggerable_node.h"
 
-namespace numurus
+namespace Numurus
 {
 
 class TestPatGenerator : public TriggerableNode
@@ -29,6 +29,6 @@ private:
 	std::thread driver_thread;	
 };
 
-} // namespace numurus
+} // namespace Numurus
 
 #endif //_TEST_PAT_GENERATOR_H

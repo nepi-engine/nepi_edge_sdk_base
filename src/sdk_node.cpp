@@ -2,7 +2,7 @@
 #include "sdk_node.h"
 #include "num_common.h"
 
-namespace numurus
+namespace Numurus
 {
 
 SDKNode::SDKNode(const std::string my_name) :
@@ -125,4 +125,4 @@ void SDKNode::updateRegisterParams()
 	}
 }
 
-} // namespace numurus
+} // namespace Numurus

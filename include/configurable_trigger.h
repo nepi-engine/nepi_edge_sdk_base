@@ -3,7 +3,7 @@
 
 #include "register.h"
 
-namespace numurus
+namespace Numurus
 {
 
 class ConfigurableTrigger
@@ -24,6 +24,6 @@ private:
 	Register delay_register;
 };
 
-} // namespace numurus
+} // namespace Numurus
 
 #endif //_CONFIGURABLE_TRIGGER_H

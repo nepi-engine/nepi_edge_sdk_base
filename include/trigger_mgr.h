@@ -12,7 +12,7 @@
 
 using namespace num_sdk_base; // Messages are automatically namespaced by their project's name
 
-namespace numurus
+namespace Numurus
 {
 
 class TriggerMgr : public SDKNode
@@ -46,6 +46,6 @@ private:
 
 };
 
-} // namespace numurus
+} // namespace Numurus
 
 #endif //_TRIGGER_MGR_H

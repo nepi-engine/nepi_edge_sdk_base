@@ -9,7 +9,7 @@
 #include "num_common.h"
 #include "register.h"
 
-namespace numurus
+namespace Numurus
 {
 
 class SDKNode
@@ -51,6 +51,6 @@ private:
 	void updateRegisterParams();
 };
 
-} // namespace numurus
+} // namespace Numurus
 
 #endif //_SDK_NODE_H

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <semaphore.h>
 
-namespace numurus
+namespace Numurus
 {
 
 typedef int32_t reg_val_t;
@@ -38,6 +38,6 @@ private:
     off_t page_offset;
 };
 
-} // namespace numurus
+} // namespace Numurus
 
 #endif //_REGISTER_H
