@@ -40,8 +40,8 @@ void SDKNode::init()
 
 void SDKNode::initParams()
 {
-	initRegisterParams();
-	// TODO: Non-register params
+	// TODO: Generic param init scheme. Note, FPGA register-linked params are handled in ZynqSDKNode::initParams(), which
+	// calls this method.
 }
 
 void SDKNode::reinitParams(const std_msgs::Empty::ConstPtr& empty)
@@ -53,7 +53,8 @@ void SDKNode::reinitParams(const std_msgs::Empty::ConstPtr& empty)
 void SDKNode::updateParams(const std_msgs::Empty::ConstPtr& empty) 
 {
 	ROS_INFO("%s: Updating parameter server with current param vals", name.c_str());
-	updateRegisterParams();
+	// TODO: Generic param update scheme. Note, FPGA register-linked params are handled in ZynqSDKNode::updateParams(), which
+	// calls this method.
 }
 
 bool SDKNode::ready()
@@ -75,50 +76,6 @@ bool SDKNode::ready()
 		}
 	}
 	return initialized;
-}
-
-void SDKNode::initRegisterParams()
-{
-	constexpr uint32_t REG_INIT_TIMEOUT_VAL = 50000; // 50ms
-	for (auto reg : configurable_regs)
-	{
-		reg_val_t tmp;
-		const std::string reg_name = reg->getName();
-		const std::string param_name = getNodeParamName(reg_name);
-		// Parameters for register values are always in the node's "private" namespace, so use n_priv
-		if (true == n_priv.getParam(param_name, tmp))
-		{
-			ROS_INFO("Setting %s register to 0x%x from param %s", reg_name.c_str(), tmp, param_name.c_str());
-			reg->setVal(tmp, REG_INIT_TIMEOUT_VAL);
-		}
-		else
-		{
-			reg->getVal(&tmp, REG_INIT_TIMEOUT_VAL);
-			ROS_WARN("Unable to init %s register from param %s, using existing val 0x%x instead", reg_name.c_str(), param_name.c_str(), tmp);
-			// And attempt write it back so that the config file has something for next time
-			n_priv.setParam(param_name, tmp);
-		}
-	}
-}
-
-void SDKNode::updateRegisterParams()
-{
-	constexpr uint32_t REG_SAVE_TIMEOUT_VAL = 50000; // 50ms
-	for (auto reg : configurable_regs)
-	{
-		reg_val_t tmp;
-		const std::string reg_name = reg->getName();
-		const std::string param_name = getNodeParamName(reg_name);
-		if (true == reg->getVal(&tmp, REG_SAVE_TIMEOUT_VAL))
-		{
-			n_priv.setParam(param_name, tmp);
-			continue;
-		}
-		else
-		{
-			ROS_WARN("%s unable to update param %s from true register value", name.c_str(), param_name.c_str());
-		}
-	}
 }
 
 } // namespace Numurus

@@ -48,8 +48,6 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs message_generation)
 ## Generate messages in the 'msg' folder
 add_message_files(
     FILES
-    HwTrigInCfg.msg
-    HwTrigOutCfg.msg
     FactoryReset.msg
 )
 
@@ -57,7 +55,6 @@ add_message_files(
 add_service_files(
     FILES
     ConvertRawTstamp.srv
-    ListNTPServers.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -103,9 +100,9 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES ${PROJECT_NAME}
-   CATKIN_DEPENDS message_runtime
+  INCLUDE_DIRS include
+  LIBRARIES ${PROJECT_NAME}
+  CATKIN_DEPENDS message_runtime
 
 #  DEPENDS system_lib
 )
@@ -119,14 +116,11 @@ catkin_package(
 include_directories(
    include
    ${catkin_INCLUDE_DIRS}
-   /home/josh/Desktop/Work/repos/numurus/num_zynq_fw/drivers/
 )
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
-   src/register.cpp
    src/sdk_node.cpp
-   src/triggerable_node.cpp
 )
 
 ## Add cmake target dependencies of the library
@@ -137,9 +131,9 @@ add_library(${PROJECT_NAME}
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(trigger_mgr_node 
-	src/trigger_mgr.cpp
-) 
+#add_executable(<node_name> 
+#	<src/<node_name>.cpp
+#) 
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -149,38 +143,13 @@ add_executable(trigger_mgr_node
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(trigger_mgr_node ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+#add_dependencies(<node_name> ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(trigger_mgr_node
-	${catkin_LIBRARIES}
-	${PROJECT_NAME}
-)
-
-## Timestamp Manager Node
-add_executable(timestamp_mgr_node
-	src/timestamp_mgr.cpp
-)
-
-add_dependencies(timestamp_mgr_node ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
-
-target_link_libraries(timestamp_mgr_node
-	${catkin_LIBRARIES}
-	${PROJECT_NAME}
-)
-
-## Test Pattern Generator Node
-add_executable(test_pat_generator_node
-  src/test_pat_generator.cpp
-)
-
-add_dependencies(test_pat_generator_node ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
-
-target_link_libraries(test_pat_generator_node
-  ${catkin_LIBRARIES}
-  ${PROJECT_NAME}
-)
-
+#target_link_libraries(<node_name>
+#	${catkin_LIBRARIES}
+#	${PROJECT_NAME}
+#)
 
 #############
 ## Install ##

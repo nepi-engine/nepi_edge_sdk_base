@@ -7,7 +7,6 @@
 #include "std_msgs/Empty.h"
 
 #include "num_common.h"
-#include "register.h"
 
 namespace Numurus
 {
@@ -67,12 +66,6 @@ protected:
 	const std::string name;
 
 	/**
-	 * Vector of configurable registers associated with this node. 
-	 * All associated registers that should have saved initial values in a config file should be pushed onto this vector in the subclass constructor.
-	 */
-	std::vector<Register*> configurable_regs;
-
-	/**
 	 * Vector of return handles from NodeHandle::advertiseService.
 	 * These handles must have a lifetime as long as the NodeHandle, so are best approriated to a member variable container
 	 */
@@ -106,6 +99,14 @@ protected:
 	virtual void init();
 
 	/**
+	 * @brief      Initialize all parameters from config file values (if available).
+	 * 
+	 * Subclasses may override this method to do specific param initialization, but should call SDKNode::initParams() wihin the overriden implementation
+	 * to ensure the generic initialization proceeds.
+	 */
+	virtual void initParams();
+
+	/**
 	 * @brief      Synchronize parameter values with the values in the param server.
 	 * 
 	 *			   This method must ensure that parameters and any underlying associated resources are in sync with values in the ROS param server.
@@ -125,7 +126,7 @@ protected:
 	 *
 	 * @param[in]  empty    Just a ROS-required placeholder
 	 */
-	void updateParams(const std_msgs::Empty::ConstPtr& empty);
+	virtual void updateParams(const std_msgs::Empty::ConstPtr& empty);
 
 	/**
 	 * @brief      Determines whether this node is fully initialized and ready for it's main task(s)
@@ -140,20 +141,6 @@ private:
 	 */
 	bool initialized;
 
-	/**
-	 * @brief      Initialize all parameters from config file values (if available).
-	 */
-	void initParams();
-
-	/**
-	 * @brief      Initialize parameters that represent configurable register values
-	 */
-	void initRegisterParams();
-
-	/**
-	 * @brief      Transmit the values in configurable registers back to the ROS param server for synchronization and saving to config file.
-	 */
-	void updateRegisterParams();
 };
 
 } // namespace Numurus
