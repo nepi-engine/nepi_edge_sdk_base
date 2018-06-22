@@ -6,8 +6,6 @@
 #include <ros/ros.h>
 #include "std_msgs/Empty.h"
 
-#include "num_common.h"
-
 namespace Numurus
 {
 
@@ -76,19 +74,6 @@ protected:
 	 * These handles must have a lifetime as long as the NodeHandle, so are best approriated to a member variable container
 	 */
 	std::vector<ros::Subscriber> subscribers;
-
-	/**
-	 * @brief      Convenience function to properly namespace a parameter
-	 *
-	 * @param[in]  param  The parameter name (without namespace prefix)
-	 *
-	 * @return     The parameter name properly adorned with namespace prefix.
-	 */
-	inline const std::string getNodeParamName(const std::string &param) const
-	{
-		static const std::string ns_separator("/");
-		return BASE_ROS_NAMESPACE + ns_separator + name + ns_separator + param;
-	}
 
 	/**
 	 * @brief      Initialize the SDK node

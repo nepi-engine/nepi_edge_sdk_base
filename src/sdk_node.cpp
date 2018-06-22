@@ -1,6 +1,5 @@
 
 #include "sdk_node.h"
-#include "num_common.h"
 
 namespace Numurus
 {
