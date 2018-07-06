@@ -49,6 +49,13 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs message_generation)
 add_message_files(
     FILES
     FactoryReset.msg
+    NDSaveData.msg
+    NDReset.msg
+    NDSaveCfg.msg
+    NDRange.msg
+    NDAngle.msg
+    NDAutoManualSelection.msg
+    NDStatus.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -121,6 +128,7 @@ include_directories(
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
    src/sdk_node.cpp
+   src/nd_node.cpp
 )
 
 ## Add cmake target dependencies of the library

@@ -43,7 +43,14 @@ public:
 	 *
 	 * @return     The name.
 	 */
-	inline const std::string& getName() const {return name;} 
+	inline const std::string& getName() const {return name;}
+
+	/**
+	 * @brief      Determines if initialized.
+	 *
+	 * @return     True if initialized, False otherwise.
+	 */
+	inline const bool isInitialized() const {return initialized;} 
 
 protected:
 	/**
@@ -65,13 +72,13 @@ protected:
 
 	/**
 	 * Vector of return handles from NodeHandle::advertiseService.
-	 * These handles must have a lifetime as long as the NodeHandle, so are best approriated to a member variable container
+	 * These handles must have a lifetime as long as the NodeHandle, so are best appropriated to a member variable container
 	 */
 	std::vector<ros::ServiceServer> servicers;
 
 	/**
 	 * Vector of return handles from NodeHandle::subscribe.
-	 * These handles must have a lifetime as long as the NodeHandle, so are best approriated to a member variable container
+	 * These handles must have a lifetime as long as the NodeHandle, so are best appropriated to a member variable container
 	 */
 	std::vector<ros::Subscriber> subscribers;
 
@@ -112,6 +119,31 @@ protected:
 	 * @param[in]  empty    Just a ROS-required placeholder
 	 */
 	virtual void updateParams(const std_msgs::Empty::ConstPtr& empty);
+
+	/**
+	 * @brief      Retrieves a parameter from the param server
+	 * 
+	 * 			   If param server has no value for requested param, this will set the default one from value of param_storaage.
+	 *
+	 * @param[in]  param_name     The parameter name
+	 * @param[in,out] param_storage  Reference to storage for the param value - must be preinitialized to a reasonable value
+	 *
+	 * @tparam     T              Type - must be a valid overload type of ROS::NodeHandle::getParam()
+	 */
+	template <class T>
+	void retrieveParam(const std::string param_name, T& param_storage)
+	{
+		if (true == n_priv.getParam(param_name, param_storage))
+		{
+			ROS_INFO("%s: Updating %s from config file", name.c_str(), param_name.c_str());
+		}
+		else
+		{
+			ROS_WARN("%s: unable to init %s from param server, using existing val instead", name.c_str(), param_name.c_str());
+			// And attempt write it back so that the config file has something for next time
+			n_priv.setParam(param_name, param_storage);
+		}
+	}
 
 	/**
 	 * @brief      Determines whether this node is fully initialized and ready for it's main task(s)
