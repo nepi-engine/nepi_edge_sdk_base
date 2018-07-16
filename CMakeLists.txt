@@ -50,6 +50,7 @@ add_message_files(
     FILES
     FactoryReset.msg
     NDSaveData.msg
+    NDDatafileCtrl.msg
     NDReset.msg
     NDSaveCfg.msg
     NDRange.msg

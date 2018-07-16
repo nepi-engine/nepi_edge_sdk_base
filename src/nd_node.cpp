@@ -81,17 +81,15 @@ void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 
 void NDNode::saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg)
 {
-	const bool save_data_updated = (msg->save_next != _save_next) ||
-								   (msg->save_continuous != _save_continuous) ||
+	const bool save_data_updated = (msg->save_continuous != _save_continuous) ||
 								   (msg->save_raw != _save_raw);
 	if (true == save_data_updated)
 	{
-		_save_next = msg->save_next;
 		_save_continuous = msg->save_continuous;
 		_save_raw = msg->save_raw;
 
-		ROS_DEBUG("%s data save settings updated to (save_next=%s, save_continuous=%s, save_raw=%s)", name.c_str(),
-				  BOOL_TO_STRING(_save_next), BOOL_TO_STRING(_save_continuous), BOOL_TO_STRING(_save_raw));
+		ROS_DEBUG("%s data save settings updated to (save_continuous=%s, save_raw=%s)", name.c_str(),
+				  BOOL_TO_STRING(_save_continuous), BOOL_TO_STRING(_save_raw));
 		publishStatus();
 	}
 }
@@ -132,6 +130,7 @@ void NDNode::setRangeHandler(const num_sdk_base::NDRange::ConstPtr &msg)
 
 void NDNode::setAngleHandler(const num_sdk_base::NDAngle::ConstPtr &msg)
 {
+	/* TODO: Figure out generic bounds checking for "angle"
 	if (msg->angle_offset < 0.0f || 
 		msg->total_angle < 0.0f  ||
 		msg->angle_offset + msg->total_angle > 1.0)
@@ -139,6 +138,7 @@ void NDNode::setAngleHandler(const num_sdk_base::NDAngle::ConstPtr &msg)
 		ROS_ERROR("%s received invalid angle settings (%.3f,%.3f)", name.c_str(), msg->angle_offset, msg->total_angle);
 		return;
 	}
+	*/
 
 	const bool updated_angle = (msg->angle_offset != _angle_offset) || (msg->total_angle != _total_angle);
 	if (true == updated_angle)
@@ -223,7 +223,6 @@ void NDNode::publishStatus()
 	
 	msg.save_data_dir = _save_data_dir;
 	
-	msg.save_data.save_next = _save_next;
 	msg.save_data.save_continuous = _save_continuous;
 	msg.save_data.save_raw = _save_raw;
 

@@ -66,7 +66,6 @@ private:
 	bool _paused = true;
 	bool _simulated_data = false;
 	
-	bool _save_next = false;
 	bool _save_continuous = false;
 	bool _save_raw = false;
 	
