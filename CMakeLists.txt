@@ -52,7 +52,6 @@ add_message_files(
     NDSaveData.msg
     NDDatafileCtrl.msg
     NDReset.msg
-    NDSaveCfg.msg
     NDRange.msg
     NDAngle.msg
     NDAutoManualSelection.msg

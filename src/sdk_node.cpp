@@ -1,4 +1,6 @@
 
+#include "std_msgs/String.h"
+
 #include "sdk_node.h"
 
 namespace Numurus
@@ -24,12 +26,14 @@ void SDKNode::init()
 		
 		// These versions are in the public namespace so that we can support param reinit and update
 		// messages to ALL of the SDK nodes simultaneously
-		subscribers.push_back(n.subscribe("reinit_params", 1, &SDKNode::reinitParams, this));
-		subscribers.push_back(n.subscribe("update_params", 1, &SDKNode::updateParams, this));
+		subscribers.push_back(n.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
 
 		// These versions are in this nodes private namespace so that just this node can be reinit'd and/or updated
-		subscribers.push_back(n_priv.subscribe("reinit_params", 1, &SDKNode::reinitParams, this));
-		subscribers.push_back(n_priv.subscribe("update_params", 1, &SDKNode::updateParams, this));
+		subscribers.push_back(n_priv.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
+
+		// Advertise the save_cfg coordination topics
+		_update_cfg_pending_pub = n.advertise<std_msgs::String>("update_cfg_pending", 5);
+		_update_cfg_complete_pub = n.advertise<std_msgs::String>("update_cfg_complete", 5);
 
 		initialized = true;
 	}
@@ -43,17 +47,31 @@ void SDKNode::initParams()
 	// calls this method.
 }
 
-void SDKNode::reinitParams(const std_msgs::Empty::ConstPtr& empty)
+void SDKNode::updateParams()
 {
-	ROS_INFO("%s: Reinitializing param vals. from parameter server", name.c_str());
-	initParams();
+	// No params (yet) - just a placeholder for subclasses
 }
 
-void SDKNode::updateParams(const std_msgs::Empty::ConstPtr& empty) 
+void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
 {
-	ROS_INFO("%s: Updating parameter server with current param vals", name.c_str());
-	// TODO: Generic param update scheme. Note, FPGA register-linked params are handled in ZynqSDKNode::updateParams(), which
-	// calls this method.
+	ROS_DEBUG("%s: Initiating config save by request", name.c_str());
+	saveCfg();
+}
+
+void SDKNode::saveCfg()
+{
+	ROS_INFO("%s: Saving current config");
+
+	// First, inform that we'll be updating the param server
+	std_msgs::String name;
+	name.data = ros::this_node::getName();
+	_update_cfg_pending_pub.publish(name);
+
+	// Now update it
+	updateParams();
+
+	// Now inform complete
+	_update_cfg_complete_pub.publish(name);
 }
 
 bool SDKNode::ready()

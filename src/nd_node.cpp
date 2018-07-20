@@ -1,7 +1,7 @@
 
 #include "nd_node.h"
 
-#define BOOL_TO_STRING(x) 		((x)==true)? "true" : "false"
+#define BOOL_TO_ENABLED(x)	((x)==true)? "enabled" : "disabled"
 
 namespace Numurus
 {
@@ -29,13 +29,15 @@ void NDNode::init()
 		subscribers.push_back(n.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
 		subscribers.push_back(n.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
 		subscribers.push_back(n.subscribe("reset", 3, &NDNode::resetHandler, this));
-		subscribers.push_back(n.subscribe("save_config", 3, &NDNode::saveCfgHandler, this));
+		subscribers.push_back(n.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
+		subscribers.push_back(n.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
 
 		// Now subscribe to the private namespace versions
 		subscribers.push_back(n_priv.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
 		subscribers.push_back(n_priv.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
 		subscribers.push_back(n_priv.subscribe("reset", 3, &NDNode::resetHandler, this));
-		subscribers.push_back(n_priv.subscribe("save_config", 3, &NDNode::saveCfgHandler, this));
+		subscribers.push_back(n_priv.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
+		subscribers.push_back(n_priv.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
 
 		// Also in the private namespace are the various generic "tweaks"
 		subscribers.push_back(n_priv.subscribe("set_range", 3, &NDNode::setRangeHandler, this));
@@ -54,14 +56,22 @@ void NDNode::init()
 
 void NDNode::initParams()
 {
+	// Call the base method
+	SDKNode::initParams(); 
+	
 	// Grab the nd_node parameters
-	retrieveParam("display_name", _display_name);
+	retrieveParam("simulated_data", _simulated_data);
 	retrieveParam("save_data_continuous", _save_continuous);
 	retrieveParam("save_data_raw", _save_raw);
-	retrieveParam("save_cfg_rt", _save_cfg_rt);
-
-	// Call the parent method
-	SDKNode::initParams();
+	retrieveParam("display_name", _display_name);
+	retrieveParam("min_range", _min_range);
+	retrieveParam("max_range", _max_range);
+	retrieveParam("angle_offset", _angle_offset);
+	retrieveParam("total_angle", _total_angle);
+	retrieveParam("manual_resolution_enabled", _manual_resolution);
+	retrieveParam("manual_resolution", _manual_resolution);
+	retrieveParam("gain_enabled", _gain_enabled);
+	retrieveParam("gain", _gain);
 
 	// Send a status update whenever we init params
 	publishStatus();
@@ -74,7 +84,7 @@ void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 	if (msg->data != _paused)
 	{
 		_paused = msg->data;
-		ROS_DEBUG("%s pause settings updated (pause=%s)", name.c_str(), BOOL_TO_STRING(_paused));
+		ROS_DEBUG("%s pause settings updated (pause=%s)", name.c_str(), BOOL_TO_ENABLED(_paused));
 		publishStatus();
 	}
 }
@@ -89,7 +99,7 @@ void NDNode::saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg)
 		_save_raw = msg->save_raw;
 
 		ROS_DEBUG("%s data save settings updated to (save_continuous=%s, save_raw=%s)", name.c_str(),
-				  BOOL_TO_STRING(_save_continuous), BOOL_TO_STRING(_save_raw));
+				  BOOL_TO_ENABLED(_save_continuous), BOOL_TO_ENABLED(_save_raw));
 		publishStatus();
 	}
 }
@@ -99,9 +109,32 @@ void NDNode::resetHandler(const num_sdk_base::NDReset::ConstPtr &msg)
 	// TODO
 }
 
-void NDNode::saveCfgHandler(const num_sdk_base::NDSaveCfg::ConstPtr &msg)
+void NDNode::saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg)
 {
-	// TODO
+	const bool save_data_updated = (msg->data != _save_cfg_rt);
+	if (true == save_data_updated)
+	{
+		_save_cfg_rt = msg->data;
+		ROS_DEBUG("%s realtime configuration saving is now %s", name.c_str(), BOOL_TO_ENABLED(_save_cfg_rt));
+		publishStatus();
+
+		// If we're enabling RT saving, save the current configuration right now
+		if (true == _save_cfg_rt)
+		{
+			saveCfg();
+		}
+	}
+}
+
+void NDNode::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
+{
+	const bool simulated_data_updated = (msg->data != _simulated_data);
+	if (true == simulated_data_updated)
+	{
+		_simulated_data = msg->data;
+		ROS_DEBUG("%s:  simulation mode is now %s", name.c_str(), BOOL_TO_ENABLED(_simulated_data));
+		publishStatus();
+	}
 }
 
 // Node-specific subscription callbacks. Concrete instances should define what actions these take,

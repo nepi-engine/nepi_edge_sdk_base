@@ -50,7 +50,7 @@ public:
 	 *
 	 * @return     True if initialized, False otherwise.
 	 */
-	inline const bool isInitialized() const {return initialized;} 
+	inline const bool isInitialized() const {return initialized;}
 
 protected:
 	/**
@@ -93,32 +93,39 @@ protected:
 	/**
 	 * @brief      Initialize all parameters from config file values (if available).
 	 * 
-	 * Subclasses may override this method to do specific param initialization, but should call SDKNode::initParams() wihin the overriden implementation
-	 * to ensure the generic initialization proceeds.
+	 * @note       {Subclasses may override this method to do specific param initialization, but should call SDKNode::initParams() wihin the overriden implementation
+	 * 				to ensure the generic initialization proceeds.}
 	 */
 	virtual void initParams();
 
-	/**
-	 * @brief      Synchronize parameter values with the values in the param server.
-	 * 
-	 *			   This method must ensure that parameters and any underlying associated resources are in sync with values in the ROS param server.
-	 *			   It is automatically installed as a callback to the reinit_params topic at both the global namespace level (for reiniting all nodes'
-	 *			   params) and the node's private namespace level (for reiniting just this node's params)
-	 *
-	 * @param[in]  empty    Just a ROS-required placeholder
-	 */
-	void reinitParams(const std_msgs::Empty::ConstPtr& empty);
-	
 	/**
 	 * @brief      Synchronize parameter server with the values in this node.
 	 * 
 	 *			   This method ensures that the ROS param server is updated with the current param values for this node.
 	 *			   It is automatically installed as a callback to the update_params topic at both the global namespace level (for updating all nodes'
 	 *			   params) and the node's private namespace level (for updating just this node's params)
+	 *			   
+	 * @note       {Subclasses may override this method, but must ensure that they call back to this base class version.}			   
+	 *
+	 */
+	virtual void updateParams();
+
+	/**
+	 * @brief      Handle a request to save the current ROS configuration
 	 *
 	 * @param[in]  empty    Just a ROS-required placeholder
 	 */
-	virtual void updateParams(const std_msgs::Empty::ConstPtr& empty);
+	void saveCfgHandler(const std_msgs::Empty::ConstPtr &empty);
+
+	/**
+	 * @brief      Save the node's configuration file
+	 * 
+	 * 			   This method serves to coordinate a save operation with the parameter server by
+	 * 			   informing the param server that it will be saving, updating all parameters (via updateParams), then 
+	 * 			   informing the param server that it is done. This allows the param server to determine that a
+	 * 			   set of nodes is attempting to save, then delay the actual file saving until they have finished updates.
+	 */
+	void saveCfg();
 
 	/**
 	 * @brief      Retrieves a parameter from the param server
@@ -157,6 +164,9 @@ private:
 	 * true if initialization succeeded, false otherwise
 	 */
 	bool initialized;
+
+	ros::Publisher _update_cfg_pending_pub;
+	ros::Publisher _update_cfg_complete_pub;
 
 };
 

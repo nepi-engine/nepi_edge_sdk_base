@@ -4,12 +4,12 @@
 #include <string>
 
 #include "std_msgs/Bool.h"
+#include "std_msgs/Empty.h"
 
 #include "sdk_node.h"
 
 #include "num_sdk_base/NDSaveData.h"
 #include "num_sdk_base/NDReset.h"
-#include "num_sdk_base/NDSaveCfg.h"
 #include "num_sdk_base/NDRange.h"
 #include "num_sdk_base/NDAngle.h"
 #include "num_sdk_base/NDAutoManualSelection.h"
@@ -48,11 +48,11 @@ protected:
 	// Generic subscription callbacks. In many cases, the default implementation in this base class will
 	// be sufficient, but subclasses can override as necessary (ensuring that they call back to the base
 	// class or embed the base class logic as necessary).
-	
 	virtual void pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg);
 	virtual void saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg);
 	virtual void resetHandler(const num_sdk_base::NDReset::ConstPtr &msg);
-	virtual void saveCfgHandler(const num_sdk_base::NDSaveCfg::ConstPtr &msg);
+	void saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg);
+	void simulateDataHandler(const std_msgs::Bool::ConstPtr &msg);
 
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
 	// though we provide a very basic private member setter implementation in this baseclass
