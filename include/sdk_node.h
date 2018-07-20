@@ -8,7 +8,6 @@
 
 namespace Numurus
 {
-
 /**
  * @brief      Abstract base class to represent a ROS node in the Numurus SDK
  * 
@@ -53,6 +52,11 @@ public:
 	inline const bool isInitialized() const {return initialized;}
 
 protected:
+	/**
+	 * true if initialization succeeded, false otherwise
+	 */
+	bool initialized;
+
 	/**
 	 * The public namespace node handle. This is used for any ROS primitives that should resolve into the top-level namespace for this node. In particular, subscribing to
 	 * general topics and services occurs through this node handle.
@@ -128,9 +132,16 @@ protected:
 	void saveCfg();
 
 	/**
+	 * @brief      Determines whether this node is fully initialized and ready for it's main task(s)
+	 *
+	 * @return     true if the node is ready, false otherwise.
+	 */
+	virtual bool ready();
+
+	/**
 	 * @brief      Retrieves a parameter from the param server
 	 * 
-	 * 			   If param server has no value for requested param, this will set the default one from value of param_storaage.
+	 * 			   If param server has no value for requested param, this will set the default one from value of param_storage.
 	 *
 	 * @param[in]  param_name     The parameter name
 	 * @param[in,out] param_storage  Reference to storage for the param value - must be preinitialized to a reasonable value
@@ -152,19 +163,7 @@ protected:
 		}
 	}
 
-	/**
-	 * @brief      Determines whether this node is fully initialized and ready for it's main task(s)
-	 *
-	 * @return     true if the node is ready, false otherwise.
-	 */
-	virtual bool ready();
-
 private:
-	/**
-	 * true if initialization succeeded, false otherwise
-	 */
-	bool initialized;
-
 	ros::Publisher _update_cfg_pending_pub;
 	ros::Publisher _update_cfg_complete_pub;
 

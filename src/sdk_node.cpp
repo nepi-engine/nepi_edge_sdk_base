@@ -7,9 +7,9 @@ namespace Numurus
 {
 
 SDKNode::SDKNode(const std::string my_name) :
+	initialized{false},
 	n_priv{"~"}, // Create a private namespace for this node 
-	name{my_name},
-	initialized{false}
+	name{my_name}
 {}
 
 SDKNode::~SDKNode()
@@ -34,8 +34,6 @@ void SDKNode::init()
 		// Advertise the save_cfg coordination topics
 		_update_cfg_pending_pub = n.advertise<std_msgs::String>("update_cfg_pending", 5);
 		_update_cfg_complete_pub = n.advertise<std_msgs::String>("update_cfg_complete", 5);
-
-		initialized = true;
 	}
 
 	initParams();
@@ -45,6 +43,7 @@ void SDKNode::initParams()
 {
 	// TODO: Generic param init scheme. Note, FPGA register-linked params are handled in ZynqSDKNode::initParams(), which
 	// calls this method.
+	initialized = true;
 }
 
 void SDKNode::updateParams()
@@ -60,7 +59,7 @@ void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
 
 void SDKNode::saveCfg()
 {
-	ROS_INFO("%s: Saving current config");
+	ROS_INFO("%s: Saving current config", name.c_str());
 
 	// First, inform that we'll be updating the param server
 	std_msgs::String name;
