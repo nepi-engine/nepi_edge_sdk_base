@@ -6,7 +6,7 @@
 	<!-- Everything lives in the "numurus" namespace -->
 	<group ns="numurus">
 		<!-- Load the base config file -->
-		<rosparam command="load" file="/opt/numurus/ros/cfg/sb1.yaml" />
+		<rosparam command="load" file="/opt/numurus/ros/etc/sb1.yaml" />
 
 		<!-- Local nodes -->
 		<node name="timestamp_mgr" pkg="num_sdk_zynq" type="timestamp_mgr_node" respawn="true" output="log" />
