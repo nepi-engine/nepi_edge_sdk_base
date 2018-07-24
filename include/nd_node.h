@@ -33,12 +33,12 @@ public:
 	/**
 	 * @brief      Constructor
 	 *
-	 * @param[in]  name         The node name (as factory-set, not readily configurable)
+	 * @param[in]  sensor_name  The node name (as factory-set, not readily configurable)
 	 * @param[in]  dev_type     The device time (as factory-set, not readily configurable)
 	 * @param[in]  serial_num   The serial number (as factory-set, not readily configurable)
 	 * @param[in]  sensor_type  The sensor type (as factory-set, not readily configurable)
 	 */
-	NDNode( const std::string name, const std::string dev_type, 
+	NDNode( const std::string sensor_name, const std::string dev_type, 
 			const std::string serial_num, const std::string sensor_type);
 
 protected:
