@@ -17,6 +17,9 @@
 
 namespace Numurus
 {
+// Forward declarations
+class TriggerInterface;
+
 /**
  * @brief      The NDNode class represents a Numurus sensor capable of producing multidimensional imagery
  * 
@@ -42,6 +45,8 @@ public:
 			const std::string serial_num, const std::string sensor_type);
 
 protected:
+	TriggerInterface *_trig_if = nullptr;
+	
 	virtual void init() override;
 	virtual void initParams() override;
 
@@ -63,7 +68,7 @@ protected:
 	virtual void setFilterHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg);
 
 private:
-	bool _paused = true;
+	bool _paused = false;
 	bool _simulated_data = false;
 	
 	bool _save_continuous = false;

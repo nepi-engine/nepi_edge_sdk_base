@@ -129,6 +129,7 @@ include_directories(
 add_library(${PROJECT_NAME}
    src/sdk_node.cpp
    src/nd_node.cpp
+   src/trigger_interface.cpp
 )
 
 ## Add cmake target dependencies of the library

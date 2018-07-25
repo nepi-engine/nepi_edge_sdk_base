@@ -1,5 +1,6 @@
 
 #include "nd_node.h"
+#include "trigger_interface.h"
 
 #define BOOL_TO_ENABLED(x)	((x)==true)? "enabled" : "disabled"
 
@@ -78,12 +79,19 @@ void NDNode::initParams()
 
 }
 
-// TODO: Implement these
 void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 {
 	if (msg->data != _paused)
 	{
 		_paused = msg->data;
+		if (nullptr != _trig_if)
+		{
+			_trig_if->setTrigEnabled(!_paused); // awkward parity change
+		}
+		else
+		{
+			ROS_ERROR("%s: The TriggerInterface was not properly initialized", name.c_str());
+		}
 		ROS_DEBUG("%s pause settings updated (pause=%s)", name.c_str(), BOOL_TO_ENABLED(_paused));
 		publishStatus();
 	}

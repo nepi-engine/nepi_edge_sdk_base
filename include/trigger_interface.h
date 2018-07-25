@@ -1,6 +1,8 @@
 #ifndef _TRIGGER_INTERFACE_H
 #define _TRIGGER_INTERFACE_H
 
+#include "std_msgs/UInt32.h"
+
 namespace Numurus
 {
 
@@ -12,6 +14,26 @@ namespace Numurus
  */	
 class TriggerInterface
 {
+public:
+	virtual ~TriggerInterface() = 0; // Must provide a virtual destructor for an abstract base class
+
+	/**
+	 * @brief      Initialize configuration parameters from config file (if available)
+	 */
+	virtual void initParams() = 0;
+
+	/**
+	 * @brief      Apply current trigger param values to param server
+	 */
+	virtual void updateParams() = 0;
+
+	/**
+	 * @brief      Enables or disables the triggering.
+	 * 
+	 * 			   Pure virtual because any reasonable implementation depends on 
+	 * 			   whether this TriggerInterface is FPGA-connected or not
+	 */
+	virtual void setTrigEnabled(bool enabled) = 0;
 protected:
 	/**
 	 * @brief      Sets the input trigger mask value.
@@ -32,6 +54,7 @@ protected:
 	 * @param[in]  trig_delay_val_usecs  The trigger delay value to set
 	 */	
 	virtual void setTrigDelay(const std_msgs::UInt32::ConstPtr& trig_delay_val_usecs) = 0;
+
 };
 } // namespace Numurus
 #endif //_TRIGGER_INTERFACE_H
