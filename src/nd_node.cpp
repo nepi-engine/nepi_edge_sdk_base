@@ -19,6 +19,9 @@ NDNode::NDNode(const std::string name, const std::string dev_type,
 void NDNode::init()
 {
 	const bool already_initialized = isInitialized();
+	// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
+	// Want to always send a status update whenever a subscriber connects.
+	_status_pub = n_priv.advertise<num_sdk_base::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));	
 
 	// First, call the parent method - this will update "initialized", so we keep prev. value cached
 	SDKNode::init();
@@ -46,10 +49,6 @@ void NDNode::init()
 		subscribers.push_back(n_priv.subscribe("set_resolution", 3, &NDNode::setResolutionHandler, this));
 		subscribers.push_back(n_priv.subscribe("set_gain", 3, &NDNode::setGainHandler, this));
 		subscribers.push_back(n_priv.subscribe("set_filter", 3, &NDNode::setFilterHandler, this));
-		
-		// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
-		// Want to always send a status update whenever a subscriber connects.
-		_status_pub = n_priv.advertise<num_sdk_base::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));	
 	}
 
 	initParams();
