@@ -9,7 +9,7 @@
 namespace Numurus
 {
 /**
- * @brief      Abstract base class to represent a ROS node in the Numurus SDK
+ * @brief      Base class to represent a ROS node in the Numurus SDK
  * 
  * 			   This class encapsulates the components required for a ROS node, including both a public namespace and private namespace NodeHandle, and
  * 			   vectors of subscribers, servicers, etc. for ROS operations.
@@ -28,14 +28,13 @@ public:
 	~SDKNode();
 
 	/**
-	 * @brief      Initialize the node and execute the main work method, launching worker threads as needed
+	 * @brief      Execute the main work method
 	 * 
-	 * 			   This pure virtual method must be implemented by concrete subclasses to execute their particular tasks. Typically a run() method implementation consists of 
-	 * 			   a call to init(), followed by registeration for various specialized ROS primitives (e.g., topics, services). Additional work threads that have a lifetime
-	 * 			   as long as this node's should be launched as well. Finally, the run() method should call ros::spin() to kick off the event-driven system that executes callbacks 
-	 * 			   as necessary
+	 * 			   This base implementation simply calls init() and ros::spin(). 
+	 * 			   
+	 * @note       {Subclasses may override this methods but must ensure that they call init() and some version of ros::spin()}			   
 	 */
-	virtual void run() = 0;
+	virtual void run();
 	
 	/**
 	 * @brief      Get the name of the SDK Node.
@@ -44,19 +43,7 @@ public:
 	 */
 	inline const std::string& getName() const {return name;}
 
-	/**
-	 * @brief      Determines if initialized.
-	 *
-	 * @return     True if initialized, False otherwise.
-	 */
-	inline const bool isInitialized() const {return initialized;}
-
 protected:
-	/**
-	 * true if initialization succeeded, false otherwise
-	 */
-	bool initialized;
-
 	/**
 	 * The public namespace node handle. This is used for any ROS primitives that should resolve into the top-level namespace for this node. In particular, subscribing to
 	 * general topics and services occurs through this node handle.
@@ -87,12 +74,12 @@ protected:
 	std::vector<ros::Subscriber> subscribers;
 
 	/**
-	 * @brief      Initialize the SDK node
-	 * 			   Typically this method is called from within the concrete run() implementation. This base class implementation does some
-	 * 			   important work associated with initializing parameters, so any subclass override should call back to SDKNode::init() as it's
-	 * 			   first call.
-	 */		
-	virtual void init();
+	 * @brief      Advertise topics to be published
+	 * 
+	 * @note       {Subclasses may override this method, but should call back to the base
+	 * 				class method to ensure the generic initialization proceeds.} 
+	 */
+	virtual void initPublishers();
 
 	/**
 	 * @brief      Initialize all parameters from config file values (if available).
@@ -101,6 +88,22 @@ protected:
 	 * 				to ensure the generic initialization proceeds.}
 	 */
 	virtual void initParams();
+
+	/**
+	 * @brief      Initialize subscribers and add to the list of subscriber handles
+	 * 
+	 * @note       {Subclasses may override this method, but should call back to the base
+	 * 				class method to ensure the generic initialization proceeds.} 
+	 */
+	virtual void initSubscribers();
+
+	/**
+	 * @brief      Advertise services to be provided
+	 * 
+	 * @note       {Subclasses may override this method, but should call back to the base
+	 * 				class method to ensure the generic initialization proceeds.} 
+	 */
+	virtual void initServices();
 
 	/**
 	 * @brief      Synchronize parameter server with the values in this node.
@@ -132,13 +135,6 @@ protected:
 	void saveCfg();
 
 	/**
-	 * @brief      Determines whether this node is fully initialized and ready for it's main task(s)
-	 *
-	 * @return     true if the node is ready, false otherwise.
-	 */
-	virtual bool ready();
-
-	/**
 	 * @brief      Retrieves a parameter from the param server
 	 * 
 	 * 			   If param server has no value for requested param, this will set the default one from value of param_storage.
@@ -166,6 +162,15 @@ protected:
 private:
 	ros::Publisher _update_cfg_pending_pub;
 	ros::Publisher _update_cfg_complete_pub;
+
+	/**
+	 * @brief      Initialize the node
+	 * 
+	 * 			   This method calls initPublishers(), initParams(), initSubscribers, and initServices() 
+	 * 			   (in that order) to completely initialize the ROS components of the node. It is private, and
+	 * 			   not called directly - instead the run() method calls this before spinning.
+	 */	
+	void init();
 
 };
 

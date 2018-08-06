@@ -7,7 +7,6 @@ namespace Numurus
 {
 
 SDKNode::SDKNode(const std::string my_name) :
-	initialized{false},
 	n_priv{"~"}, // Create a private namespace for this node 
 	name{my_name}
 {}
@@ -15,35 +14,37 @@ SDKNode::SDKNode(const std::string my_name) :
 SDKNode::~SDKNode()
 {}
 
-void SDKNode::init()
+void SDKNode::run() 
 {
-	// First, subscribe to the generic param messages as long as this is the first entry into this function
-	if (false == initialized)
-	{
-		// TODO: Should we do these as services? Would be better to report success/failure to caller, but 
-		// would have to have unique srv names (ROS doesn't allow multiple nodes to provide the same service)
-		// and awkward for service clients.
-		
-		// These versions are in the public namespace so that we can support param reinit and update
-		// messages to ALL of the SDK nodes simultaneously
-		subscribers.push_back(n.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
+	init();
+	ros::spin();
+}
 
-		// These versions are in this nodes private namespace so that just this node can be reinit'd and/or updated
-		subscribers.push_back(n_priv.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
-
-		// Advertise the save_cfg coordination topics
-		_update_cfg_pending_pub = n.advertise<std_msgs::String>("update_cfg_pending", 5);
-		_update_cfg_complete_pub = n.advertise<std_msgs::String>("update_cfg_complete", 5);
-	}
-
-	initParams();
+void SDKNode::initPublishers()
+{
+	// Advertise the save_cfg coordination topics
+	_update_cfg_pending_pub = n.advertise<std_msgs::String>("update_cfg_pending", 5);
+	_update_cfg_complete_pub = n.advertise<std_msgs::String>("update_cfg_complete", 5);	
 }
 
 void SDKNode::initParams()
 {
-	// TODO: Generic param init scheme. Note, FPGA register-linked params are handled in ZynqSDKNode::initParams(), which
-	// calls this method.
-	initialized = true;
+	// Just a placeholder for subclasses
+}
+
+void SDKNode::initSubscribers()
+{
+	// These versions are in the public namespace so that we can support param reinit and update
+	// messages to ALL of the SDK nodes simultaneously
+	subscribers.push_back(n.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
+
+	// These versions are in this nodes private namespace so that just this node can be reinit'd and/or updated
+	subscribers.push_back(n_priv.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));	
+}
+
+void SDKNode::initServices()
+{
+	// No services - just a placeholder for subclasses
 }
 
 void SDKNode::updateParams()
@@ -73,25 +74,13 @@ void SDKNode::saveCfg()
 	_update_cfg_complete_pub.publish(name);
 }
 
-bool SDKNode::ready()
+void SDKNode::init()
 {
-	for (auto &s : subscribers)
-	{
-		if (!s)
-		{
-			ROS_ERROR("%s: Invalid subscriber", name.c_str());
-			initialized = false;
-		}
-	}
-	for (auto &s : servicers)
-	{
-		if (!s)
-		{
-			ROS_ERROR("%s: Invalid servicer", name.c_str());
-			initialized = false;
-		}
-	}
-	return initialized;
+	// initPublishers() first to ensure that any messages published by the other inits() are valid
+	initPublishers();
+	initParams();
+	initSubscribers();
+	initServices();
 }
 
 } // namespace Numurus

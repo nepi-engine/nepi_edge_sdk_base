@@ -47,8 +47,11 @@ public:
 protected:
 	TriggerInterface *_trig_if = nullptr;
 	
-	virtual void init() override;
+	// Inherited from SDKNode
+	virtual void initPublishers() override;
 	virtual void initParams() override;
+	virtual void initSubscribers() override;
+	virtual void updateParams() override;
 
 	// Generic subscription callbacks. In many cases, the default implementation in this base class will
 	// be sufficient, but subclasses can override as necessary (ensuring that they call back to the base

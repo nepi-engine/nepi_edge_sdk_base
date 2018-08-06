@@ -16,42 +16,14 @@ NDNode::NDNode(const std::string name, const std::string dev_type,
 	_display_name{name} // default to the node name
 {}
 
-void NDNode::init()
+void NDNode::initPublishers()
 {
-	const bool already_initialized = isInitialized();
+	// Call the base method
+	SDKNode::initPublishers();
+
 	// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
 	_status_pub = n_priv.advertise<num_sdk_base::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));	
-
-	// First, call the parent method - this will update "initialized", so we keep prev. value cached
-	SDKNode::init();
-
-	if (false == already_initialized)
-	{
-		// Now subscribe to the set of global nd controls
-		// These versions are in the public namespace so that we can support global commands
-		subscribers.push_back(n.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
-		subscribers.push_back(n.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
-		subscribers.push_back(n.subscribe("reset", 3, &NDNode::resetHandler, this));
-		subscribers.push_back(n.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
-		subscribers.push_back(n.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
-
-		// Now subscribe to the private namespace versions
-		subscribers.push_back(n_priv.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
-		subscribers.push_back(n_priv.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
-		subscribers.push_back(n_priv.subscribe("reset", 3, &NDNode::resetHandler, this));
-		subscribers.push_back(n_priv.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
-		subscribers.push_back(n_priv.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
-
-		// Also in the private namespace are the various generic "tweaks"
-		subscribers.push_back(n_priv.subscribe("set_range", 3, &NDNode::setRangeHandler, this));
-		subscribers.push_back(n_priv.subscribe("set_angle", 3, &NDNode::setAngleHandler, this));
-		subscribers.push_back(n_priv.subscribe("set_resolution", 3, &NDNode::setResolutionHandler, this));
-		subscribers.push_back(n_priv.subscribe("set_gain", 3, &NDNode::setGainHandler, this));
-		subscribers.push_back(n_priv.subscribe("set_filter", 3, &NDNode::setFilterHandler, this));
-	}
-
-	initParams();
 }
 
 void NDNode::initParams()
@@ -75,7 +47,53 @@ void NDNode::initParams()
 
 	// Send a status update whenever we init params
 	publishStatus();
+}
 
+void NDNode::initSubscribers()
+{
+	// Call the base method
+	SDKNode::initSubscribers();
+
+	// Now subscribe to the set of global nd controls
+	// These versions are in the public namespace so that we can support global commands
+	subscribers.push_back(n.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
+	subscribers.push_back(n.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
+	subscribers.push_back(n.subscribe("reset", 3, &NDNode::resetHandler, this));
+	subscribers.push_back(n.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
+	subscribers.push_back(n.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
+
+	// Now subscribe to the private namespace versions
+	subscribers.push_back(n_priv.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
+	subscribers.push_back(n_priv.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
+	subscribers.push_back(n_priv.subscribe("reset", 3, &NDNode::resetHandler, this));
+	subscribers.push_back(n_priv.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
+	subscribers.push_back(n_priv.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
+
+	// Also in the private namespace are the various generic "tweaks"
+	subscribers.push_back(n_priv.subscribe("set_range", 3, &NDNode::setRangeHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_angle", 3, &NDNode::setAngleHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_resolution", 3, &NDNode::setResolutionHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_gain", 3, &NDNode::setGainHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_filter", 3, &NDNode::setFilterHandler, this));
+}
+
+void NDNode::updateParams()
+{
+	// First, call the base class method
+	SDKNode::updateParams(); 
+
+	n_priv.setParam("simulated_data", _simulated_data);
+	n_priv.setParam("save_data_continuous", _save_continuous);
+	n_priv.setParam("save_data_raw", _save_raw);
+	n_priv.setParam("display_name", _display_name);
+	n_priv.setParam("min_range", _min_range);
+	n_priv.setParam("max_range", _max_range);
+	n_priv.setParam("angle_offset", _angle_offset);
+	n_priv.setParam("total_angle", _total_angle);
+	n_priv.setParam("manual_resolution_enabled", _manual_resolution);
+	n_priv.setParam("manual_resolution", _manual_resolution);
+	n_priv.setParam("gain_enabled", _gain_enabled);
+	n_priv.setParam("gain", _gain);	
 }
 
 void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
