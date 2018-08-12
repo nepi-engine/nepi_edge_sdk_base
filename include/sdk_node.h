@@ -21,7 +21,15 @@ namespace Numurus
  */
 class SDKNode
 {
-
+public:
+/**
+ * @brief      Class to represent node parameters
+ *
+ *			   This class is useful primarily to provide a smart assignment operator that will respect the config_rt setting.
+ *			   It also provides some utility in its encapsulation of the param name, helping to avoid a lot of strings peppered
+ *			   through the code.
+ * @tparam     T     Parameter type. Must be a valid ROS param type.
+ */
 template <class T>
 class NodeParam
 {
@@ -32,13 +40,24 @@ public:
 		_parent{parent}
 	{}
 	
+	/**
+	 * @brief      Conversion operator to allow a NodeParam to be implicitly converted to its template type
+	 */
 	operator T() {return _param_data;}
 
-	void retrieve()
+	/**
+	 * @brief      Retrieves a parameter from the param server
+	 * 
+	 * 			   If param server has no value for requested param, this will establish it in the param server from value of param_storage.
+	 *
+	 * @return     true if parameter was found on server, false otherwise (but param thereafter exists on server)
+	 */
+	bool retrieve()
 	{
 		if (true == _parent->n_priv.getParam(_param_name, _param_data))
 		{
 			ROS_INFO("%s: Updating %s from param server", _parent->name.c_str(), _param_name.c_str());
+			return true;
 		}
 		else
 		{
@@ -46,19 +65,27 @@ public:
 			// And attempt write it back so that the config file has something for next time
 			_parent->n_priv.setParam(_param_name, _param_data);
 		}
+		return false;
 	}
 
+	/**
+	 * @brief      Assignment operator to allow assignment from an instance of the template type
+	 *
+	 * @param[in]  rhs   The right hand side
+	 *
+	 * @return     Reference to this NodeParam instance
+	 */
 	NodeParam& operator=(const T& rhs)
 	{
 		_param_data = rhs;
+		_parent->n_priv.setParam(_param_name, _param_data);
 		if (true == _parent->_save_cfg_rt)
 		{
-			n_priv.setParam(_param_name, _param_data);
 			std_msgs::String node_name;
 			node_name.data = _parent->name;
-			_store_params_pub.publish(node_name);
+			_parent->_store_params_pub.publish(node_name);
 		}
-		return this;
+		return *this;
 	}
 
 private:
@@ -67,7 +94,6 @@ private:
 	const SDKNode *_parent;
 }; // class NodeParam
 
-public:
 	/**
 	 * @brief      Constructs the object.
 	 *
@@ -239,16 +265,7 @@ protected:
 	 */
 	void saveCfg();
 
-	/**
-	 * @brief      Retrieves a parameter from the param server
-	 * 
-	 * 			   If param server has no value for requested param, this will establish it in the param server from value of param_storage.
-	 *
-	 * @param[in]  param_name     The parameter name
-	 * @param[in,out] param_storage  Reference to storage for the param value - must be preinitialized to a reasonable value
-	 *
-	 * @tparam     T              Type - must be a valid overload type of ROS::NodeHandle::getParam()
-	 */
+
 	template <class T>
 	void retrieveParam(const std::string param_name, T& param_storage)
 	{

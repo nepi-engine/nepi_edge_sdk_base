@@ -69,25 +69,25 @@ protected:
 
 private:
 	bool _paused = false;
-	bool _simulated_data = false;
+	SDKNode::NodeParam<bool> _simulated_data;
 	
-	bool _save_continuous = false;
-	bool _save_raw = false;
+	SDKNode::NodeParam<bool> _save_continuous;
+	SDKNode::NodeParam<bool> _save_raw;
 	
-	float _min_range = 0.0f;
-	float _max_range = 1.0f;
+	SDKNode::NodeParam<float> _min_range;
+	SDKNode::NodeParam<float> _max_range;
 
-	float _angle_offset = 0.0f;
-	float _total_angle = 0.0f;
+	SDKNode::NodeParam<float> _angle_offset;
+	SDKNode::NodeParam<float> _total_angle;
 
-	bool _manual_resolution_enabled = true;
-	float _manual_resolution = 1.0f;
+	SDKNode::NodeParam<bool> _manual_resolution_enabled;
+	SDKNode::NodeParam<float> _manual_resolution;
 
-	bool _gain_enabled = true;
-	float _gain = 1.0f;
+	SDKNode::NodeParam<bool> _gain_enabled;
+	SDKNode::NodeParam<float> _gain;
 
-	bool _filter_enabled = true;
-	float _filter_control = 1.0f;
+	SDKNode::NodeParam<bool> _filter_enabled;
+	SDKNode::NodeParam<float> _filter_control;
 
 	const std::string _device_type;
 	const std::string _serial_num;

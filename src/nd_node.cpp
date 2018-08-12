@@ -10,6 +10,19 @@ namespace Numurus
 NDNode::NDNode(const std::string name, const std::string dev_type, 
 			   const std::string serial_num, const std::string sensor_type):
 	SDKNode{name},
+	_simulated_data{"simulated_data", false, this},
+	_save_continuous{"save_data_continuous", false, this},
+	_save_raw{"save_data_raw", false, this},
+	_min_range{"min_range", 0.0f, this},
+	_max_range{"max_range", 0.0f, this},
+	_angle_offset{"angle_offset", 0.0f, this},
+	_total_angle{"total_angle", 0.0f, this},
+	_manual_resolution_enabled{"manual_resolution_enabled", true, this},
+	_manual_resolution{"manual_resolution", 1.0f, this},
+	_gain_enabled{"gain_enabled", true, this},
+	_gain{"gain", 1.0f, this},
+	_filter_enabled{"filter_enabled", true, this},
+	_filter_control{"filter_control", 1.0f, this},
 	_device_type{dev_type},
 	_serial_num{serial_num},
 	_sensor_type{sensor_type}
@@ -31,17 +44,19 @@ void NDNode::retrieveParams()
 	SDKNode::retrieveParams(); 
 	
 	// Grab the nd_node parameters
-	retrieveParam("simulated_data", _simulated_data);
-	retrieveParam("save_data_continuous", _save_continuous);
-	retrieveParam("save_data_raw", _save_raw);
-	retrieveParam("min_range", _min_range);
-	retrieveParam("max_range", _max_range);
-	retrieveParam("angle_offset", _angle_offset);
-	retrieveParam("total_angle", _total_angle);
-	retrieveParam("manual_resolution_enabled", _manual_resolution);
-	retrieveParam("manual_resolution", _manual_resolution);
-	retrieveParam("gain_enabled", _gain_enabled);
-	retrieveParam("gain", _gain);
+	_simulated_data.retrieve();
+	_save_continuous.retrieve();
+	_save_raw.retrieve();
+	_min_range.retrieve();
+	_max_range.retrieve();
+	_angle_offset.retrieve();
+	_total_angle.retrieve();
+	_manual_resolution.retrieve();
+	_manual_resolution.retrieve();
+	_gain_enabled.retrieve();
+	_gain.retrieve();
+	_filter_enabled.retrieve();
+	_filter_control.retrieve();
 
 	// Make sure to retrieve trigger params, too
 	_trig_if->retrieveParams();
@@ -79,19 +94,8 @@ void NDNode::updateParams()
 	// First, call the base class method
 	SDKNode::updateParams(); 
 
-	n_priv.setParam("simulated_data", _simulated_data);
-	n_priv.setParam("save_data_continuous", _save_continuous);
-	n_priv.setParam("save_data_raw", _save_raw);
-	n_priv.setParam("display_name", _display_name);
-	n_priv.setParam("min_range", _min_range);
-	n_priv.setParam("max_range", _max_range);
-	n_priv.setParam("angle_offset", _angle_offset);
-	n_priv.setParam("total_angle", _total_angle);
-	n_priv.setParam("manual_resolution_enabled", _manual_resolution);
-	n_priv.setParam("manual_resolution", _manual_resolution);
-	n_priv.setParam("gain_enabled", _gain_enabled);
-	n_priv.setParam("gain", _gain);
-
+	// All params are already updated via the assignment operator
+	
 	// Update trigger params, too
 	_trig_if->updateParams();	
 }
@@ -159,7 +163,7 @@ void NDNode::setRangeHandler(const num_sdk_base::NDRange::ConstPtr &msg)
 	{
 		_min_range = msg->min_range;
 		_max_range = msg->max_range;
-		ROS_DEBUG("%s updated range to (%.3f,%.3f)", name.c_str(), _min_range, _max_range);
+		ROS_DEBUG("%s updated range to (%.3f,%.3f)", name.c_str(), msg->min_range, msg->max_range);
 		publishStatus();
 	}
 }
@@ -181,7 +185,7 @@ void NDNode::setAngleHandler(const num_sdk_base::NDAngle::ConstPtr &msg)
 	{
 		_angle_offset = msg->angle_offset;
 		_total_angle = msg->total_angle;
-		ROS_DEBUG("%s updated angle to (%.3f,%.3f)", name.c_str(), _angle_offset, _total_angle);
+		ROS_DEBUG("%s updated angle to (%.3f,%.3f)", name.c_str(), msg->angle_offset, msg->total_angle);
 		publishStatus();
 	}
 }

@@ -59,7 +59,7 @@ void SDKNode::initServices()
 
 void SDKNode::updateParams()
 {
-	// No params (yet) - just a placeholder for subclasses
+	// All params are already uploaded via the assignment operator
 }
 
 void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
