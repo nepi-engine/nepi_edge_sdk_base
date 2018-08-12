@@ -9,7 +9,8 @@ namespace Numurus
 
 SDKNode::SDKNode(const std::string my_name) :
 	n_priv{"~"}, // Create a private namespace for this node 
-	name{my_name}
+	name{my_name},
+	_display_name{my_name} // Default to the fixed node name
 {}
 
 SDKNode::~SDKNode()
@@ -29,7 +30,10 @@ void SDKNode::initPublishers()
 
 void SDKNode::retrieveParams()
 {
-	// Just a placeholder for subclasses
+	// To appease the rosparam API, all nodes should have at least one parameter (to ensure a non-empty namespace
+	// when dumping the param server contents to various config files). We use the displayName for that purpose,
+	// though it is not modifiable at this generic SDKNode level
+	retrieveParam("display_name", _display_name);
 }
 
 void SDKNode::initSubscribers()

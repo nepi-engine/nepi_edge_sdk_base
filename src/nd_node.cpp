@@ -12,8 +12,7 @@ NDNode::NDNode(const std::string name, const std::string dev_type,
 	SDKNode{name},
 	_device_type{dev_type},
 	_serial_num{serial_num},
-	_sensor_type{sensor_type},
-	_display_name{name} // default to the node name
+	_sensor_type{sensor_type}
 {}
 
 void NDNode::initPublishers()
@@ -35,7 +34,6 @@ void NDNode::retrieveParams()
 	retrieveParam("simulated_data", _simulated_data);
 	retrieveParam("save_data_continuous", _save_continuous);
 	retrieveParam("save_data_raw", _save_raw);
-	retrieveParam("display_name", _display_name);
 	retrieveParam("min_range", _min_range);
 	retrieveParam("max_range", _max_range);
 	retrieveParam("angle_offset", _angle_offset);

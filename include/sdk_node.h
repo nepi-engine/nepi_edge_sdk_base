@@ -63,6 +63,11 @@ protected:
 	const std::string name;
 
 	/**
+	 * Display name of the node. Could be modified by users (though no interface to do so for this generic base class)
+	 */
+	std::string _display_name;
+
+	/**
 	 * Vector of return handles from NodeHandle::advertiseService.
 	 * These handles must have a lifetime as long as the NodeHandle, so are best appropriated to a member variable container
 	 */
@@ -144,7 +149,7 @@ protected:
 	/**
 	 * @brief      Retrieves a parameter from the param server
 	 * 
-	 * 			   If param server has no value for requested param, this will set the default one from value of param_storage.
+	 * 			   If param server has no value for requested param, this will establish it in the param server from value of param_storage.
 	 *
 	 * @param[in]  param_name     The parameter name
 	 * @param[in,out] param_storage  Reference to storage for the param value - must be preinitialized to a reasonable value
@@ -168,7 +173,7 @@ protected:
 
 private:
 	ros::Publisher _store_params_pub;
-
+	
 	/**
 	 * @brief      Initialize the node
 	 * 

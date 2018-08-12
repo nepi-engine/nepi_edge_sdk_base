@@ -95,7 +95,6 @@ private:
 	const std::string _device_type;
 	const std::string _serial_num;
 	const std::string _sensor_type;
-	std::string _display_name;
 	std::string _save_data_dir = "/var/volatile";
 
 	ros::Publisher _status_pub;
