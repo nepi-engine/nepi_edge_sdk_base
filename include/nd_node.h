@@ -57,7 +57,6 @@ protected:
 	// class or embed the base class logic as necessary).
 	virtual void pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg);
 	virtual void saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg);
-	void saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg);
 	void simulateDataHandler(const std_msgs::Bool::ConstPtr &msg);
 
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
@@ -74,8 +73,6 @@ private:
 	
 	bool _save_continuous = false;
 	bool _save_raw = false;
-	
-	bool _save_cfg_rt = false;
 	
 	float _min_range = 0.0f;
 	float _max_range = 1.0f;

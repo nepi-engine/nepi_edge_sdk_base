@@ -4,13 +4,15 @@
 
 #include "sdk_node.h"
 
+#define BOOL_TO_ENABLED(x)	((x)==true)? "enabled" : "disabled"
+
 namespace Numurus
 {
 
 SDKNode::SDKNode(const std::string my_name) :
 	n_priv{"~"}, // Create a private namespace for this node 
 	name{my_name},
-	_display_name{my_name} // Default to the fixed node name
+	_display_name{"display_name", my_name, this} // Default to the fixed node name
 {}
 
 SDKNode::~SDKNode()
@@ -33,7 +35,7 @@ void SDKNode::retrieveParams()
 	// To appease the rosparam API, all nodes should have at least one parameter (to ensure a non-empty namespace
 	// when dumping the param server contents to various config files). We use the displayName for that purpose,
 	// though it is not modifiable at this generic SDKNode level
-	retrieveParam("display_name", _display_name);
+	_display_name.retrieve();
 }
 
 void SDKNode::initSubscribers()
@@ -41,10 +43,12 @@ void SDKNode::initSubscribers()
 	// These versions are in the public namespace so that we can support param reinit and update
 	// messages to ALL of the SDK nodes simultaneously
 	subscribers.push_back(n.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
+	subscribers.push_back(n.subscribe("save_config_rt", 3, &SDKNode::saveCfgRtHandler, this));
 	subscribers.push_back(n.subscribe("reset", 3, &SDKNode::resetHandler, this));
 
 	// These versions are in this nodes private namespace so that just this node can be reinit'd and/or updated
 	subscribers.push_back(n_priv.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
+	subscribers.push_back(n_priv.subscribe("save_config_rt", 3, &SDKNode::saveCfgRtHandler, this));
 	subscribers.push_back(n_priv.subscribe("reset", 3, &SDKNode::resetHandler, this));	
 }
 
@@ -62,6 +66,22 @@ void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
 {
 	ROS_DEBUG("%s: Initiating config save by request", name.c_str());
 	saveCfg();
+}
+
+void SDKNode::saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg)
+{
+	const bool save_data_updated = (msg->data != _save_cfg_rt);
+	if (true == save_data_updated)
+	{
+		_save_cfg_rt = msg->data;
+		ROS_DEBUG("%s realtime configuration saving is now %s", name.c_str(), BOOL_TO_ENABLED(_save_cfg_rt));
+		
+		// If we're enabling RT saving, save the current configuration right now
+		if (true == _save_cfg_rt)
+		{
+			saveCfg();
+		}
+	}
 }
 
 void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)

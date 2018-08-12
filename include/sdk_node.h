@@ -5,6 +5,8 @@
 
 #include <ros/ros.h>
 #include "std_msgs/Empty.h"
+#include "std_msgs/Bool.h"
+#include "std_msgs/String.h"
 #include "num_sdk_base/Reset.h"
 
 namespace Numurus
@@ -19,6 +21,52 @@ namespace Numurus
  */
 class SDKNode
 {
+
+template <class T>
+class NodeParam
+{
+public:
+	NodeParam(std::string param_name, T default_val, SDKNode *parent):
+		_param_name{param_name},
+		_param_data{default_val},
+		_parent{parent}
+	{}
+	
+	operator T() {return _param_data;}
+
+	void retrieve()
+	{
+		if (true == _parent->n_priv.getParam(_param_name, _param_data))
+		{
+			ROS_INFO("%s: Updating %s from param server", _parent->name.c_str(), _param_name.c_str());
+		}
+		else
+		{
+			ROS_WARN("%s: unable to init %s from param server, using existing val instead", _parent->name.c_str(), _param_name.c_str());
+			// And attempt write it back so that the config file has something for next time
+			_parent->n_priv.setParam(_param_name, _param_data);
+		}
+	}
+
+	NodeParam& operator=(const T& rhs)
+	{
+		_param_data = rhs;
+		if (true == _parent->_save_cfg_rt)
+		{
+			n_priv.setParam(_param_name, _param_data);
+			std_msgs::String node_name;
+			node_name.data = _parent->name;
+			_store_params_pub.publish(node_name);
+		}
+		return this;
+	}
+
+private:
+	const std::string _param_name;
+	T _param_data;
+	const SDKNode *_parent;
+}; // class NodeParam
+
 public:
 	/**
 	 * @brief      Constructs the object.
@@ -65,7 +113,7 @@ protected:
 	/**
 	 * Display name of the node. Could be modified by users (though no interface to do so for this generic base class)
 	 */
-	std::string _display_name;
+	NodeParam<std::string> _display_name;
 
 	/**
 	 * Vector of return handles from NodeHandle::advertiseService.
@@ -134,6 +182,8 @@ protected:
 	 * @param[in]  empty    Just a ROS-required placeholder
 	 */
 	void saveCfgHandler(const std_msgs::Empty::ConstPtr &empty);
+
+	void saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg);
 	
 	/**
 	 * @brief      Handle a request to reset the node
@@ -216,6 +266,7 @@ protected:
 
 private:
 	ros::Publisher _store_params_pub;
+	bool _save_cfg_rt = false;
 	
 	/**
 	 * @brief      Initialize the node
@@ -225,7 +276,6 @@ private:
 	 * 			   not called directly - instead the run() method calls this before spinning.
 	 */	
 	void init();
-
 };
 
 } // namespace Numurus

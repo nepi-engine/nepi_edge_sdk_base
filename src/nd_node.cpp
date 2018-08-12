@@ -59,13 +59,11 @@ void NDNode::initSubscribers()
 	// These versions are in the public namespace so that we can support global commands
 	subscribers.push_back(n.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
 	subscribers.push_back(n.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
-	subscribers.push_back(n.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
 	subscribers.push_back(n.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
 
 	// Now subscribe to the private namespace versions
 	subscribers.push_back(n_priv.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
 	subscribers.push_back(n_priv.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
-	subscribers.push_back(n_priv.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
 	subscribers.push_back(n_priv.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
 
 	// Also in the private namespace are the various generic "tweaks"
@@ -128,23 +126,6 @@ void NDNode::saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg)
 		ROS_DEBUG("%s data save settings updated to (save_continuous=%s, save_raw=%s)", name.c_str(),
 				  BOOL_TO_ENABLED(_save_continuous), BOOL_TO_ENABLED(_save_raw));
 		publishStatus();
-	}
-}
-
-void NDNode::saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg)
-{
-	const bool save_data_updated = (msg->data != _save_cfg_rt);
-	if (true == save_data_updated)
-	{
-		_save_cfg_rt = msg->data;
-		ROS_DEBUG("%s realtime configuration saving is now %s", name.c_str(), BOOL_TO_ENABLED(_save_cfg_rt));
-		publishStatus();
-
-		// If we're enabling RT saving, save the current configuration right now
-		if (true == _save_cfg_rt)
-		{
-			saveCfg();
-		}
 	}
 }
 
