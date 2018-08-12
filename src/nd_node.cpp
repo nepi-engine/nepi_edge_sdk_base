@@ -26,10 +26,10 @@ void NDNode::initPublishers()
 	_status_pub = n_priv.advertise<num_sdk_base::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));	
 }
 
-void NDNode::initParams()
+void NDNode::retrieveParams()
 {
 	// Call the base method
-	SDKNode::initParams(); 
+	SDKNode::retrieveParams(); 
 	
 	// Grab the nd_node parameters
 	retrieveParam("simulated_data", _simulated_data);
@@ -45,8 +45,8 @@ void NDNode::initParams()
 	retrieveParam("gain_enabled", _gain_enabled);
 	retrieveParam("gain", _gain);
 
-	// Make sure to reinit trigger params, too
-	_trig_if->initParams();
+	// Make sure to retrieve trigger params, too
+	_trig_if->retrieveParams();
 
 	// Send a status update whenever we init params
 	publishStatus();

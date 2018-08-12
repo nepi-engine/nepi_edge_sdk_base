@@ -83,12 +83,17 @@ protected:
 	virtual void initPublishers();
 
 	/**
-	 * @brief      Initialize all parameters from config file values (if available).
+	 * @brief      Retrieve all ROS parameters from param server.
 	 * 
-	 * @note       {Subclasses may override this method to do specific param initialization, but should call SDKNode::initParams() wihin the overriden implementation
+	 * 			   The ROS parameter server launches with parameters from the various config. files.
+	 * 			   SDKNodes never interact with these files directly, rather gathering params from the
+	 * 			   param server, and leveraging the config_mgr node to save and restore params to/from
+	 * 			   the config files.
+	 * 			   
+	 * @note       {Subclasses may override this method to do specific param initialization, but should call SDKNode::retrieveParams() wihin the overriden implementation
 	 * 				to ensure the generic initialization proceeds.}
 	 */
-	virtual void initParams();
+	virtual void retrieveParams();
 
 	/**
 	 * @brief      Initialize subscribers and add to the list of subscriber handles
@@ -110,8 +115,8 @@ protected:
 	 * @brief      Synchronize parameter server with the values in this node.
 	 * 
 	 *			   This method ensures that the ROS param server is updated with the current param values for this node.
-	 *			   It is automatically installed as a callback to the update_params topic at both the global namespace level (for updating all nodes'
-	 *			   params) and the node's private namespace level (for updating just this node's params)
+	 *			   It plays a major role in the saveCfg call back, as config. params must be "uploaded" to the param server
+	 *			   and then "downloaded" to the filesystem (via config_mgr node).
 	 *			   
 	 * @note       {Subclasses may override this method, but must ensure that they call back to this base class version.}			   
 	 *
@@ -167,7 +172,7 @@ private:
 	/**
 	 * @brief      Initialize the node
 	 * 
-	 * 			   This method calls initPublishers(), initParams(), initSubscribers, and initServices() 
+	 * 			   This method calls initPublishers(), retrieveParams(), initSubscribers, and initServices() 
 	 * 			   (in that order) to completely initialize the ROS components of the node. It is private, and
 	 * 			   not called directly - instead the run() method calls this before spinning.
 	 */	

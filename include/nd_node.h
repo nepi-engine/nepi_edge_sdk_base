@@ -48,7 +48,7 @@ protected:
 	
 	// Inherited from SDKNode
 	virtual void initPublishers() override;
-	virtual void initParams() override;
+	virtual void retrieveParams() override;
 	virtual void initSubscribers() override;
 	virtual void updateParams() override;
 

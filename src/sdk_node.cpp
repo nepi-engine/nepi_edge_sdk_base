@@ -27,7 +27,7 @@ void SDKNode::initPublishers()
 	_store_params_pub = n.advertise<std_msgs::String>("store_params", 5);
 }
 
-void SDKNode::initParams()
+void SDKNode::retrieveParams()
 {
 	// Just a placeholder for subclasses
 }
@@ -69,7 +69,7 @@ void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
 	case num_sdk_base::Reset::USER_RESET:
 		// Just re-gather the params from the param server
 		ROS_INFO("%s: Executing user-level reset by request", name.c_str());
-		initParams();
+		retrieveParams();
 		break;
 	case num_sdk_base::Reset::FACTORY_RESET:
 	{
@@ -84,7 +84,7 @@ void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
 		else
 		{
 			// Regather params from the param server now that it's been updated by config mgr
-			initParams();
+			retrieveParams();
 		}
 	}	
 		break;
@@ -118,7 +118,7 @@ void SDKNode::init()
 {
 	// initPublishers() first to ensure that any messages published by the other inits() are valid
 	initPublishers();
-	initParams();
+	retrieveParams();
 	initSubscribers();
 	initServices();
 }

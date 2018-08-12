@@ -18,9 +18,11 @@ public:
 	virtual ~TriggerInterface() = 0; // Must provide a virtual destructor for an abstract base class
 
 	/**
-	 * @brief      Initialize configuration parameters from config file (if available)
+	 * @brief      Retrieve all ROS params from the param server
+	 * 
+	 * @note       See SDKNode::retrieveParams().
 	 */
-	virtual void initParams() = 0;
+	virtual void retrieveParams() = 0;
 
 	/**
 	 * @brief      Apply current trigger param values to param server
