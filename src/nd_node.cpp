@@ -45,6 +45,9 @@ void NDNode::initParams()
 	retrieveParam("gain_enabled", _gain_enabled);
 	retrieveParam("gain", _gain);
 
+	// Make sure to reinit trigger params, too
+	_trig_if->initParams();
+
 	// Send a status update whenever we init params
 	publishStatus();
 }
@@ -93,7 +96,10 @@ void NDNode::updateParams()
 	n_priv.setParam("manual_resolution_enabled", _manual_resolution);
 	n_priv.setParam("manual_resolution", _manual_resolution);
 	n_priv.setParam("gain_enabled", _gain_enabled);
-	n_priv.setParam("gain", _gain);	
+	n_priv.setParam("gain", _gain);
+
+	// Update trigger params, too
+	_trig_if->updateParams();	
 }
 
 void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)

@@ -1,4 +1,4 @@
-# This message provides a reset command to an nd_node. There are various levels of reset possible,
+# This message provides a reset command to an sdk_node. There are various levels of reset possible,
 # as outlined below.
 
 # USER_RESET reloads the user config file for the nd_node, overwriting any unsaved configuration changes 
