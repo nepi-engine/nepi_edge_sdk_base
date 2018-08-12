@@ -160,8 +160,7 @@ protected:
 	}
 
 private:
-	ros::Publisher _update_cfg_pending_pub;
-	ros::Publisher _update_cfg_complete_pub;
+	ros::Publisher _store_params_pub;
 
 	/**
 	 * @brief      Initialize the node

@@ -23,8 +23,7 @@ void SDKNode::run()
 void SDKNode::initPublishers()
 {
 	// Advertise the save_cfg coordination topics
-	_update_cfg_pending_pub = n.advertise<std_msgs::String>("update_cfg_pending", 5);
-	_update_cfg_complete_pub = n.advertise<std_msgs::String>("update_cfg_complete", 5);	
+	_store_params_pub = n.advertise<std_msgs::String>("store_params", 5);
 }
 
 void SDKNode::initParams()
@@ -58,20 +57,58 @@ void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
 	saveCfg();
 }
 
+void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
+{
+	const uint8_t reset_type = msg->reset_type;
+
+	switch (reset_type)
+	{
+	case num_sdk_base::Reset::USER_RESET:
+		// Just re-gather the params from the param server
+		ROS_INFO("%s: Executing user-level reset by request", name.c_str());
+		initParams();
+		break;
+	case num_sdk_base::Reset::FACTORY_RESET:
+	{
+		ROS_INFO("%s: Executing factory reset by request", name.c_str());
+		ros::ServiceClient client = n.serviceClient<num_sdk_base::FactoryReset>("factory_reset");
+		num_sdk_base::FactoryReset srv;
+		srv.request.node_name = name;
+		if (false == client.call(srv) || false == srv.response.success)
+		{
+			ROS_ERROR("%s: Factory reset request failed", name.c_str());
+		}
+		else
+		{
+			// Regather params from the param server now that it's been updated by config mgr
+			initParams();
+		}
+	}	
+		break;
+	case num_sdk_base::Reset::SOFTWARE_RESET:
+		ROS_INFO("%s: Executing software reset by request", name.c_str());
+		// TODO: Terminate the node
+		break;
+	// No implentation for HARDWARE_RESET in this base class
+	//case Reset::HARDWARE_RESET:
+	default:
+		ROS_WARN("%s: No available hardware reset. Request ignored", name.c_str());
+		// TODO: 
+	}
+}
+
 void SDKNode::saveCfg()
 {
 	ROS_INFO("%s: Saving current config", name.c_str());
 
-	// First, inform that we'll be updating the param server
-	std_msgs::String name;
-	name.data = ros::this_node::getName();
-	_update_cfg_pending_pub.publish(name);
-
-	// Now update it
+	// First, update the param server
 	updateParams();
 
-	// Now inform complete
-	_update_cfg_complete_pub.publish(name);
+	// Now, inform the config_mgr so it can store the file. We don't do this directly here
+	// because ROS has no C++ API for rosparam
+	std_msgs::String node_name;
+	node_name.data = name;
+	_store_params_pub.publish(node_name);
 }
 
 void SDKNode::init()

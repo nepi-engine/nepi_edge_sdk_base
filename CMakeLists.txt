@@ -62,6 +62,7 @@ add_message_files(
 add_service_files(
     FILES
     ConvertRawTstamp.srv
+    FactoryReset.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -173,6 +174,10 @@ add_library(${PROJECT_NAME}
 #   scripts/my_python_script
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
+
+catkin_install_python(PROGRAMS scripts/config_mgr.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables and/or libraries for installation
 install(TARGETS ${PROJECT_NAME} 
