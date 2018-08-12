@@ -71,30 +71,18 @@ void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
 	switch (reset_type)
 	{
 	case num_sdk_base::Reset::USER_RESET:
-		// Just re-gather the params from the param server
 		ROS_INFO("%s: Executing user-level reset by request", name.c_str());
-		retrieveParams();
+		userReset();
 		break;
 	case num_sdk_base::Reset::FACTORY_RESET:
 	{
 		ROS_INFO("%s: Executing factory reset by request", name.c_str());
-		ros::ServiceClient client = n.serviceClient<num_sdk_base::FactoryReset>("factory_reset");
-		num_sdk_base::FactoryReset srv;
-		srv.request.node_name = name;
-		if (false == client.call(srv) || false == srv.response.success)
-		{
-			ROS_ERROR("%s: Factory reset request failed", name.c_str());
-		}
-		else
-		{
-			// Regather params from the param server now that it's been updated by config mgr
-			retrieveParams();
-		}
+		factoryReset();
 	}	
 		break;
 	case num_sdk_base::Reset::SOFTWARE_RESET:
 		ROS_INFO("%s: Executing software reset by request", name.c_str());
-		// TODO: Terminate the node
+		softwareReset();
 		break;
 	// No implentation for HARDWARE_RESET in this base class
 	//case Reset::HARDWARE_RESET:
@@ -102,6 +90,40 @@ void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
 		ROS_WARN("%s: No available hardware reset. Request ignored", name.c_str());
 		// TODO: 
 	}
+}
+
+void SDKNode::userReset()
+{
+	// Just re-gather the params from the param server
+	retrieveParams();
+}
+
+void SDKNode::factoryReset()
+{
+	ros::ServiceClient client = n.serviceClient<num_sdk_base::FactoryReset>("factory_reset");
+	num_sdk_base::FactoryReset srv;
+	srv.request.node_name = name;
+	if (false == client.call(srv) || false == srv.response.success)
+	{
+		ROS_ERROR("%s: Factory reset request failed", name.c_str());
+	}
+	else
+	{
+		// Regather params from the param server now that it's been updated by config mgr
+		retrieveParams();
+	}
+}
+
+void SDKNode::softwareReset()
+{
+	// Simply shutdown the node... it will be automatically restarted per launch file specification
+	ros::shutdown();
+}
+
+void SDKNode::hardwareReset()
+{
+	// This generic version simply does a software reset.
+	softwareReset();
 }
 
 void SDKNode::saveCfg()

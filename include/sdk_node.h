@@ -134,7 +134,50 @@ protected:
 	 * @param[in]  empty    Just a ROS-required placeholder
 	 */
 	void saveCfgHandler(const std_msgs::Empty::ConstPtr &empty);
+	
+	/**
+	 * @brief      Handle a request to reset the node
+	 * 
+	 * 			   The request can be one of a number of reset types. This methods simply calls into
+	 * 			   reset type-specific functions that may be overridden by subclasses
+	 *
+	 * @param[in]  msg   The message containing the reset type requested
+	 */
 	void resetHandler(const num_sdk_base::Reset::ConstPtr &msg);
+
+	/**
+	 * @brief      Execute a user reset
+	 * 			   
+	 * 			   This generic implementation simply restores parameters to their param server values
+	 * 			   which are nominally the same as the config file values that were loaded at start-up time.
+	 * 			   
+	 * 			   Subclasses do not typically need to override this method
+	 */
+	virtual void userReset();
+
+	/**
+	 * @brief      Exectue a factory reset, restoring configuration to it's factory default
+	 * 
+	 * 			   Subclasses do not typically need to override this method
+	 */
+	virtual void factoryReset();
+
+	/**
+	 * @brief      Execute a software reset, terminating the node and allowing the ROS launch system to restart it.
+	 * 
+	 * 			   Subclasses do not typically need  to override this method.
+	 */
+	virtual void softwareReset();
+
+	/**
+	 * @brief      Execute a hardware reset.
+	 * 
+	 * 			   This implementation of this reset mode is typically dependent on the underlying
+	 * 			   hardware proxied by the node, so subclasses will typically override this method.
+	 * 			   
+	 * 			   The generic implementation included here simply calls softwareReset()
+	 */		
+	virtual void hardwareReset();
 
 	/**
 	 * @brief      Save the node's configuration file
