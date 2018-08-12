@@ -48,10 +48,9 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs message_generation)
 ## Generate messages in the 'msg' folder
 add_message_files(
     FILES
-    FactoryReset.msg
+    Reset.msg
     NDSaveData.msg
     NDDatafileCtrl.msg
-    NDReset.msg
     NDRange.msg
     NDAngle.msg
     NDAutoManualSelection.msg

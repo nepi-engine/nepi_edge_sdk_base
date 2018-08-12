@@ -61,14 +61,12 @@ void NDNode::initSubscribers()
 	// These versions are in the public namespace so that we can support global commands
 	subscribers.push_back(n.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
 	subscribers.push_back(n.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
-	subscribers.push_back(n.subscribe("reset", 3, &NDNode::resetHandler, this));
 	subscribers.push_back(n.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
 	subscribers.push_back(n.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
 
 	// Now subscribe to the private namespace versions
 	subscribers.push_back(n_priv.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
 	subscribers.push_back(n_priv.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
-	subscribers.push_back(n_priv.subscribe("reset", 3, &NDNode::resetHandler, this));
 	subscribers.push_back(n_priv.subscribe("save_config_rt", 3, &NDNode::saveCfgRtHandler, this));
 	subscribers.push_back(n_priv.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
 
@@ -133,11 +131,6 @@ void NDNode::saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg)
 				  BOOL_TO_ENABLED(_save_continuous), BOOL_TO_ENABLED(_save_raw));
 		publishStatus();
 	}
-}
-
-void NDNode::resetHandler(const num_sdk_base::NDReset::ConstPtr &msg)
-{
-	// TODO
 }
 
 void NDNode::saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg)

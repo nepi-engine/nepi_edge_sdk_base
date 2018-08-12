@@ -1,5 +1,6 @@
 
 #include "std_msgs/String.h"
+#include "num_sdk_base/FactoryReset.h"
 
 #include "sdk_node.h"
 
@@ -36,9 +37,11 @@ void SDKNode::initSubscribers()
 	// These versions are in the public namespace so that we can support param reinit and update
 	// messages to ALL of the SDK nodes simultaneously
 	subscribers.push_back(n.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
+	subscribers.push_back(n.subscribe("reset", 3, &SDKNode::resetHandler, this));
 
 	// These versions are in this nodes private namespace so that just this node can be reinit'd and/or updated
-	subscribers.push_back(n_priv.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));	
+	subscribers.push_back(n_priv.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
+	subscribers.push_back(n_priv.subscribe("reset", 3, &SDKNode::resetHandler, this));	
 }
 
 void SDKNode::initServices()

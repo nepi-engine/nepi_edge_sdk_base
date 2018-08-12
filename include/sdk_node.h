@@ -5,6 +5,7 @@
 
 #include <ros/ros.h>
 #include "std_msgs/Empty.h"
+#include "num_sdk_base/Reset.h"
 
 namespace Numurus
 {
@@ -123,6 +124,7 @@ protected:
 	 * @param[in]  empty    Just a ROS-required placeholder
 	 */
 	void saveCfgHandler(const std_msgs::Empty::ConstPtr &empty);
+	void resetHandler(const num_sdk_base::Reset::ConstPtr &msg);
 
 	/**
 	 * @brief      Save the node's configuration file

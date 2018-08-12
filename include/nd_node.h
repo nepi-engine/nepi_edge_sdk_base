@@ -9,7 +9,6 @@
 #include "sdk_node.h"
 
 #include "num_sdk_base/NDSaveData.h"
-#include "num_sdk_base/NDReset.h"
 #include "num_sdk_base/NDRange.h"
 #include "num_sdk_base/NDAngle.h"
 #include "num_sdk_base/NDAutoManualSelection.h"
@@ -58,7 +57,6 @@ protected:
 	// class or embed the base class logic as necessary).
 	virtual void pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg);
 	virtual void saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg);
-	virtual void resetHandler(const num_sdk_base::NDReset::ConstPtr &msg);
 	void saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg);
 	void simulateDataHandler(const std_msgs::Bool::ConstPtr &msg);
 
