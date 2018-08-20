@@ -100,7 +100,9 @@ void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
 		softwareReset();
 		break;
 	// No implentation for HARDWARE_RESET in this base class
-	//case Reset::HARDWARE_RESET:
+	case num_sdk_base::Reset::HARDWARE_RESET:
+		ROS_INFO("%s: Executing hardware reset by request", name.c_str());
+		hardwareReset();
 	default:
 		ROS_WARN("%s: No available hardware reset. Request ignored", name.c_str());
 		// TODO: 
@@ -142,6 +144,10 @@ void SDKNode::factoryReset()
 
 void SDKNode::softwareReset()
 {
+	// First, ensure the config file is reloaded on param server before restarting... userReset
+	// is the most natural way.
+	userReset(); 
+	
 	// Simply shutdown the node... it will be automatically restarted per launch file specification
 	ros::shutdown();
 }
