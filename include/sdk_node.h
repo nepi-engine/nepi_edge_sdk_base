@@ -266,21 +266,6 @@ protected:
 	void saveCfg();
 
 
-	template <class T>
-	void retrieveParam(const std::string param_name, T& param_storage)
-	{
-		if (true == n_priv.getParam(param_name, param_storage))
-		{
-			ROS_INFO("%s: Updating %s from config file", name.c_str(), param_name.c_str());
-		}
-		else
-		{
-			ROS_WARN("%s: unable to init %s from param server, using existing val instead", name.c_str(), param_name.c_str());
-			// And attempt write it back so that the config file has something for next time
-			n_priv.setParam(param_name, param_storage);
-		}
-	}
-
 private:
 	ros::Publisher _store_params_pub;
 	bool _save_cfg_rt = false;
