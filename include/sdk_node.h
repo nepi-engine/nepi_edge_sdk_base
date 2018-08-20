@@ -191,18 +191,6 @@ protected:
 	virtual void initServices();
 
 	/**
-	 * @brief      Synchronize parameter server with the values in this node.
-	 * 
-	 *			   This method ensures that the ROS param server is updated with the current param values for this node.
-	 *			   It plays a major role in the saveCfg call back, as config. params must be "uploaded" to the param server
-	 *			   and then "downloaded" to the filesystem (via config_mgr node).
-	 *			   
-	 * @note       {Subclasses may override this method, but must ensure that they call back to this base class version.}			   
-	 *
-	 */
-	virtual void updateParams();
-
-	/**
 	 * @brief      Handle a request to save the current ROS configuration
 	 *
 	 * @param[in]  empty    Just a ROS-required placeholder

@@ -57,11 +57,6 @@ void SDKNode::initServices()
 	// No services - just a placeholder for subclasses
 }
 
-void SDKNode::updateParams()
-{
-	// All params are already uploaded via the assignment operator
-}
-
 void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
 {
 	ROS_DEBUG("%s: Initiating config save by request", name.c_str());
@@ -150,10 +145,7 @@ void SDKNode::saveCfg()
 {
 	ROS_INFO("%s: Saving current config", name.c_str());
 
-	// First, update the param server
-	updateParams();
-
-	// Now, inform the config_mgr so it can store the file. We don't do this directly here
+	// Inform the config_mgr so it can store the file. We don't do this directly here
 	// because ROS has no C++ API for rosparam
 	std_msgs::String node_name;
 	node_name.data = name;

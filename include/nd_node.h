@@ -50,8 +50,7 @@ protected:
 	virtual void initPublishers() override;
 	virtual void retrieveParams() override;
 	virtual void initSubscribers() override;
-	virtual void updateParams() override;
-
+	
 	// Generic subscription callbacks. In many cases, the default implementation in this base class will
 	// be sufficient, but subclasses can override as necessary (ensuring that they call back to the base
 	// class or embed the base class logic as necessary).

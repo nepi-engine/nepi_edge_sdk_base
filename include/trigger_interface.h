@@ -27,11 +27,6 @@ public:
 	virtual void retrieveParams();
 
 	/**
-	 * @brief      Apply current trigger param values to param server
-	 */
-	virtual void updateParams();
-
-	/**
 	 * @brief      Enables or disables the triggering.
 	 * 
 	 * @param[in]	enabled		True to enable triggering, false otherwise

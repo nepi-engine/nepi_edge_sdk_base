@@ -16,11 +16,6 @@ void TriggerInterface::retrieveParams()
 	trig_delay.retrieve();
 }
 
-void TriggerInterface::updateParams()
-{
-	// All params already updated via assignment operator
-}
-
 void TriggerInterface::setTrigMask(const std_msgs::UInt32::ConstPtr& trig_mask_val)
 {
 	trig_mask = trig_mask_val->data;

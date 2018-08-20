@@ -89,17 +89,6 @@ void NDNode::initSubscribers()
 	subscribers.push_back(n_priv.subscribe("set_filter", 3, &NDNode::setFilterHandler, this));
 }
 
-void NDNode::updateParams()
-{
-	// First, call the base class method
-	SDKNode::updateParams(); 
-
-	// All params are already updated via the assignment operator
-	
-	// Update trigger params, too
-	_trig_if->updateParams();	
-}
-
 void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 {
 	if (msg->data != _paused)
