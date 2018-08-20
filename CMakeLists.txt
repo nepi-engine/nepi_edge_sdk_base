@@ -61,7 +61,7 @@ add_message_files(
 add_service_files(
     FILES
     ConvertRawTstamp.srv
-    FactoryReset.srv
+    FileReset.srv
 )
 
 ## Generate actions in the 'action' folder

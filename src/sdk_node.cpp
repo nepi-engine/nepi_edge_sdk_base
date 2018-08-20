@@ -1,6 +1,6 @@
 
 #include "std_msgs/String.h"
-#include "num_sdk_base/FactoryReset.h"
+#include "num_sdk_base/FileReset.h"
 
 #include "sdk_node.h"
 
@@ -109,14 +109,25 @@ void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
 
 void SDKNode::userReset()
 {
-	// Just re-gather the params from the param server
-	retrieveParams();
+	ros::ServiceClient client = n.serviceClient<num_sdk_base::FileReset>("user_reset");
+	num_sdk_base::FileReset srv;
+	srv.request.node_name = name;
+	
+	if (false == client.call(srv) || false == srv.response.success)
+	{
+		ROS_ERROR("%s: User reset request failed", name.c_str());
+	}
+	else
+	{
+		// Regather params from the param server now that it's been updated by config mgr
+		retrieveParams();
+	}
 }
 
 void SDKNode::factoryReset()
 {
-	ros::ServiceClient client = n.serviceClient<num_sdk_base::FactoryReset>("factory_reset");
-	num_sdk_base::FactoryReset srv;
+	ros::ServiceClient client = n.serviceClient<num_sdk_base::FileReset>("factory_reset");
+	num_sdk_base::FileReset srv;
 	srv.request.node_name = name;
 	if (false == client.call(srv) || false == srv.response.success)
 	{

@@ -13,7 +13,7 @@ import os
 import errno
 
 from std_msgs.msg import String
-from num_sdk_base.srv import FactoryReset
+from num_sdk_base.srv import FileReset
 
 CFG_SUFFIX = '.yaml'
 FACTORY_SUFFIX = '.num_factory'
@@ -40,6 +40,25 @@ def symlink_force(target, link_name):
 			return False
 	return True
 
+def update_from_file(file_pathname, namespace):
+	try:
+		paramlist = rosparam.load_file(file_pathname, namespace, verbose=True)
+		for params, ns in paramlist:
+			rosparam.upload_params(ns, params, verbose=True)
+	except:
+		rospy.logerr("Unable to load factory parameters from file %s", file_pathname)
+		return [False]
+
+	return [True]
+
+def user_reset(req):
+	node_name = req.node_name
+	cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
+	namespace = BASE_NAMESPACE + node_name
+
+	# Now update the param server
+	return update_from_file(cfg_pathname, namespace)
+
 def factory_reset(req):
 	node_name = req.node_name
 	cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
@@ -51,15 +70,7 @@ def factory_reset(req):
 		return [False] # Error logged upstream
 
 	# Now update the param server
-	try:
-		paramlist = rosparam.load_file(cfg_pathname, namespace, verbose=True)
-		for params, ns in paramlist:
-			rosparam.upload_params(ns, params, verbose=True)
-	except:
-		rospy.logerr("Unable to load factory parameters from file %s", cfg_pathname)
-		return [False]
-
-	return [True]
+	return update_from_file(cfg_pathname, namespace)
 
 def store_params(node_name):
 	n = node_name.data
@@ -80,7 +91,8 @@ def config_mgr():
 	rospy.loginfo('Starting the config. mgr node')
 
 	rospy.Subscriber('store_params', String, store_params)
-	rospy.Service('factory_reset', FactoryReset, factory_reset)
+	rospy.Service('factory_reset', FileReset, factory_reset)
+	rospy.Service('user_reset', FileReset, user_reset)
 
 	rospy.spin()
 
