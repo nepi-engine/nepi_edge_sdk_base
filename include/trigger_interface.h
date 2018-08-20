@@ -2,10 +2,10 @@
 #define _TRIGGER_INTERFACE_H
 
 #include "std_msgs/UInt32.h"
+#include "sdk_node.h"
 
 namespace Numurus
 {
-
 /**
  * @brief      Abstract base (interface) class for nodes that can be triggered
  * 
@@ -15,28 +15,33 @@ namespace Numurus
 class TriggerInterface
 {
 public:
-	virtual ~TriggerInterface() = 0; // Must provide a virtual destructor for an abstract base class
+	TriggerInterface(SDKNode *parent);
+
+	virtual ~TriggerInterface(); 
 
 	/**
 	 * @brief      Retrieve all ROS params from the param server
 	 * 
 	 * @note       See SDKNode::retrieveParams().
 	 */
-	virtual void retrieveParams() = 0;
+	virtual void retrieveParams();
 
 	/**
 	 * @brief      Apply current trigger param values to param server
 	 */
-	virtual void updateParams() = 0;
+	virtual void updateParams();
 
 	/**
 	 * @brief      Enables or disables the triggering.
 	 * 
-	 * 			   Pure virtual because any reasonable implementation depends on 
-	 * 			   whether this TriggerInterface is FPGA-connected or not
+	 * @param[in]	enabled		True to enable triggering, false otherwise
 	 */
-	virtual void setTrigEnabled(bool enabled) = 0;
+	virtual inline void setTrigEnabled(bool enabled){trig_enabled = enabled;}
 protected:
+	bool trig_enabled;
+	SDKNode::NodeParam<int> trig_mask;
+	SDKNode::NodeParam<int> trig_delay;
+
 	/**
 	 * @brief      Sets the input trigger mask value.
 	 * 
@@ -46,7 +51,7 @@ protected:
 	 *
 	 * @param[in]  trig_mask_val  The trigger mask value to set
 	 */	
-	virtual void setTrigMask(const std_msgs::UInt32::ConstPtr& trig_mask_val) = 0;
+	virtual void setTrigMask(const std_msgs::UInt32::ConstPtr& trig_mask_val);
 
 	/**
 	 * @brief      Sets the input trigger delay value (in usecs).
@@ -55,7 +60,7 @@ protected:
 	 *
 	 * @param[in]  trig_delay_val_usecs  The trigger delay value to set
 	 */	
-	virtual void setTrigDelay(const std_msgs::UInt32::ConstPtr& trig_delay_val_usecs) = 0;
+	virtual void setTrigDelay(const std_msgs::UInt32::ConstPtr& trig_delay_val_usecs);
 
 };
 } // namespace Numurus
