@@ -9,10 +9,9 @@
 namespace Numurus
 {
 
-SDKNode::SDKNode(const std::string my_name, const std::string private_ns) :
-	n_priv{private_ns}, // Create a private namespace for this node 
-	name{my_name},
-	_display_name{"display_name", my_name, this} // Default to the fixed node name
+SDKNode::SDKNode() :
+	n_priv{"~"}, // Create a private namespace for this node 
+	_display_name{"display_name", ros::this_node::getName(), this} // Default to the fixed node name
 {}
 
 SDKNode::~SDKNode()
@@ -59,7 +58,7 @@ void SDKNode::initServices()
 
 void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
 {
-	ROS_DEBUG("%s: Initiating config save by request", name.c_str());
+	ROS_DEBUG("%s: Initiating config save by request", getName().c_str());
 	saveCfg();
 }
 
@@ -69,7 +68,7 @@ void SDKNode::saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg)
 	if (true == save_data_updated)
 	{
 		_save_cfg_rt = msg->data;
-		ROS_DEBUG("%s realtime configuration saving is now %s", name.c_str(), BOOL_TO_ENABLED(_save_cfg_rt));
+		ROS_DEBUG("%s realtime configuration saving is now %s", getName().c_str(), BOOL_TO_ENABLED(_save_cfg_rt));
 		
 		// If we're enabling RT saving, save the current configuration right now
 		if (true == _save_cfg_rt)
@@ -86,25 +85,25 @@ void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
 	switch (reset_type)
 	{
 	case num_sdk_base::Reset::USER_RESET:
-		ROS_INFO("%s: Executing user-level reset by request", name.c_str());
+		ROS_INFO("%s: Executing user-level reset by request", getName().c_str());
 		userReset();
 		break;
 	case num_sdk_base::Reset::FACTORY_RESET:
 	{
-		ROS_INFO("%s: Executing factory reset by request", name.c_str());
+		ROS_INFO("%s: Executing factory reset by request", getName().c_str());
 		factoryReset();
 	}	
 		break;
 	case num_sdk_base::Reset::SOFTWARE_RESET:
-		ROS_INFO("%s: Executing software reset by request", name.c_str());
+		ROS_INFO("%s: Executing software reset by request", getName().c_str());
 		softwareReset();
 		break;
 	// No implentation for HARDWARE_RESET in this base class
 	case num_sdk_base::Reset::HARDWARE_RESET:
-		ROS_INFO("%s: Executing hardware reset by request", name.c_str());
+		ROS_INFO("%s: Executing hardware reset by request", getName().c_str());
 		hardwareReset();
 	default:
-		ROS_WARN("%s: No available hardware reset. Request ignored", name.c_str());
+		ROS_WARN("%s: No available hardware reset. Request ignored", getName().c_str());
 		// TODO: 
 	}
 }
@@ -113,11 +112,11 @@ void SDKNode::userReset()
 {
 	ros::ServiceClient client = n.serviceClient<num_sdk_base::FileReset>("user_reset");
 	num_sdk_base::FileReset srv;
-	srv.request.node_name = name;
+	srv.request.node_name = getName();
 	
 	if (false == client.call(srv) || false == srv.response.success)
 	{
-		ROS_ERROR("%s: User reset request failed", name.c_str());
+		ROS_ERROR("%s: User reset request failed", getName().c_str());
 	}
 	else
 	{
@@ -130,10 +129,10 @@ void SDKNode::factoryReset()
 {
 	ros::ServiceClient client = n.serviceClient<num_sdk_base::FileReset>("factory_reset");
 	num_sdk_base::FileReset srv;
-	srv.request.node_name = name;
+	srv.request.node_name = getName();
 	if (false == client.call(srv) || false == srv.response.success)
 	{
-		ROS_ERROR("%s: Factory reset request failed", name.c_str());
+		ROS_ERROR("%s: Factory reset request failed", getName().c_str());
 	}
 	else
 	{
@@ -160,12 +159,12 @@ void SDKNode::hardwareReset()
 
 void SDKNode::saveCfg()
 {
-	ROS_INFO("%s: Saving current config", name.c_str());
+	ROS_INFO("%s: Saving current config", getName().c_str());
 
 	// Inform the config_mgr so it can store the file. We don't do this directly here
 	// because ROS has no C++ API for rosparam
 	std_msgs::String node_name;
-	node_name.data = name;
+	node_name.data = getName();
 	_store_params_pub.publish(node_name);
 }
 

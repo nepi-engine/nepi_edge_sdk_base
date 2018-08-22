@@ -56,12 +56,12 @@ public:
 	{
 		if (true == _parent->n_priv.getParam(_param_name, _param_data))
 		{
-			ROS_INFO("%s: Updating %s from param server", _parent->name.c_str(), _param_name.c_str());
+			ROS_INFO("%s: Updating %s from param server", _parent->getName().c_str(), _param_name.c_str());
 			return true;
 		}
 		else
 		{
-			ROS_WARN("%s: unable to init %s from param server, using existing val instead", _parent->name.c_str(), _param_name.c_str());
+			ROS_WARN("%s: unable to init %s from param server, using existing val instead", _parent->getName().c_str(), _param_name.c_str());
 			// And attempt write it back so that the config file has something for next time
 			_parent->n_priv.setParam(_param_name, _param_data);
 		}
@@ -82,7 +82,7 @@ public:
 		if (true == _parent->_save_cfg_rt)
 		{
 			std_msgs::String node_name;
-			node_name.data = _parent->name;
+			node_name.data = _parent->getName();
 			_parent->_store_params_pub.publish(node_name);
 		}
 		return *this;
@@ -97,10 +97,8 @@ private:
 	/**
 	 * @brief      Constructs the object.
 	 *
-	 * @param[in]  name  The name of the node - namespace separation is handled automatically through launch files and class internals, so no namespace prefix should be provided
-	 * @param[in]  private_ns  The private namespace for this node. Defaults to the nodename (via ROS '~' designator) 
 	 */
-	SDKNode(const std::string name, const std::string private_ns="~");
+	SDKNode();
 	~SDKNode();
 
 	/**
@@ -117,7 +115,7 @@ private:
 	 *
 	 * @return     The name.
 	 */
-	inline const std::string& getName() const {return name;}
+	inline const std::string& getName() const {return ros::this_node::getName();}
 
 protected:
 	/**
@@ -131,11 +129,6 @@ protected:
 	 * use this node handle.
 	 */
 	ros::NodeHandle n_priv; 
-
-	/**
-	 * Name of the node
-	 */
-	const std::string name;
 
 	/**
 	 * Display name of the node. Could be modified by users (though no interface to do so for this generic base class)

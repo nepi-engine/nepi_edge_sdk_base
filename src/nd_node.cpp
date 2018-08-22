@@ -8,7 +8,6 @@ namespace Numurus
 {
 
 NDNode::NDNode(const std::string name):
-	SDKNode{name},
 	_simulated_data{"simulated_data", false, this},
 	_save_continuous{"save_data_continuous", false, this},
 	_save_raw{"save_data_raw", false, this},
@@ -96,9 +95,9 @@ void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 		}
 		else
 		{
-			ROS_ERROR("%s: The TriggerInterface was not properly initialized", name.c_str());
+			ROS_ERROR("%s: The TriggerInterface was not properly initialized", getName().c_str());
 		}
-		ROS_DEBUG("%s pause settings updated (pause=%s)", name.c_str(), BOOL_TO_ENABLED(_paused));
+		ROS_DEBUG("%s pause settings updated (pause=%s)", getName().c_str(), BOOL_TO_ENABLED(_paused));
 		publishStatus();
 	}
 }
@@ -112,7 +111,7 @@ void NDNode::saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg)
 		_save_continuous = msg->save_continuous;
 		_save_raw = msg->save_raw;
 
-		ROS_DEBUG("%s data save settings updated to (save_continuous=%s, save_raw=%s)", name.c_str(),
+		ROS_DEBUG("%s data save settings updated to (save_continuous=%s, save_raw=%s)", getName().c_str(),
 				  BOOL_TO_ENABLED(_save_continuous), BOOL_TO_ENABLED(_save_raw));
 		publishStatus();
 	}
@@ -124,7 +123,7 @@ void NDNode::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
 	if (true == simulated_data_updated)
 	{
 		_simulated_data = msg->data;
-		ROS_DEBUG("%s:  simulation mode is now %s", name.c_str(), BOOL_TO_ENABLED(_simulated_data));
+		ROS_DEBUG("%s:  simulation mode is now %s", getName().c_str(), BOOL_TO_ENABLED(_simulated_data));
 		publishStatus();
 	}
 }
@@ -138,7 +137,7 @@ void NDNode::setRangeHandler(const num_sdk_base::NDRange::ConstPtr &msg)
 		msg->max_range > 1.0f || 
 		msg->min_range > msg->max_range)
 	{
-		ROS_ERROR("%s received invalid range settings (%.3f,%.3f)", name.c_str(), msg->min_range, msg->max_range);
+		ROS_ERROR("%s received invalid range settings (%.3f,%.3f)", getName().c_str(), msg->min_range, msg->max_range);
 		return;
 	}
 
@@ -148,7 +147,7 @@ void NDNode::setRangeHandler(const num_sdk_base::NDRange::ConstPtr &msg)
 	{
 		_min_range = msg->min_range;
 		_max_range = msg->max_range;
-		ROS_DEBUG("%s updated range to (%.3f,%.3f)", name.c_str(), msg->min_range, msg->max_range);
+		ROS_DEBUG("%s updated range to (%.3f,%.3f)", getName().c_str(), msg->min_range, msg->max_range);
 		publishStatus();
 	}
 }
@@ -160,7 +159,7 @@ void NDNode::setAngleHandler(const num_sdk_base::NDAngle::ConstPtr &msg)
 		msg->total_angle < 0.0f  ||
 		msg->angle_offset + msg->total_angle > 1.0)
 	{
-		ROS_ERROR("%s received invalid angle settings (%.3f,%.3f)", name.c_str(), msg->angle_offset, msg->total_angle);
+		ROS_ERROR("%s received invalid angle settings (%.3f,%.3f)", getName().c_str(), msg->angle_offset, msg->total_angle);
 		return;
 	}
 	*/
@@ -170,7 +169,7 @@ void NDNode::setAngleHandler(const num_sdk_base::NDAngle::ConstPtr &msg)
 	{
 		_angle_offset = msg->angle_offset;
 		_total_angle = msg->total_angle;
-		ROS_DEBUG("%s updated angle to (%.3f,%.3f)", name.c_str(), msg->angle_offset, msg->total_angle);
+		ROS_DEBUG("%s updated angle to (%.3f,%.3f)", getName().c_str(), msg->angle_offset, msg->total_angle);
 		publishStatus();
 	}
 }
@@ -184,7 +183,7 @@ void NDNode::setResolutionHandler(const num_sdk_base::NDAutoManualSelection::Con
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
-		ROS_ERROR("%s received invalid resolution settings (adjustment = %.3f)", name.c_str(), msg->adjustment);
+		ROS_ERROR("%s received invalid resolution settings (adjustment = %.3f)", getName().c_str(), msg->adjustment);
 		return;
 	}
 
@@ -193,7 +192,7 @@ void NDNode::setResolutionHandler(const num_sdk_base::NDAutoManualSelection::Con
 	{
 		_manual_resolution_enabled = msg->enabled;
 		_manual_resolution = msg->adjustment;
-		ROS_DEBUG("%s updated resolution to %s:%.3f", name.c_str(), 
+		ROS_DEBUG("%s updated resolution to %s:%.3f", getName().c_str(), 
 			(_manual_resolution_enabled)? "manual":"auto", 
 			(_manual_resolution_enabled)? _manual_resolution : 0.0f);
 		publishStatus();
@@ -204,7 +203,7 @@ void NDNode::setGainHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr 
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
-		ROS_ERROR("%s received invalid gain settings (adjustment = %.3f)", name.c_str(), msg->adjustment);
+		ROS_ERROR("%s received invalid gain settings (adjustment = %.3f)", getName().c_str(), msg->adjustment);
 		return;
 	}
 
@@ -213,7 +212,7 @@ void NDNode::setGainHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr 
 	{
 		_gain_enabled = msg->enabled;
 		_gain = msg->adjustment;
-		ROS_DEBUG("%s updated gain to %s:%.3f", name.c_str(), 
+		ROS_DEBUG("%s updated gain to %s:%.3f", getName().c_str(), 
 			(_gain_enabled)? "enabled":"disabled", 
 			(_gain_enabled)? _gain : 0.0f);
 		publishStatus();
@@ -224,7 +223,7 @@ void NDNode::setFilterHandler(const num_sdk_base::NDAutoManualSelection::ConstPt
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
-		ROS_ERROR("%s received invalid filter settings (adjustment = %.3f)", name.c_str(), msg->adjustment);
+		ROS_ERROR("%s received invalid filter settings (adjustment = %.3f)", getName().c_str(), msg->adjustment);
 		return;
 	}
 
@@ -233,7 +232,7 @@ void NDNode::setFilterHandler(const num_sdk_base::NDAutoManualSelection::ConstPt
 	{
 		_filter_enabled = msg->enabled;
 		_filter_control = msg->adjustment;
-		ROS_DEBUG("%s updated filter settings to %s:%.3f", name.c_str(), 
+		ROS_DEBUG("%s updated filter settings to %s:%.3f", getName().c_str(), 
 			(_filter_enabled)? "enabled":"disabled", 
 			(_filter_enabled)? _filter_control : 0.0f);
 		publishStatus();
