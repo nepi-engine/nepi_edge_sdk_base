@@ -36,12 +36,8 @@ public:
 	 * @brief      Constructor
 	 *
 	 * @param[in]  sensor_name  The node name (as factory-set, not readily configurable)
-	 * @param[in]  dev_type     The device time (as factory-set, not readily configurable)
-	 * @param[in]  serial_num   The serial number (as factory-set, not readily configurable)
-	 * @param[in]  sensor_type  The sensor type (as factory-set, not readily configurable)
 	 */
-	NDNode( const std::string sensor_name, const std::string dev_type, 
-			const std::string serial_num, const std::string sensor_type);
+	NDNode(const std::string sensor_name);
 
 protected:
 	TriggerInterface *_trig_if = nullptr;
@@ -88,9 +84,6 @@ private:
 	SDKNode::NodeParam<bool> _filter_enabled;
 	SDKNode::NodeParam<float> _filter_control;
 
-	const std::string _device_type;
-	const std::string _serial_num;
-	const std::string _sensor_type;
 	std::string _save_data_dir = "/var/volatile";
 
 	ros::Publisher _status_pub;

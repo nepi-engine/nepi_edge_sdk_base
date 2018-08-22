@@ -98,8 +98,9 @@ private:
 	 * @brief      Constructs the object.
 	 *
 	 * @param[in]  name  The name of the node - namespace separation is handled automatically through launch files and class internals, so no namespace prefix should be provided
+	 * @param[in]  private_ns  The private namespace for this node. Defaults to the nodename (via ROS '~' designator) 
 	 */
-	SDKNode(const std::string name);
+	SDKNode(const std::string name, const std::string private_ns="~");
 	~SDKNode();
 
 	/**

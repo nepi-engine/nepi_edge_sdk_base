@@ -9,8 +9,8 @@
 namespace Numurus
 {
 
-SDKNode::SDKNode(const std::string my_name) :
-	n_priv{"~"}, // Create a private namespace for this node 
+SDKNode::SDKNode(const std::string my_name, const std::string private_ns) :
+	n_priv{private_ns}, // Create a private namespace for this node 
 	name{my_name},
 	_display_name{"display_name", my_name, this} // Default to the fixed node name
 {}

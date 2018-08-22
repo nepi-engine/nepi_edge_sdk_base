@@ -3,8 +3,11 @@
 	<!-- TODO: Do we want to launch the Jetson this way, or as a stand-alone - this way at least ensures that roscore is running -->
 	<!-- machine name="num-sb1-jetson" address="num-sb1-jetson" env-loader="/opt/numurus/ros/setup.bash" user="nvidia" -->
 	
-	<!-- Everything lives in the "numurus" namespace -->
-	<group ns="numurus">
+	<arg name="global_ns" value="$(env ROOTNAME)" />
+	<arg name="device_ns" value="$(env ROOTNAME)/$(env DEVICE_TYPE)/$(env DEVICE_SN)" />
+
+	<!-- Everything lives in the device namespace -->
+	<group ns="$(arg device_ns)">
 		<!-- Load the base config file -->
 		<rosparam command="load" file="/opt/numurus/ros/etc/sb1.yaml" />
 

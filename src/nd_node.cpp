@@ -7,8 +7,7 @@
 namespace Numurus
 {
 
-NDNode::NDNode(const std::string name, const std::string dev_type, 
-			   const std::string serial_num, const std::string sensor_type):
+NDNode::NDNode(const std::string name):
 	SDKNode{name},
 	_simulated_data{"simulated_data", false, this},
 	_save_continuous{"save_data_continuous", false, this},
@@ -22,10 +21,7 @@ NDNode::NDNode(const std::string name, const std::string dev_type,
 	_gain_enabled{"gain_enabled", true, this},
 	_gain{"gain", 1.0f, this},
 	_filter_enabled{"filter_enabled", true, this},
-	_filter_control{"filter_control", 1.0f, this},
-	_device_type{dev_type},
-	_serial_num{serial_num},
-	_sensor_type{sensor_type}
+	_filter_control{"filter_control", 1.0f, this}
 {}
 
 void NDNode::initPublishers()
