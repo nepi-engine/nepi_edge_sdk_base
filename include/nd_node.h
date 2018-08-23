@@ -5,6 +5,7 @@
 
 #include "std_msgs/Bool.h"
 #include "std_msgs/Empty.h"
+#include "image_transport/image_transport.h"
 
 #include "sdk_node.h"
 
@@ -41,6 +42,11 @@ public:
 protected:
 	TriggerInterface *_trig_if = nullptr;
 	std::string sensor_type = "null_sensor_type";
+	image_transport::ImageTransport img_trans;
+	// TODO: Should these be image_transport::CameraPublisher instances instead?
+	image_transport::Publisher img_0_pub;
+	image_transport::Publisher img_1_pub;
+	image_transport::Publisher img_alt_pub;
 	
 	// Inherited from SDKNode
 	virtual void initPublishers() override;

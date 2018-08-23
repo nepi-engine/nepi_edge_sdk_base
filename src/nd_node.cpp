@@ -8,6 +8,7 @@ namespace Numurus
 {
 
 NDNode::NDNode():
+	img_trans{n_priv}, // Image topics are published in the node-specific namespace
 	_simulated_data{"simulated_data", false, this},
 	_save_continuous{"save_data_continuous", false, this},
 	_save_raw{"save_data_raw", false, this},
@@ -36,6 +37,10 @@ void NDNode::initPublishers()
 {
 	// Call the base method
 	SDKNode::initPublishers();
+
+	img_0_pub = img_trans.advertise("img_0", 1);
+	img_1_pub = img_trans.advertise("img_1", 1);
+	img_alt_pub = img_trans.advertise("img_alt", 1);
 
 	// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
