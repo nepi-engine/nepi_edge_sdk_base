@@ -21,8 +21,6 @@ USER_SUFFIX = '.user'
 
 CFG_PATH = '/opt/numurus/ros/etc/'
 
-BASE_NAMESPACE = '/numurus/'
-
 pending_nodes = {}
 
 # Moving symlinks is typically faster and more robust than copying files, so to reduce the 
@@ -40,6 +38,9 @@ def symlink_force(target, link_name):
 			return False
 	return True
 
+def separate_node_name_in_msg(qualified_node_name):
+	return [qualified_node_name, qualified_node_name.split("/")[-1]]
+
 def update_from_file(file_pathname, namespace):
 	try:
 		paramlist = rosparam.load_file(file_pathname, namespace, verbose=True)
@@ -52,34 +53,31 @@ def update_from_file(file_pathname, namespace):
 	return [True]
 
 def user_reset(req):
-	node_name = req.node_name
+	qualified_node_name, node_name = separate_node_name_in_msg(req.node_name)
 	cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
-	namespace = BASE_NAMESPACE + node_name
-
+	
 	# Now update the param server
-	return update_from_file(cfg_pathname, namespace)
+	return update_from_file(cfg_pathname, qualified_node_name)
 
 def factory_reset(req):
-	node_name = req.node_name
+	qualified_node_name, node_name = separate_node_name_in_msg(req.node_name)
 	cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
 	factory_cfg_pathname = cfg_pathname + FACTORY_SUFFIX
-	namespace = BASE_NAMESPACE + node_name
-
+	
 	# First, move the symlink
 	if False == symlink_force(factory_cfg_pathname, cfg_pathname):
 		return [False] # Error logged upstream
 
 	# Now update the param server
-	return update_from_file(cfg_pathname, namespace)
+	return update_from_file(cfg_pathname, qualified_node_name)
 
-def store_params(node_name):
-	n = node_name.data
-	cfg_pathname = CFG_PATH + n + CFG_SUFFIX
+def store_params(msg):
+	qualified_node_name, node_name = separate_node_name_in_msg(msg.data)
+	cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
 	user_cfg_pathname = cfg_pathname + USER_SUFFIX
 
 	# First, write to the user file
-	namespace = BASE_NAMESPACE + n
-	rosparam.dump_params(user_cfg_pathname, namespace)
+	rosparam.dump_params(user_cfg_pathname, qualified_node_name)
 
 	# Now, ensure the link points to the correct file
 	if (False == symlink_force(user_cfg_pathname, cfg_pathname)):
