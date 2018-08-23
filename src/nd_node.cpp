@@ -7,7 +7,7 @@
 namespace Numurus
 {
 
-NDNode::NDNode(const std::string name):
+NDNode::NDNode():
 	_simulated_data{"simulated_data", false, this},
 	_save_continuous{"save_data_continuous", false, this},
 	_save_raw{"save_data_raw", false, this},
@@ -21,7 +21,16 @@ NDNode::NDNode(const std::string name):
 	_gain{"gain", 1.0f, this},
 	_filter_enabled{"filter_enabled", true, this},
 	_filter_control{"filter_control", 1.0f, this}
-{}
+{
+	std::vector<std::string> ns_tokens = splitNamespace();
+	if (ns_tokens.size() < 6)
+	{
+		ROS_ERROR("Invalid namespace (%s) for %s", ros::this_node::getNamespace().c_str(), getName().c_str());
+		return;
+	}
+	// Trial and error dictates the token index used here - not sure what the first two (blank) tokens represent
+	sensor_type = ns_tokens[5];
+}
 
 void NDNode::initPublishers()
 {

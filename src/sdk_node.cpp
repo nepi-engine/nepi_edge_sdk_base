@@ -1,3 +1,5 @@
+#include <vector>
+#include <boost/algorithm/string.hpp>
 
 #include "std_msgs/String.h"
 #include "num_sdk_base/FileReset.h"
@@ -8,11 +10,34 @@
 
 namespace Numurus
 {
+static std::string extractDeviceNamespace()
+{
+	std::vector<std::string> ns_tokens = SDKNode::splitNamespace();
+	if (ns_tokens.size() < 5)
+	{
+		ROS_ERROR("Invalid namespace (%s) for %s", ros::this_node::getNamespace().c_str(), ros::this_node::getName().c_str());
+		return "";		
+	}
+	// Trial and error determined these token indices
+	const std::string global_ns = "/" + ns_tokens[2] + "/" + ns_tokens[3] + "/" + ns_tokens[4];	
+	return global_ns;
+}
 
 SDKNode::SDKNode() :
-	n_priv{"~"}, // Create a private namespace for this node 
+	n{extractDeviceNamespace()},
+	n_priv{"~"}, // Create a private namespace for this node - just use the fully qualified node name
 	_display_name{"display_name", ros::this_node::getName(), this} // Default to the fixed node name
-{}
+{
+	std::vector<std::string> ns_tokens = splitNamespace();
+	if (ns_tokens.size() < 5)
+	{
+		ROS_ERROR("Invalid namespace (%s) for %s", ros::this_node::getNamespace().c_str(), getName().c_str());
+		return;
+	}
+	// Trial and error determined these token indices - not sure why the first two tokens are blank strings
+	device_type = ns_tokens[3];
+	device_sn = ns_tokens[4];
+}
 
 SDKNode::~SDKNode()
 {}
@@ -21,6 +46,16 @@ void SDKNode::run()
 {
 	init();
 	ros::spin();
+}
+
+std::vector<std::string> SDKNode::splitNamespace()
+{
+	const std::string ns_string = ros::this_node::getNamespace();
+	std::vector<std::string> tokens;
+
+	// Use a lambda function to provide the delimiter identifier
+	boost::split(tokens, ns_string, [](char c){return c == '/';});
+	return tokens;
 }
 
 void SDKNode::initPublishers()

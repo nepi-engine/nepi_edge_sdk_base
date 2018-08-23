@@ -117,6 +117,8 @@ private:
 	 */
 	inline const std::string& getName() const {return ros::this_node::getName();}
 
+	static std::vector<std::string> splitNamespace();
+
 protected:
 	/**
 	 * The public namespace node handle. This is used for any ROS primitives that should resolve into the top-level namespace for this node. In particular, subscribing to
@@ -146,6 +148,9 @@ protected:
 	 * These handles must have a lifetime as long as the NodeHandle, so are best appropriated to a member variable container
 	 */
 	std::vector<ros::Subscriber> subscribers;
+
+	std::string device_type = "null_dev_type";
+	std::string device_sn = "null_dev_sn";
 
 	/**
 	 * @brief      Advertise topics to be published

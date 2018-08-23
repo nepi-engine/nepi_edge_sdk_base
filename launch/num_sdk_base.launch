@@ -23,7 +23,10 @@
 		<rosparam command="load" file="/opt/numurus/ros/etc/time_sync_mgr.yaml" ns="time_sync_mgr" />
 		<node name="time_sync_mgr" pkg="num_sdk_zynq" type="time_sync_mgr.py" respawn="true" output="log" />
 
-		<rosparam command="load" file="/opt/numurus/ros/etc/test_pat_generator.yaml" ns="test_pat_generator" />
-		<node name="test_pat_generator" pkg="num_sdk_zynq" type="test_pat_generator_node" respawn="true" output="log" />
+		<!-- ND Nodes. Must provide a sensor_type as part of the namespace -->
+		<group ns="nd_sim_device">
+			<rosparam command="load" file="/opt/numurus/ros/etc/test_pat_generator.yaml" ns="test_pat_generator" />
+			<node name="test_pat_generator" pkg="num_sdk_zynq" type="test_pat_generator_node" respawn="true" output="log" />
+		</group>
 	</group>
 </launch>

@@ -35,12 +35,12 @@ public:
 	/**
 	 * @brief      Constructor
 	 *
-	 * @param[in]  sensor_name  The node name (as factory-set, not readily configurable)
 	 */
-	NDNode(const std::string sensor_name);
+	NDNode();
 
 protected:
 	TriggerInterface *_trig_if = nullptr;
+	std::string sensor_type = "null_sensor_type";
 	
 	// Inherited from SDKNode
 	virtual void initPublishers() override;
