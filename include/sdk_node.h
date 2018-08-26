@@ -82,7 +82,7 @@ public:
 		if (true == _parent->_save_cfg_rt)
 		{
 			std_msgs::String node_name;
-			node_name.data = _parent->getName();
+			node_name.data = _parent->getQualifiedName();
 			_parent->_store_params_pub.publish(node_name);
 		}
 		return *this;
@@ -111,12 +111,24 @@ private:
 	virtual void run();
 	
 	/**
-	 * @brief      Get the name of the SDK Node.
+	 * @brief      Get the name of the SDK Node including fully qualified namespace.
 	 *
-	 * @return     The name.
+	 * @return     The fully qualifed (i.e., namespaced) name.
 	 */
-	inline const std::string& getName() const {return ros::this_node::getName();}
+	inline const std::string& getQualifiedName() const {return ros::this_node::getName();}
 
+	/**
+	 * @brief      Returns the node name as determined at SDKNode constructor time
+	 *
+	 * @return     The simple name (no namespace).
+	 */
+	inline const std::string getName() const {return _node_name;}
+	
+	/**
+	 * @brief      Splits a fully qualified node name into the namespace tokens
+	 *
+	 * @return     std::vector of namespace tokens. The node name is the last token in the list
+	 */
 	static std::vector<std::string> splitNamespace();
 
 protected:
@@ -256,6 +268,7 @@ protected:
 private:
 	ros::Publisher _store_params_pub;
 	bool _save_cfg_rt = false;
+	std::string _node_name;
 	
 	/**
 	 * @brief      Initialize the node

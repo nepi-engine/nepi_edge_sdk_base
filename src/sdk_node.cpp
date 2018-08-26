@@ -23,13 +23,22 @@ static std::string extractDeviceNamespace()
 	return global_ns;
 }
 
+static std::string extractNodeName()
+{
+	std::vector<std::string> ns_tokens = SDKNode::splitNamespace();
+	const size_t token_count = ns_tokens.size();
+	return ns_tokens[token_count - 1];
+}
+
 SDKNode::SDKNode() :
 	n{extractDeviceNamespace()},
 	n_priv{"~"}, // Create a private namespace for this node - just use the fully qualified node name
-	_display_name{"display_name", ros::this_node::getName(), this} // Default to the fixed node name
+	_display_name{"display_name", extractNodeName(), this}, // Default to the fixed node name
+	_node_name{extractNodeName()}
 {
 	std::vector<std::string> ns_tokens = splitNamespace();
-	if (ns_tokens.size() < 5)
+	const size_t token_count = ns_tokens.size();
+	if (token_count < 5)
 	{
 		ROS_ERROR("Invalid namespace (%s) for %s", ros::this_node::getNamespace().c_str(), getName().c_str());
 		return;
@@ -37,6 +46,8 @@ SDKNode::SDKNode() :
 	// Trial and error determined these token indices - not sure why the first two tokens are blank strings
 	device_type = ns_tokens[3];
 	device_sn = ns_tokens[4];
+	
+	_node_name = extractNodeName();	
 }
 
 SDKNode::~SDKNode()
@@ -50,7 +61,7 @@ void SDKNode::run()
 
 std::vector<std::string> SDKNode::splitNamespace()
 {
-	const std::string ns_string = ros::this_node::getNamespace();
+	const std::string ns_string = ros::this_node::getName();
 	std::vector<std::string> tokens;
 
 	// Use a lambda function to provide the delimiter identifier
@@ -199,7 +210,7 @@ void SDKNode::saveCfg()
 	// Inform the config_mgr so it can store the file. We don't do this directly here
 	// because ROS has no C++ API for rosparam
 	std_msgs::String node_name;
-	node_name.data = getName();
+	node_name.data = getQualifiedName();
 	_store_params_pub.publish(node_name);
 }
 
