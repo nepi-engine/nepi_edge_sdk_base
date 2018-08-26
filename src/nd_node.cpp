@@ -1,3 +1,5 @@
+#include "opencv2/highgui.hpp"
+#include "cv_bridge/cv_bridge.h"
 
 #include "nd_node.h"
 #include "trigger_interface.h"
@@ -6,6 +8,15 @@
 
 namespace Numurus
 {
+
+static void loadSimData(std::string filename, cv::Mat *out_mat)
+{
+	*out_mat = cv::imread(filename);
+	if (NULL == out_mat->data)
+	{
+		ROS_ERROR("Unable to load sim data from file %s", filename.c_str());
+	}
+}
 
 NDNode::NDNode():
 	img_trans{n_priv}, // Image topics are published in the node-specific namespace
@@ -31,6 +42,18 @@ NDNode::NDNode():
 	}
 	// Trial and error dictates the token index used here - not sure what the first two (blank) tokens represent
 	sensor_type = ns_tokens[5];
+
+	// Load the sim mode files
+	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getName() + "/sim_img_";
+	
+	const std::string IMG_0_SIM_FILENAME = SIM_IMG_BASENAME + "0.jpg";
+	loadSimData(IMG_0_SIM_FILENAME, &img_0_sim_data);
+
+	const std::string IMG_1_SIM_FILENAME = SIM_IMG_BASENAME + "1.jpg";
+	loadSimData(IMG_1_SIM_FILENAME, &img_1_sim_data);
+
+	const std::string IMG_ALT_SIM_FILENAME = SIM_IMG_BASENAME + "alt.jpg";
+	loadSimData(IMG_ALT_SIM_FILENAME, &img_alt_sim_data);
 }
 
 void NDNode::initPublishers()
@@ -66,6 +89,8 @@ void NDNode::retrieveParams()
 	_gain.retrieve();
 	_filter_enabled.retrieve();
 	_filter_control.retrieve();
+
+	// Image transport parameters are ROS "dynamic_params", so don't need to be retrieved manually
 
 	// Make sure to retrieve trigger params, too
 	_trig_if->retrieveParams();
@@ -251,6 +276,44 @@ void NDNode::setFilterHandler(const num_sdk_base::NDAutoManualSelection::ConstPt
 			(_filter_enabled)? _filter_control : 0.0f);
 		publishStatus();
 	}
+}
+
+void NDNode::publishImage(IMG_ID id, cv::Mat *img, ros::Time *tstamp, const std::string encoding)
+{
+	static uint32_t seq_ctr = 0;
+	static const std::string frame_id = getName() + "_frame";
+	
+	// Build the header
+	std_msgs::Header hdr;
+	hdr.seq = seq_ctr;
+	hdr.stamp = *tstamp;
+	hdr.frame_id = frame_id;
+
+	image_transport::Publisher *publisher = nullptr;
+	cv::Mat *img_out = nullptr;
+	// Choose an appropriate publisher and output image based on id and _simulated_data
+	switch (id)
+	{
+	case IMG_0:
+		publisher = &img_0_pub;
+		img_out = (true == _simulated_data)? &img_0_sim_data : img;
+		break;
+	case IMG_1:
+		publisher = &img_1_pub;
+		img_out = (true == _simulated_data)? &img_1_sim_data : img;
+		break;
+	case IMG_ALT:
+		publisher = &img_alt_pub;
+		img_out = (true == _simulated_data)? &img_alt_sim_data : img;
+		break;
+	default:
+		ROS_ERROR("%s: Request to publish unknown image id (%d)", getName().c_str(), id);
+		return; // Don't increment sequence counter
+	}
+
+	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(hdr, encoding, *img_out).toImageMsg();
+	publisher->publish(msg);
+	++seq_ctr;
 }
 
 void NDNode::publishStatus()

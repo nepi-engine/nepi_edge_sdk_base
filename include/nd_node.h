@@ -6,6 +6,7 @@
 #include "std_msgs/Bool.h"
 #include "std_msgs/Empty.h"
 #include "image_transport/image_transport.h"
+#include "opencv2/core/mat.hpp"
 
 #include "sdk_node.h"
 
@@ -39,6 +40,13 @@ public:
 	 */
 	NDNode();
 
+	enum IMG_ID
+	{
+		IMG_0,
+		IMG_1,
+		IMG_ALT
+	};
+
 protected:
 	TriggerInterface *_trig_if = nullptr;
 	std::string sensor_type = "null_sensor_type";
@@ -47,6 +55,10 @@ protected:
 	image_transport::Publisher img_0_pub;
 	image_transport::Publisher img_1_pub;
 	image_transport::Publisher img_alt_pub;
+
+	cv::Mat img_0_sim_data;
+	cv::Mat img_1_sim_data;
+	cv::Mat img_alt_sim_data;
 	
 	// Inherited from SDKNode
 	virtual void initPublishers() override;
@@ -67,6 +79,8 @@ protected:
 	virtual void setResolutionHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg);
 	virtual void setGainHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg);
 	virtual void setFilterHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg);
+
+	void publishImage(IMG_ID id, cv::Mat *img, ros::Time *tstamp, const std::string encoding = "bgr8");
 
 private:
 	bool _paused = false;

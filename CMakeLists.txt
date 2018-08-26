@@ -8,7 +8,11 @@ add_compile_options(-Wall)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs message_generation sensor_msgs image_transport)
+## Note that using COMPONENTS here ensures that the package environment variables
+## are combined into the generic corresponding catkin_<ENV_VARIABLE> stuff, so, for example
+## we don't need to explicitly link OpenCV_LIBRARIES, instead just link to catkin_LIBRARIES and
+## get OpenCV for free (same holds for catkin_INCLUDE_DIRS, etc.)
+find_package(catkin REQUIRED COMPONENTS roscpp std_msgs message_generation sensor_msgs image_transport cv_bridge OpenCV)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
