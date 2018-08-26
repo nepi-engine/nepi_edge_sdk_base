@@ -102,6 +102,11 @@ void SDKNode::initServices()
 	// No services - just a placeholder for subclasses
 }
 
+void SDKNode::initServiceClients()
+{
+	// No clients - just a placeholder for subclasses
+}
+
 void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
 {
 	ROS_DEBUG("%s: Initiating config save by request", getName().c_str());
@@ -210,7 +215,7 @@ void SDKNode::saveCfg()
 	// Inform the config_mgr so it can store the file. We don't do this directly here
 	// because ROS has no C++ API for rosparam
 	std_msgs::String node_name;
-	node_name.data = getQualifiedName();
+	node_name.data = getQualifiedName(); // config_mgr expects a fully namespaced name
 	_store_params_pub.publish(node_name);
 }
 
@@ -221,6 +226,7 @@ void SDKNode::init()
 	retrieveParams();
 	initSubscribers();
 	initServices();
+	initServiceClients();
 }
 
 } // namespace Numurus

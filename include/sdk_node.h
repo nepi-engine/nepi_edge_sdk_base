@@ -201,6 +201,8 @@ protected:
 	 */
 	virtual void initServices();
 
+	virtual void initServiceClients();
+
 	/**
 	 * @brief      Handle a request to save the current ROS configuration
 	 *
