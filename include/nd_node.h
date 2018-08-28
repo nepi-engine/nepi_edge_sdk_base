@@ -48,8 +48,8 @@ public:
 	};
 
 protected:
+	static constexpr auto SENSOR_TYPE_INDEX = 4;
 	TriggerInterface *_trig_if = nullptr;
-	std::string sensor_type = "null_sensor_type";
 	image_transport::ImageTransport img_trans;
 	// TODO: Should these be image_transport::CameraPublisher instances instead?
 	image_transport::Publisher img_0_pub;
@@ -61,6 +61,7 @@ protected:
 	cv::Mat img_alt_sim_data;
 	
 	// Inherited from SDKNode
+	virtual inline bool validateNamespace() override {return ns_tokens.size() > 4;}
 	virtual void initPublishers() override;
 	virtual void retrieveParams() override;
 	virtual void initSubscribers() override;

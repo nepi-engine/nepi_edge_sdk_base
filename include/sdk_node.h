@@ -22,6 +22,7 @@ namespace Numurus
 class SDKNode
 {
 public:
+
 /**
  * @brief      Class to represent node parameters
  *
@@ -93,7 +94,6 @@ private:
 	T _param_data;
 	const SDKNode *_parent;
 }; // class NodeParam
-
 	/**
 	 * @brief      Constructs the object.
 	 *
@@ -115,23 +115,22 @@ private:
 	 *
 	 * @return     The fully qualifed (i.e., namespaced) name.
 	 */
-	inline const std::string& getQualifiedName() const {return ros::this_node::getName();}
+	inline const std::string getQualifiedName() const {return ros::this_node::getName();}
 
 	/**
 	 * @brief      Returns the node name as determined at SDKNode constructor time
 	 *
 	 * @return     The simple name (no namespace).
 	 */
-	inline const std::string getName() const {return _node_name;}
+	inline const std::string getName() const {return ns_tokens[NODE_NAME_INDEX];}
 	
-	/**
-	 * @brief      Splits a fully qualified node name into the namespace tokens
-	 *
-	 * @return     std::vector of namespace tokens. The node name is the last token in the list
-	 */
-	static std::vector<std::string> splitNamespace();
-
 protected:
+	const std::vector<std::string> ns_tokens;
+	static constexpr auto ROOTNAME_INDEX = 1;
+	static constexpr auto DEV_TYPE_INDEX = 2;
+	static constexpr auto DEV_SN_INDEX = 3;
+	const uint32_t NODE_NAME_INDEX; // Will be the last token, whichever that one is
+
 	/**
 	 * The public namespace node handle. This is used for any ROS primitives that should resolve into the top-level namespace for this node. In particular, subscribing to
 	 * general topics and services occurs through this node handle.
@@ -161,8 +160,12 @@ protected:
 	 */
 	std::vector<ros::Subscriber> subscribers;
 
-	std::string device_type = "null_dev_type";
-	std::string device_sn = "null_dev_sn";
+	/**
+	 * @brief      Determine whether the namespace is valid
+	 *
+	 * @return     True if valid, false otherwise
+	 */
+	virtual inline bool validateNamespace(){return ns_tokens.size() > 3;}
 
 	/**
 	 * @brief      Advertise topics to be published
@@ -270,8 +273,7 @@ protected:
 private:
 	ros::Publisher _store_params_pub;
 	bool _save_cfg_rt = false;
-	std::string _node_name;
-	
+		
 	/**
 	 * @brief      Initialize the node
 	 * 

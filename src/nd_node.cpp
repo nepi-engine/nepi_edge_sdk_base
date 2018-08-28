@@ -34,15 +34,6 @@ NDNode::NDNode():
 	_filter_enabled{"filter_enabled", true, this},
 	_filter_control{"filter_control", 1.0f, this}
 {
-	std::vector<std::string> ns_tokens = splitNamespace();
-	if (ns_tokens.size() < 6)
-	{
-		ROS_ERROR("Invalid namespace (%s) for %s", ros::this_node::getNamespace().c_str(), getName().c_str());
-		return;
-	}
-	// Trial and error dictates the token index used here - not sure what the first two (blank) tokens represent
-	sensor_type = ns_tokens[5];
-
 	// Load the sim mode files
 	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getName() + "/sim_img_";
 	
