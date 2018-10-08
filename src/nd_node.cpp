@@ -58,7 +58,7 @@ void NDNode::initPublishers()
 
 	// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
-	_status_pub = n_priv.advertise<num_sdk_base::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));	
+	_status_pub = n_priv.advertise<num_sdk_msgs::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));	
 }
 
 void NDNode::retrieveParams()
@@ -132,7 +132,7 @@ void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 	}
 }
 
-void NDNode::saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg)
+void NDNode::saveDataHandler(const num_sdk_msgs::NDSaveData::ConstPtr &msg)
 {
 	const bool save_data_updated = (msg->save_continuous != _save_continuous) ||
 								   (msg->save_raw != _save_raw);
@@ -160,7 +160,7 @@ void NDNode::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
 
 // Node-specific subscription callbacks. Concrete instances should define what actions these take,
 // though we provide a very basic private member setter implementation in this baseclass
-void NDNode::setRangeHandler(const num_sdk_base::NDRange::ConstPtr &msg)
+void NDNode::setRangeHandler(const num_sdk_msgs::NDRange::ConstPtr &msg)
 {
 	// Range-check inputs
 	if (msg->min_range < 0.0f || 
@@ -182,7 +182,7 @@ void NDNode::setRangeHandler(const num_sdk_base::NDRange::ConstPtr &msg)
 	}
 }
 
-void NDNode::setAngleHandler(const num_sdk_base::NDAngle::ConstPtr &msg)
+void NDNode::setAngleHandler(const num_sdk_msgs::NDAngle::ConstPtr &msg)
 {
 	/* TODO: Figure out generic bounds checking for "angle"
 	if (msg->angle_offset < 0.0f || 
@@ -204,12 +204,12 @@ void NDNode::setAngleHandler(const num_sdk_base::NDAngle::ConstPtr &msg)
 	}
 }
 
-static bool autoManualMsgIsValid(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg)
+static bool autoManualMsgIsValid(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
 {
 	return (msg->adjustment >= 0.0f && msg->adjustment <= 1.0f);
 }
 
-void NDNode::setResolutionHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg)
+void NDNode::setResolutionHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -229,7 +229,7 @@ void NDNode::setResolutionHandler(const num_sdk_base::NDAutoManualSelection::Con
 	}
 }
 
-void NDNode::setGainHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg)
+void NDNode::setGainHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -249,7 +249,7 @@ void NDNode::setGainHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr 
 	}
 }
 
-void NDNode::setFilterHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg)
+void NDNode::setFilterHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -309,7 +309,7 @@ void NDNode::publishImage(IMG_ID id, cv::Mat *img, ros::Time *tstamp, const std:
 
 void NDNode::publishStatus()
 {
-	num_sdk_base::NDStatus msg;
+	num_sdk_msgs::NDStatus msg;
 
 	msg.display_name = _display_name;
 	

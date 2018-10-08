@@ -10,11 +10,11 @@
 
 #include "sdk_node.h"
 
-#include "num_sdk_base/NDSaveData.h"
-#include "num_sdk_base/NDRange.h"
-#include "num_sdk_base/NDAngle.h"
-#include "num_sdk_base/NDAutoManualSelection.h"
-#include "num_sdk_base/NDStatus.h"
+#include "num_sdk_msgs/NDSaveData.h"
+#include "num_sdk_msgs/NDRange.h"
+#include "num_sdk_msgs/NDAngle.h"
+#include "num_sdk_msgs/NDAutoManualSelection.h"
+#include "num_sdk_msgs/NDStatus.h"
 
 namespace Numurus
 {
@@ -70,16 +70,16 @@ protected:
 	// be sufficient, but subclasses can override as necessary (ensuring that they call back to the base
 	// class or embed the base class logic as necessary).
 	virtual void pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg);
-	virtual void saveDataHandler(const num_sdk_base::NDSaveData::ConstPtr &msg);
+	virtual void saveDataHandler(const num_sdk_msgs::NDSaveData::ConstPtr &msg);
 	void simulateDataHandler(const std_msgs::Bool::ConstPtr &msg);
 
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
 	// though we provide a very basic private member setter implementation in this baseclass
-	virtual void setRangeHandler(const num_sdk_base::NDRange::ConstPtr &msg);
-	virtual void setAngleHandler(const num_sdk_base::NDAngle::ConstPtr &msg);
-	virtual void setResolutionHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg);
-	virtual void setGainHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg);
-	virtual void setFilterHandler(const num_sdk_base::NDAutoManualSelection::ConstPtr &msg);
+	virtual void setRangeHandler(const num_sdk_msgs::NDRange::ConstPtr &msg);
+	virtual void setAngleHandler(const num_sdk_msgs::NDAngle::ConstPtr &msg);
+	virtual void setResolutionHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
+	virtual void setGainHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
+	virtual void setFilterHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
 
 	void publishImage(IMG_ID id, cv::Mat *img, ros::Time *tstamp, const std::string encoding = "bgr8");
 

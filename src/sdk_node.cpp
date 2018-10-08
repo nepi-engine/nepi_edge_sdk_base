@@ -2,7 +2,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "std_msgs/String.h"
-#include "num_sdk_base/FileReset.h"
+#include "num_sdk_msgs/FileReset.h"
 
 #include "sdk_node.h"
 
@@ -118,28 +118,28 @@ void SDKNode::saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg)
 	}
 }
 
-void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
+void SDKNode::resetHandler(const num_sdk_msgs::Reset::ConstPtr &msg)
 {
 	const uint8_t reset_type = msg->reset_type;
 
 	switch (reset_type)
 	{
-	case num_sdk_base::Reset::USER_RESET:
+	case num_sdk_msgs::Reset::USER_RESET:
 		ROS_INFO("%s: Executing user-level reset by request", getName().c_str());
 		userReset();
 		break;
-	case num_sdk_base::Reset::FACTORY_RESET:
+	case num_sdk_msgs::Reset::FACTORY_RESET:
 	{
 		ROS_INFO("%s: Executing factory reset by request", getName().c_str());
 		factoryReset();
 	}	
 		break;
-	case num_sdk_base::Reset::SOFTWARE_RESET:
+	case num_sdk_msgs::Reset::SOFTWARE_RESET:
 		ROS_INFO("%s: Executing software reset by request", getName().c_str());
 		softwareReset();
 		break;
 	// No implentation for HARDWARE_RESET in this base class
-	case num_sdk_base::Reset::HARDWARE_RESET:
+	case num_sdk_msgs::Reset::HARDWARE_RESET:
 		ROS_INFO("%s: Executing hardware reset by request", getName().c_str());
 		hardwareReset();
 	default:
@@ -150,8 +150,8 @@ void SDKNode::resetHandler(const num_sdk_base::Reset::ConstPtr &msg)
 
 void SDKNode::userReset()
 {
-	ros::ServiceClient client = n.serviceClient<num_sdk_base::FileReset>("user_reset");
-	num_sdk_base::FileReset srv;
+	ros::ServiceClient client = n.serviceClient<num_sdk_msgs::FileReset>("user_reset");
+	num_sdk_msgs::FileReset srv;
 	srv.request.node_name = getName();
 	
 	if (false == client.call(srv) || false == srv.response.success)
@@ -167,8 +167,8 @@ void SDKNode::userReset()
 
 void SDKNode::factoryReset()
 {
-	ros::ServiceClient client = n.serviceClient<num_sdk_base::FileReset>("factory_reset");
-	num_sdk_base::FileReset srv;
+	ros::ServiceClient client = n.serviceClient<num_sdk_msgs::FileReset>("factory_reset");
+	num_sdk_msgs::FileReset srv;
 	srv.request.node_name = getName();
 	if (false == client.call(srv) || false == srv.response.success)
 	{

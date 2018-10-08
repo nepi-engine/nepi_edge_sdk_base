@@ -13,7 +13,7 @@ set(OpenCV_DIR /opt/ros/kinetic/share/OpenCV-3.3.1-dev)
 ## are combined into the generic corresponding catkin_<ENV_VARIABLE> stuff, so, for example
 ## we don't need to explicitly link OpenCV_LIBRARIES, instead just link to catkin_LIBRARIES and
 ## get OpenCV for free (same holds for catkin_INCLUDE_DIRS, etc.)
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs message_generation sensor_msgs image_transport cv_bridge OpenCV)
+find_package(catkin REQUIRED COMPONENTS num_sdk_msgs roscpp image_transport cv_bridge OpenCV)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -51,23 +51,14 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs message_generation senso
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-    FILES
-    Reset.msg
-    NDSaveData.msg
-    NDDatafileCtrl.msg
-    NDRange.msg
-    NDAngle.msg
-    NDAutoManualSelection.msg
-    NDStatus.msg
-)
+# add_message_files(
+#    FILES)
+#)
 
 ## Generate services in the 'srv' folder
-add_service_files(
-    FILES
-    ConvertRawTstamp.srv
-    FileReset.srv
-)
+# add_service_files(
+#    FILES
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -77,10 +68,11 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-     DEPENDENCIES
-     std_msgs  # Or other packages containing msgs
-)
+#generate_messages(
+#     DEPENDENCIES
+#     std_msgs  # Or other packages containing msgs
+#     num_sdk_msgs
+#)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -114,7 +106,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS message_runtime image_transport
+  CATKIN_DEPENDS image_transport num_sdk_msgs
 
 #  DEPENDS system_lib
 )

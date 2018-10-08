@@ -7,7 +7,7 @@
 #include "std_msgs/Empty.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/String.h"
-#include "num_sdk_base/Reset.h"
+#include "num_sdk_msgs/Reset.h"
 
 namespace Numurus
 {
@@ -223,7 +223,7 @@ protected:
 	 *
 	 * @param[in]  msg   The message containing the reset type requested
 	 */
-	void resetHandler(const num_sdk_base::Reset::ConstPtr &msg);
+	void resetHandler(const num_sdk_msgs::Reset::ConstPtr &msg);
 
 	/**
 	 * @brief      Execute a user reset
