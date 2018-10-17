@@ -12,6 +12,8 @@
 		<rosparam command="load" file="/opt/numurus/ros/etc/sb1.yaml" />
 
 		<!-- Local nodes -->
+		<node name="system_mgr" pkg="num_sdk_zynq" type="system_mgr.py" respawn="true" output="log" />
+		
 		<node name="config_mgr" pkg="num_sdk_base" type="config_mgr.py" respawn="true" output="log" />
 
 		<rosparam command="load" file="/opt/numurus/ros/etc/timestamp_mgr.yaml" ns="timestamp_mgr" />
