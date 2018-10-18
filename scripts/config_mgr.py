@@ -13,7 +13,7 @@ import os
 import errno
 
 from std_msgs.msg import String
-from num_sdk_base.srv import FileReset
+from num_sdk_msgs.srv import FileReset
 
 CFG_SUFFIX = '.yaml'
 FACTORY_SUFFIX = '.num_factory'
