@@ -10,7 +10,7 @@
 
 #include "sdk_node.h"
 
-#include "num_sdk_msgs/NDSaveData.h"
+#include "num_sdk_msgs/SaveData.h"
 #include "num_sdk_msgs/NDRange.h"
 #include "num_sdk_msgs/NDAngle.h"
 #include "num_sdk_msgs/NDAutoManualSelection.h"
@@ -70,7 +70,7 @@ protected:
 	// be sufficient, but subclasses can override as necessary (ensuring that they call back to the base
 	// class or embed the base class logic as necessary).
 	virtual void pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg);
-	virtual void saveDataHandler(const num_sdk_msgs::NDSaveData::ConstPtr &msg);
+	virtual void saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg);
 	void simulateDataHandler(const std_msgs::Bool::ConstPtr &msg);
 
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,

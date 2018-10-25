@@ -132,7 +132,7 @@ void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 	}
 }
 
-void NDNode::saveDataHandler(const num_sdk_msgs::NDSaveData::ConstPtr &msg)
+void NDNode::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg)
 {
 	const bool save_data_updated = (msg->save_continuous != _save_continuous) ||
 								   (msg->save_raw != _save_raw);
