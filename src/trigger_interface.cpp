@@ -16,7 +16,7 @@ TriggerInterface::TriggerInterface(SDKNode *parent, uint32_t parent_trig_index):
 	trig_index_pub = nh.advertise<num_sdk_msgs::TriggerIndexSettings>("trigger_index_settings", 5, true); // true to latch it; ensure it is sent on each new subscriber connection
 
 	num_sdk_msgs::TriggerIndexSettings index_settings;
-	index_settings.trigger_name = parent->getName();
+	index_settings.trigger_name = parent->getDisplayName(); // Use display name for configurability
 	index_settings.index = trig_index;
 	
 	trig_index_pub.publish(index_settings);

@@ -125,6 +125,13 @@ private:
 	inline const std::string getName() const {return ns_tokens[NODE_NAME_INDEX];}
 
 	/**
+	 * @brief      Gets the display name.
+	 *
+	 * @return     The display name.
+	 */
+	inline std::string getDisplayName() {return _display_name;}
+
+	/**
 	 * @brief      Return the public namespace of the SDKNode
 	 *
 	 * @return     The public namespace.
