@@ -5,8 +5,7 @@
 #include "num_sdk_msgs/FileReset.h"
 
 #include "sdk_node.h"
-
-#define BOOL_TO_ENABLED(x)	((x)==true)? "enabled" : "disabled"
+#include "sdk_utils.h"
 
 namespace Numurus
 {
