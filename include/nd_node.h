@@ -20,6 +20,7 @@ namespace Numurus
 {
 // Forward declarations
 class TriggerInterface;
+class SaveDataInterface;
 
 /**
  * @brief      The NDNode class represents a Numurus sensor capable of producing multidimensional imagery
@@ -40,6 +41,8 @@ public:
 	 */
 	NDNode();
 
+	virtual ~NDNode();
+
 	enum IMG_ID
 	{
 		IMG_0,
@@ -50,6 +53,7 @@ public:
 protected:
 	static constexpr auto SENSOR_TYPE_INDEX = 4;
 	TriggerInterface *_trig_if = nullptr;
+	SaveDataInterface *_save_data_if = nullptr;
 	image_transport::ImageTransport img_trans;
 	// TODO: Should these be image_transport::CameraPublisher instances instead?
 	image_transport::Publisher img_0_pub;
@@ -70,7 +74,6 @@ protected:
 	// be sufficient, but subclasses can override as necessary (ensuring that they call back to the base
 	// class or embed the base class logic as necessary).
 	virtual void pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg);
-	virtual void saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg);
 	void simulateDataHandler(const std_msgs::Bool::ConstPtr &msg);
 
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
@@ -87,9 +90,6 @@ private:
 	bool _paused = false;
 	SDKNode::NodeParam<bool> _simulated_data;
 	
-	SDKNode::NodeParam<bool> _save_continuous;
-	SDKNode::NodeParam<bool> _save_raw;
-	
 	SDKNode::NodeParam<float> _min_range;
 	SDKNode::NodeParam<float> _max_range;
 
@@ -104,8 +104,6 @@ private:
 
 	SDKNode::NodeParam<bool> _filter_enabled;
 	SDKNode::NodeParam<float> _filter_control;
-
-	std::string _save_data_dir = "/var/volatile";
 
 	ros::Publisher _status_pub;
 

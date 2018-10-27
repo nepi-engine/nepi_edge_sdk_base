@@ -3,6 +3,7 @@
 
 #include "nd_node.h"
 #include "trigger_interface.h"
+#include "save_data_interface.h"
 
 #define BOOL_TO_ENABLED(x)	((x)==true)? "enabled" : "disabled"
 
@@ -21,8 +22,6 @@ static void loadSimData(std::string filename, cv::Mat *out_mat)
 NDNode::NDNode():
 	img_trans{n_priv}, // Image topics are published in the node-specific namespace
 	_simulated_data{"simulated_data", false, this},
-	_save_continuous{"save_data_continuous", false, this},
-	_save_raw{"save_data_raw", false, this},
 	_min_range{"min_range", 0.0f, this},
 	_max_range{"max_range", 0.0f, this},
 	_angle_offset{"angle_offset", 0.0f, this},
@@ -34,6 +33,7 @@ NDNode::NDNode():
 	_filter_enabled{"filter_enabled", true, this},
 	_filter_control{"filter_control", 1.0f, this}
 {
+	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
 	// Load the sim mode files
 	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getName() + "/sim_img_";
 	
@@ -47,6 +47,12 @@ NDNode::NDNode():
 	loadSimData(IMG_ALT_SIM_FILENAME, &img_alt_sim_data);
 }
 
+NDNode::~NDNode()
+{
+	delete _save_data_if;
+	_save_data_if = nullptr;
+}
+
 void NDNode::initPublishers()
 {
 	// Call the base method
@@ -58,7 +64,10 @@ void NDNode::initPublishers()
 
 	// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
-	_status_pub = n_priv.advertise<num_sdk_msgs::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));	
+	_status_pub = n_priv.advertise<num_sdk_msgs::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));
+
+	// And init the interface publishers
+	_save_data_if->initPublishers();	
 }
 
 void NDNode::retrieveParams()
@@ -68,8 +77,6 @@ void NDNode::retrieveParams()
 	
 	// Grab the nd_node parameters
 	_simulated_data.retrieve();
-	_save_continuous.retrieve();
-	_save_raw.retrieve();
 	_min_range.retrieve();
 	_max_range.retrieve();
 	_angle_offset.retrieve();
@@ -83,8 +90,9 @@ void NDNode::retrieveParams()
 
 	// Image transport parameters are ROS "dynamic_params", so don't need to be retrieved manually
 
-	// Make sure to retrieve trigger params, too
+	// Make sure to retrieve interface params, too
 	_trig_if->retrieveParams();
+	_save_data_if->retrieveParams();
 
 	// Send a status update whenever we init params
 	publishStatus();
@@ -98,12 +106,10 @@ void NDNode::initSubscribers()
 	// Now subscribe to the set of global nd controls
 	// These versions are in the public namespace so that we can support global commands
 	subscribers.push_back(n.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
-	subscribers.push_back(n.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
 	subscribers.push_back(n.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
 
 	// Now subscribe to the private namespace versions
 	subscribers.push_back(n_priv.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
-	subscribers.push_back(n_priv.subscribe("save_data", 3, &NDNode::saveDataHandler, this));
 	subscribers.push_back(n_priv.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
 
 	// Also in the private namespace are the various generic "tweaks"
@@ -112,6 +118,9 @@ void NDNode::initSubscribers()
 	subscribers.push_back(n_priv.subscribe("set_resolution", 3, &NDNode::setResolutionHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_gain", 3, &NDNode::setGainHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_filter", 3, &NDNode::setFilterHandler, this));
+
+	// And init the interface subscribers
+	_save_data_if->initSubscribers();
 }
 
 void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
@@ -128,21 +137,6 @@ void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 			ROS_ERROR("%s: The TriggerInterface was not properly initialized", getName().c_str());
 		}
 		ROS_DEBUG("%s pause settings updated (pause=%s)", getName().c_str(), BOOL_TO_ENABLED(_paused));
-		publishStatus();
-	}
-}
-
-void NDNode::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg)
-{
-	const bool save_data_updated = (msg->save_continuous != _save_continuous) ||
-								   (msg->save_raw != _save_raw);
-	if (true == save_data_updated)
-	{
-		_save_continuous = msg->save_continuous;
-		_save_raw = msg->save_raw;
-
-		ROS_DEBUG("%s data save settings updated to (save_continuous=%s, save_raw=%s)", getName().c_str(),
-				  BOOL_TO_ENABLED(_save_continuous), BOOL_TO_ENABLED(_save_raw));
 		publishStatus();
 	}
 }
@@ -313,11 +307,6 @@ void NDNode::publishStatus()
 
 	msg.display_name = _display_name;
 	
-	msg.save_data_dir = _save_data_dir;
-	
-	msg.save_data.save_continuous = _save_continuous;
-	msg.save_data.save_raw = _save_raw;
-
 	msg.pause_enable = _paused;
 	
 	msg.simulate_data = _simulated_data;
