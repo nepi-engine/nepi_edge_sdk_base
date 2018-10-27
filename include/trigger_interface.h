@@ -45,6 +45,10 @@ protected:
 	
 	SDKNode::NodeParam<int> trig_delay;
 
+	// Create these here to keep them in scope
+	ros::NodeHandle nh;
+	ros::Publisher trig_index_pub;
+
 	/**
 	 * @brief      Sets the input trigger delay value (in usecs).
 	 * 
