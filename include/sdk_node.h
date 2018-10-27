@@ -123,7 +123,21 @@ private:
 	 * @return     The simple name (no namespace).
 	 */
 	inline const std::string getName() const {return ns_tokens[NODE_NAME_INDEX];}
-	
+
+	/**
+	 * @brief      Return the public namespace of the SDKNode
+	 *
+	 * @return     The public namespace.
+	 */
+	inline const std::string getPublicNamespace() const {return n.getNamespace();}
+
+	/**
+	 * @brief      Return the private namespace of the SDKNode
+	 *
+	 * @return     The private namespace.
+	 */
+	inline const std::string getPrivateNamespace() const {return n_priv.getNamespace();}
+
 protected:
 	const std::vector<std::string> ns_tokens;
 	static constexpr auto ROOTNAME_INDEX = 1;
