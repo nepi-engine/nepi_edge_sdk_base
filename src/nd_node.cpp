@@ -34,6 +34,7 @@ NDNode::NDNode():
 	_filter_control{"filter_control", 1.0f, this}
 {
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
+	
 	// Load the sim mode files
 	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getName() + "/sim_img_";
 	
@@ -65,9 +66,6 @@ void NDNode::initPublishers()
 	// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
 	_status_pub = n_priv.advertise<num_sdk_msgs::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));
-
-	// And init the interface publishers
-	_save_data_if->initPublishers();	
 }
 
 void NDNode::retrieveParams()

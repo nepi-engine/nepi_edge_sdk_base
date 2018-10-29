@@ -2,6 +2,7 @@
 #define _TRIGGER_INTERFACE_H
 
 #include "std_msgs/UInt32.h"
+#include "sdk_interface.h"
 #include "sdk_node.h"
 
 namespace Numurus
@@ -12,42 +13,55 @@ namespace Numurus
  * 			   This class provides the basic ROS interface for nodes that support
  * 			   hardware triggering. 
  */	
-class TriggerInterface
+class TriggerInterface : public SDKInterface
 {
 public:
-	TriggerInterface(SDKNode *parent, uint32_t parent_trig_index);
+	/**
+	 * @brief      Standard constructor
+	 *
+	 * @param      parent             Pointer to parent SDKNode
+	 * @param      parent_pub_nh      Pointer to parent's public namespace node handle
+	 * @param      parent_priv_nh     Pointer to parent's private namespace node handle
+	 * @param[in]  parent_trig_index  Parent node's trig index (software or hardware implemented)
+	 */
+	TriggerInterface(SDKNode *parent, ros::NodeHandle *parent_pub_nh, ros::NodeHandle *parent_priv_nh, 
+					 uint32_t parent_trig_index);
+
+	TriggerInterface() = delete; // No default constructor available
 
 	virtual ~TriggerInterface(); 
 
-	/**
-	 * @brief      Retrieve all ROS params from the param server
-	 * 
-	 * @note       See SDKNode::retrieveParams().
-	 */
-	virtual void retrieveParams();
+	// Inherited from SDKInterface
+	virtual void retrieveParams() override;
+	virtual void initPublishers() override;
+	virtual void initSubscribers() override;
 
 	/**
 	 * @brief      Enables or disables the triggering.
 	 * 
 	 * @param[in]	enabled		True to enable triggering, false otherwise
 	 */
-	virtual inline void setTrigEnabled(bool enabled){trig_enabled = enabled;}
+	virtual inline void setTrigEnabled(bool enabled){_trig_enabled = enabled;}
 protected:
 	/**
 	 * True if trigger is enabled for the parent node, false otherwise
 	 */
-	bool trig_enabled;
+	bool _trig_enabled;
 	
 	/**
 	 * Fixed trigger index. Specified in constructor.
 	 */
-	const uint32_t trig_index;
+	const uint32_t _trig_index;
 	
-	SDKNode::NodeParam<int> trig_delay;
+	/**
+	 * Param-server-backed trigger delay (in usecs)
+	 */
+	SDKNode::NodeParam<int> _trig_delay;
 
-	// Create these here to keep them in scope
-	ros::NodeHandle nh;
-	ros::Publisher trig_index_pub;
+	/**
+	 * Publisher for the TriggerIndexInfo topic
+	 */
+	ros::Publisher _trig_index_pub;
 
 	/**
 	 * @brief      Sets the input trigger delay value (in usecs).

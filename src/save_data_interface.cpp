@@ -6,14 +6,10 @@
 namespace Numurus
 {
 SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pub_nh, ros::NodeHandle *parent_priv_nh):
+	SDKInterface{parent, parent_pub_nh, parent_priv_nh},
 	_save_continuous{"save_data_continuous", false, parent},
-	_save_raw{"save_data_raw", false, parent},
-    _parent_node{parent},
-    _parent_pub_nh{parent_pub_nh},
-    _parent_priv_nh{parent_priv_nh}
-{
-	// Empty
-}
+	_save_raw{"save_data_raw", false, parent}
+{/* Empty body */}
 
 SaveDataInterface::~SaveDataInterface(){}
 

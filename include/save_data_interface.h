@@ -8,52 +8,81 @@
 #include <std_msgs/String.h>
 #include <num_sdk_msgs/SaveData.h>
 
+#include <sdk_interface.h>
 #include <sdk_node.h>
 
 namespace Numurus
 {
 
-class SaveDataInterface
+/**
+ * @brief      Provides the consistent ROS interface for any node that can save data to disk
+ */
+class SaveDataInterface : public SDKInterface
 {
 public:
+	/**
+	 * @brief      Standard constructor
+	 * 
+	 * @see {SDKInterface}
+	 *
+	 * @param      parent          The parent
+	 * @param      parent_pub_nh   The parent pub nh
+	 * @param      parent_priv_nh  The parent priv nh
+	 */
 	SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pub_nh, ros::NodeHandle *parent_priv_nh);
+
+	SaveDataInterface() = delete;
+
 	virtual ~SaveDataInterface();
 
-	void retrieveParams();
-	void initPublishers();
-	void initSubscribers();
+	// Inherited from SDKInterface
+	void retrieveParams() override;
+	void initPublishers() override;
+	void initSubscribers() override;
 
 protected:
-	// Param-server and file-backed Parameters
+	/**
+	 * Param-server-backed bool indicating whether the parent node should save data continuously
+	 */
 	SDKNode::NodeParam<bool> _save_continuous;
+	
+	/**
+	 * Param-server-backed bool indicating whether the parent node should save raw data (where 'raw' is node-defined)
+	 */
 	SDKNode::NodeParam<bool> _save_raw;
 
 	/**
 	 * User-configurable identifying prefix
 	 */
 	std::string _filename_prefix;
+
 	/**
 	 * Non-user-configurable base path
 	 */
-	std::string _save_data_dir = "/var/volatile";
-
-	SDKNode *_parent_node;
-
-	ros::NodeHandle *_parent_pub_nh;
-	ros::NodeHandle *_parent_priv_nh;
+	std::string _save_data_dir = "/var/volatile"; // TODO: Decide on a real and persistent filesystem location
 
 	/**
-	 * Vector of return handles from NodeHandle::subscribe.
-	 * These handles must have a lifetime as long as the NodeHandle, so are best appropriated to a member variable container
+	 * ROS publisher for the save_status topic
 	 */
-	std::vector<ros::Subscriber> subscribers;
-
 	ros::Publisher _save_status_pub;
 
+	/**
+	 * @brief      Callback for save_data topic subscriptiion
+	 *
+	 * @param[in]  msg   Indicates the save_data settings
+	 */
 	void saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg);
-
+	
+	/**
+	 * @brief      Callback for the save_data_prefix topic subscription
+	 *
+	 * @param[in]  msg   Indicates the save_data_prefix settings
+	 */
 	void saveDataPrefixHandler(const std_msgs::String::ConstPtr &msg);
 
+	/**
+	 * @brief      Publish the save_data settings on the save_status topic
+	 */
 	void publishSaveStatus();
 
 }; // class SaveDataInterface

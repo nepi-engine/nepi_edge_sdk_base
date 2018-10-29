@@ -4,35 +4,49 @@
 
 namespace Numurus
 {
-TriggerInterface::TriggerInterface(SDKNode *parent, uint32_t parent_trig_index):
-	trig_enabled{true},
-	trig_index{parent_trig_index},
-	//trig_mask{"trig_mask", 0, parent},
-	trig_delay{"trig_delay", 0, parent},
-	nh{parent->getPublicNamespace()}
-{
-	
-	// Advertise and publish (with latch) the trigger index so trig mgr. can populate trig defs appropriately
-	trig_index_pub = nh.advertise<num_sdk_msgs::TriggerIndexSettings>("trigger_index_settings", 5, true); // true to latch it; ensure it is sent on each new subscriber connection
-
-	num_sdk_msgs::TriggerIndexSettings index_settings;
-	index_settings.trigger_name = parent->getDisplayName(); // Use display name for configurability
-	index_settings.index = trig_index;
-	
-	trig_index_pub.publish(index_settings);
-}
+TriggerInterface::TriggerInterface(SDKNode *parent, ros::NodeHandle *parent_pub_nh, ros::NodeHandle *parent_priv_nh, uint32_t parent_trig_index):
+	SDKInterface{parent, parent_pub_nh, parent_priv_nh},
+	_trig_enabled{true},
+	_trig_index{parent_trig_index},
+	_trig_delay{"trig_delay", 0, parent}
+{}
 
 TriggerInterface::~TriggerInterface(){}
 
 void TriggerInterface::retrieveParams()
 {
-	//trig_mask.retrieve();
-	trig_delay.retrieve();
+	// Call the base class method
+	SDKInterface::retrieveParams();
+
+	_trig_delay.retrieve();
+}
+
+void TriggerInterface::initPublishers()
+{
+	// Call the base class method
+	SDKInterface::initPublishers();
+
+	// Advertise and publish (with latch) the trigger index so trig mgr. can populate trig defs appropriately
+	_trig_index_pub = _parent_priv_nh->advertise<num_sdk_msgs::TriggerIndexSettings>("trigger_index_settings", 5, true); // true to latch it; ensure it is sent on each new subscriber connection
+	
+	// Publish TriggerIndexSettings once to latch automatic response to future subscribers
+	num_sdk_msgs::TriggerIndexSettings index_settings;
+	index_settings.trigger_name = _parent_node->getDisplayName(); // Use display name for configurability
+	index_settings.index = _trig_index;
+	_trig_index_pub.publish(index_settings);
+}
+
+void TriggerInterface::initSubscribers()
+{
+	// Call the base class method
+	SDKInterface::initSubscribers();
+
+	subscribers.push_back(_parent_priv_nh->subscribe("set_trig_delay", 1, &TriggerInterface::setTrigDelay, this));
 }
 
 void TriggerInterface::setTrigDelay(const std_msgs::UInt32::ConstPtr& trig_delay_val_usecs)
 {
-	trig_delay = trig_delay_val_usecs->data;
+	_trig_delay = trig_delay_val_usecs->data;
 }
 	
 } // namespace Numurus
