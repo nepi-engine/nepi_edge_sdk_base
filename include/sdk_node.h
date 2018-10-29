@@ -150,7 +150,7 @@ protected:
 	static constexpr auto ROOTNAME_INDEX = 1;
 	static constexpr auto DEV_TYPE_INDEX = 2;
 	static constexpr auto DEV_SN_INDEX = 3;
-	const uint32_t NODE_NAME_INDEX; // Will be the last token, whichever that one is
+	const size_t NODE_NAME_INDEX; // Will be the last token, whichever that one is
 
 	/**
 	 * The public namespace node handle. This is used for any ROS primitives that should resolve into the top-level namespace for this node. In particular, subscribing to
