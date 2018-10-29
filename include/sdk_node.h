@@ -4,6 +4,8 @@
 #include <string>
 
 #include <ros/ros.h>
+
+#include <sdk_interface.h>
 #include "std_msgs/Empty.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/String.h"
@@ -11,6 +13,7 @@
 
 namespace Numurus
 {
+
 /**
  * @brief      Base class to represent a ROS node in the Numurus SDK
  * 
@@ -22,6 +25,8 @@ namespace Numurus
 class SDKNode
 {
 public:
+	// Make the SDKInterface constructor a friend so that it can push itself onto the sdk_interfaces vector.
+	friend SDKInterface::SDKInterface(SDKNode *parent, ros::NodeHandle *parent_pub_nh, ros::NodeHandle *parent_priv_nh);
 
 /**
  * @brief      Class to represent node parameters
@@ -180,6 +185,11 @@ protected:
 	 * These handles must have a lifetime as long as the NodeHandle, so are best appropriated to a member variable container
 	 */
 	std::vector<ros::Subscriber> subscribers;
+
+	/**
+	 * Vector of SDKInterface pointers to allow generic iteration over all interfaces for setup (initSubscribers, etc.)
+	 */
+	std::vector<SDKInterface *> sdk_interfaces;
 
 	/**
 	 * @brief      Determine whether the namespace is valid

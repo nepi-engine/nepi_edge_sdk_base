@@ -215,6 +215,16 @@ void SDKNode::init()
 	initSubscribers();
 	initServices();
 	initServiceClients();
+
+	// Do the interfaces, too
+	for (auto interface : sdk_interfaces)
+	{
+		interface->initPublishers();
+		interface->retrieveParams();
+		interface->initSubscribers();
+		interface->initServices();
+		interface->initServiceClients();
+	}
 }
 
 } // namespace Numurus

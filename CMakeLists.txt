@@ -125,6 +125,7 @@ include_directories(
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
    src/sdk_node.cpp
+   src/sdk_interface.cpp
    src/nd_node.cpp
    src/trigger_interface.cpp
    src/save_data_interface.cpp
