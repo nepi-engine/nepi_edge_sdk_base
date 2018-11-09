@@ -128,6 +128,7 @@ add_library(${PROJECT_NAME}
    src/sdk_interface.cpp
    src/nd_node.cpp
    src/trigger_interface.cpp
+   src/net_trigger_interface.cpp
    src/save_data_interface.cpp
 )
 
