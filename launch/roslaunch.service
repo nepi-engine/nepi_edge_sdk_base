@@ -1,0 +1,11 @@
+[Unit]
+Description=Launch the Numurus SB1 Launch File
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/numurus/roslaunch.sh
+
+[Install]
+WantedBy=multi-user.target 
