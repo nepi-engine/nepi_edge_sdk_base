@@ -16,6 +16,8 @@
 		
 		<node name="config_mgr" pkg="num_sdk_base" type="config_mgr.py" respawn="true" output="log" />
 
+		<node name="lpp_mgr" pkg="num_sdk_sb2" type="lpp_mgr.py" respawn="true" output="log"/>
+
 		<rosparam command="load" file="/opt/numurus/ros/etc/timestamp_mgr.yaml" ns="timestamp_mgr" />
 		<node name="timestamp_mgr" pkg="num_sdk_zynq" type="timestamp_mgr_node" respawn="true" output="log" />
 
