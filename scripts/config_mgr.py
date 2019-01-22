@@ -27,72 +27,72 @@ pending_nodes = {}
 # chance of filesystem corruption in the event of e.g., power failure, we use a symlink-based config
 # file scheme.
 def symlink_force(target, link_name):
-	try:
-		os.symlink(target, link_name)
-	except OSError, e:
-		if e.errno == errno.EEXIST:
-			os.remove(link_name)
-			os.symlink(target, link_name)
-		else:
-			rospy.logerr("Unable to create symlink %s for %s", link_name, target)
-			return False
-	return True
+    try:
+        os.symlink(target, link_name)
+    except OSError, e:
+        if e.errno == errno.EEXIST:
+            os.remove(link_name)
+            os.symlink(target, link_name)
+        else:
+            rospy.logerr("Unable to create symlink %s for %s", link_name, target)
+            return False
+    return True
 
 def separate_node_name_in_msg(qualified_node_name):
-	return [qualified_node_name, qualified_node_name.split("/")[-1]]
+    return [qualified_node_name, qualified_node_name.split("/")[-1]]
 
 def update_from_file(file_pathname, namespace):
-	try:
-		paramlist = rosparam.load_file(file_pathname, namespace, verbose=True)
-		for params, ns in paramlist:
-			rosparam.upload_params(ns, params, verbose=True)
-	except:
-		rospy.logerr("Unable to load factory parameters from file %s", file_pathname)
-		return [False]
+    try:
+        paramlist = rosparam.load_file(file_pathname, namespace, verbose=True)
+        for params, ns in paramlist:
+            rosparam.upload_params(ns, params, verbose=True)
+    except:
+        rospy.logerr("Unable to load factory parameters from file %s", file_pathname)
+        return [False]
 
-	return [True]
+    return [True]
 
 def user_reset(req):
-	qualified_node_name, node_name = separate_node_name_in_msg(req.node_name)
-	cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
-	
-	# Now update the param server
-	return update_from_file(cfg_pathname, qualified_node_name)
+    qualified_node_name, node_name = separate_node_name_in_msg(req.node_name)
+    cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
+
+    # Now update the param server
+    return update_from_file(cfg_pathname, qualified_node_name)
 
 def factory_reset(req):
-	qualified_node_name, node_name = separate_node_name_in_msg(req.node_name)
-	cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
-	factory_cfg_pathname = cfg_pathname + FACTORY_SUFFIX
-	
-	# First, move the symlink
-	if False == symlink_force(factory_cfg_pathname, cfg_pathname):
-		return [False] # Error logged upstream
+    qualified_node_name, node_name = separate_node_name_in_msg(req.node_name)
+    cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
+    factory_cfg_pathname = cfg_pathname + FACTORY_SUFFIX
 
-	# Now update the param server
-	return update_from_file(cfg_pathname, qualified_node_name)
+    # First, move the symlink
+    if False == symlink_force(factory_cfg_pathname, cfg_pathname):
+        return [False] # Error logged upstream
+
+    # Now update the param server
+    return update_from_file(cfg_pathname, qualified_node_name)
 
 def store_params(msg):
-	qualified_node_name, node_name = separate_node_name_in_msg(msg.data)
-	cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
-	user_cfg_pathname = cfg_pathname + USER_SUFFIX
+    qualified_node_name, node_name = separate_node_name_in_msg(msg.data)
+    cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
+    user_cfg_pathname = cfg_pathname + USER_SUFFIX
 
-	# First, write to the user file
-	rosparam.dump_params(user_cfg_pathname, qualified_node_name)
+    # First, write to the user file
+    rosparam.dump_params(user_cfg_pathname, qualified_node_name)
 
-	# Now, ensure the link points to the correct file
-	if (False == symlink_force(user_cfg_pathname, cfg_pathname)):
-		rospy.logerr("Unable to update the cfg. file link")
-	
+    # Now, ensure the link points to the correct file
+    if (False == symlink_force(user_cfg_pathname, cfg_pathname)):
+        rospy.logerr("Unable to update the cfg. file link")
+
 def config_mgr():
-	rospy.init_node('config_mgr')
+    rospy.init_node('config_mgr')
 
-	rospy.loginfo('Starting the config. mgr node')
+    rospy.loginfo('Starting the config. mgr node')
 
-	rospy.Subscriber('store_params', String, store_params)
-	rospy.Service('factory_reset', FileReset, factory_reset)
-	rospy.Service('user_reset', FileReset, user_reset)
+    rospy.Subscriber('store_params', String, store_params)
+    rospy.Service('factory_reset', FileReset, factory_reset)
+    rospy.Service('user_reset', FileReset, user_reset)
 
-	rospy.spin()
+    rospy.spin()
 
 if __name__ == '__main__':
-	config_mgr()
+    config_mgr()
