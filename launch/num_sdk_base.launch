@@ -1,39 +1,41 @@
 <launch>
-	<!-- Define the remote Jetson machine to launch nodes -->
-	<!-- TODO: Do we want to launch the Jetson this way, or as a stand-alone - this way at least ensures that roscore is running -->
-	<!-- machine name="num-sb1-jetson" address="num-sb1-jetson" env-loader="/opt/numurus/ros/setup.bash" user="nvidia" -->
-	
-	<arg name="global_ns" value="$(env ROOTNAME)" />
-	<arg name="device_ns" value="$(env ROOTNAME)/$(env DEVICE_TYPE)/$(env DEVICE_SN)" />
+    <!-- Define the remote Jetson machine to launch nodes -->
+    <!-- TODO: Do we want to launch the Jetson this way, or as a stand-alone - this way at least ensures that roscore is running -->
+    <!-- machine name="num-sb1-jetson" address="num-sb1-jetson" env-loader="/opt/numurus/ros/setup.bash" user="nvidia" -->
 
-	<!-- Everything lives in the device namespace -->
-	<group ns="$(arg device_ns)">
-		<!-- Load the base config file -->
-		<rosparam command="load" file="/opt/numurus/ros/etc/sb1.yaml" />
+    <arg name="global_ns" value="$(env ROOTNAME)" />
+    <arg name="device_ns" value="$(env ROOTNAME)/$(env DEVICE_TYPE)/$(env DEVICE_SN)" />
 
-		<!-- Local nodes -->
-		<node name="system_mgr" pkg="num_sdk_zynq" type="system_mgr.py" respawn="true" output="log" />
-		
-		<node name="config_mgr" pkg="num_sdk_base" type="config_mgr.py" respawn="true" output="log" />
+    <!-- Everything lives in the device namespace -->
+    <group ns="$(arg device_ns)">
+        <!-- Load the base config file -->
+        <rosparam command="load" file="/opt/numurus/ros/etc/sb1.yaml" />
 
-		<node name="lpp_mgr" pkg="num_sdk_sb2" type="lpp_mgr.py" respawn="true" output="log"/>
+        <!-- Local nodes -->
+        <node name="system_mgr" pkg="num_sdk_zynq" type="system_mgr.py" respawn="true" output="log" />
 
-		<rosparam command="load" file="/opt/numurus/ros/etc/timestamp_mgr.yaml" ns="timestamp_mgr" />
-		<node name="timestamp_mgr" pkg="num_sdk_zynq" type="timestamp_mgr_node" respawn="true" output="log" />
+        <node name="config_mgr" pkg="num_sdk_base" type="config_mgr.py" respawn="true" output="log" />
 
-		<rosparam command="load" file="/opt/numurus/ros/etc/trigger_mgr.yaml" ns="trigger_mgr" />
-		<node name="trigger_mgr" pkg="num_sdk_zynq" type="trigger_mgr_node" respawn="true" output="log" />
+        <node name="lpp_mgr" pkg="num_sdk_sb2" type="lpp_mgr.py" respawn="true" output="log"/>
 
-		<rosparam command="load" file="/opt/numurus/ros/etc/time_sync_mgr.yaml" ns="time_sync_mgr" />
-		<node name="time_sync_mgr" pkg="num_sdk_zynq" type="time_sync_mgr.py" respawn="true" output="log" />
+        <node name="nepi_core_mgr" pkg="num_sdk_base" type="nepi_core_mgr.py" respawn="true" output="log"/>
 
-		<rosparam command="load" file="/opt/numurus/ros/etc/nav_pos_mgr.yaml" ns="nav_pos_mgr" />
-		<node name="nav_pos_mgr" pkg="num_sdk_zynq" type="nav_pos_mgr_node" respawn="true" output="log" />
+        <rosparam command="load" file="/opt/numurus/ros/etc/timestamp_mgr.yaml" ns="timestamp_mgr" />
+        <node name="timestamp_mgr" pkg="num_sdk_zynq" type="timestamp_mgr_node" respawn="true" output="log" />
 
-		<!-- ND Nodes. Must provide a sensor_type as part of the namespace -->
-		<group ns="nd_sim_device">
-			<rosparam command="load" file="/opt/numurus/ros/etc/test_pat_generator.yaml" ns="test_pat_generator" />
-			<node name="test_pat_generator" pkg="num_sdk_zynq" type="test_pat_generator_node" respawn="true" output="log" />
-		</group>
-	</group>
+        <rosparam command="load" file="/opt/numurus/ros/etc/trigger_mgr.yaml" ns="trigger_mgr" />
+        <node name="trigger_mgr" pkg="num_sdk_zynq" type="trigger_mgr_node" respawn="true" output="log" />
+
+        <rosparam command="load" file="/opt/numurus/ros/etc/time_sync_mgr.yaml" ns="time_sync_mgr" />
+        <node name="time_sync_mgr" pkg="num_sdk_zynq" type="time_sync_mgr.py" respawn="true" output="log" />
+
+        <rosparam command="load" file="/opt/numurus/ros/etc/nav_pos_mgr.yaml" ns="nav_pos_mgr" />
+        <node name="nav_pos_mgr" pkg="num_sdk_zynq" type="nav_pos_mgr_node" respawn="true" output="log" />
+
+        <!-- ND Nodes. Must provide a sensor_type as part of the namespace -->
+        <group ns="nd_sim_device">
+            <rosparam command="load" file="/opt/numurus/ros/etc/test_pat_generator.yaml" ns="test_pat_generator" />
+            <node name="test_pat_generator" pkg="num_sdk_zynq" type="test_pat_generator_node" respawn="true" output="log" />
+        </group>
+    </group>
 </launch>

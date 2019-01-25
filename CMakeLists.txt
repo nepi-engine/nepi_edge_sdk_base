@@ -174,7 +174,9 @@ add_library(${PROJECT_NAME}
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
 
-catkin_install_python(PROGRAMS scripts/config_mgr.py
+catkin_install_python(PROGRAMS
+  scripts/config_mgr.py
+  scripts/nepi_core_mgr.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
