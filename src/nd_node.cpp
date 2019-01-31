@@ -43,7 +43,7 @@ NDNode::NDNode():
 	_img_encoding{"img_encoding", sensor_msgs::image_encodings::RGB8, this}
 {
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
-	
+
 	// Load the sim mode files
 	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getName() + "/sim_img_";
 	
@@ -109,13 +109,17 @@ void NDNode::retrieveParams()
 	_img_height.retrieve();
 	_img_encoding.retrieve();
 
-	ROS_ERROR_STREAM("JRM Debugging: After retrieveParams have _img_width = " << _img_width);
-
 	// Image transport parameters are ROS "dynamic_params", so don't need to be retrieved manually
 
 	// Make sure to retrieve interface params, too
-	_trig_if->retrieveParams();
-	_save_data_if->retrieveParams();
+	if (nullptr != _trig_if)
+	{
+		_trig_if->retrieveParams();
+	}
+	if (nullptr != _save_data_if)
+	{
+		_save_data_if->retrieveParams();
+	}
 
 	// Send a status update whenever we init params
 	publishStatus();
