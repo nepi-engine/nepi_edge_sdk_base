@@ -94,6 +94,16 @@ public:
 		return *this;
 	}
 
+	bool operator!=(const T& rhs)
+	{
+		return (_param_data != rhs);
+	}
+
+	bool operator==(const T& rhs)
+	{
+		return (_param_data == rhs);
+	}
+
 private:
 	const std::string _param_name;
 	T _param_data;
