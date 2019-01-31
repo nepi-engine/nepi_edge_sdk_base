@@ -1,6 +1,8 @@
 #include "opencv2/highgui.hpp"
 #include "cv_bridge/cv_bridge.h"
 
+#include "boost/date_time/posix_time/posix_time.hpp"
+
 #include "nd_node.h"
 #include "trigger_interface.h"
 #include "save_data_interface.h"
@@ -147,7 +149,14 @@ void NDNode::initSubscribers()
 	subscribers.push_back(n_priv.subscribe("set_filter", 3, &NDNode::setFilterHandler, this));
 
 	// And init the interface subscribers
-	_save_data_if->initSubscribers();
+	if (nullptr != _save_data_if)
+	{
+		_save_data_if->initSubscribers();
+	}
+	if (nullptr != _trig_if)
+	{
+		_trig_if->initSubscribers();
+	}
 }
 
 void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
@@ -299,6 +308,7 @@ void NDNode::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo
 
 void NDNode::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo)
 {
+	// TODO: This method is not threadsafe, but called by multiple threads in e.g., gs_multicam
 	image_transport::CameraPublisher *publisher = nullptr;
 	sensor_msgs::ImagePtr img_out = nullptr;
 	switch (id)
@@ -317,10 +327,64 @@ void NDNode::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::Camera
 		break;
 	default:
 		ROS_ERROR("%s: Request to publish unknown image id (%d)", getName().c_str(), id);
-		return; // Don't increment sequence counter
+		return;
 	}
+
+	publisher->publish(img_out, cinfo);
+
+	saveDataIfNecessary(id, img_out);
+}
+
+void NDNode::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
+{
+	if (false == _save_data_if->saveContinuousEnabled())
+	{
+		return; // Nothing else to do
+	}
+
+	std::string image_identifier;
+	switch(img_id)
+	{
+	case IMG_0:
+		image_identifier = "img_0";
+		break;
+	case IMG_1:
+		image_identifier = "img_1";
+		break;
+	case IMG_ALT:
+		image_identifier = "img_alt";
+		break;
+	default:
+		ROS_ERROR("%s: Request to save for unknown image id (%d)", getName().c_str(), img_id);
+	}
+
+	cv_bridge::CvImageConstPtr cv_ptr;
+    try
+    {
+      cv_ptr = cv_bridge::toCvShare(img, img->encoding);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+       
+    // Capture the timestamp in a good format for filenames        
+    const std::string display_name = _display_name;
+    boost::posix_time::ptime posix_time = img->header.stamp.toBoost();
+	std::string time_str = boost::posix_time::to_iso_extended_string(posix_time);
+    
+    // Create the filename - defer the extension so that we can adjust as necessary for save_raw
+	std::stringstream qualified_filename_no_extension;
+    qualified_filename_no_extension << _save_data_if->_save_data_dir << "/" << display_name << _save_data_if->getFilenamePrefix() << "_" << image_identifier << "_" << time_str;  
+    
+    ROS_ASSERT( cv::imwrite( qualified_filename_no_extension.str() + ".jpg",  cv_ptr->image ) ); // OpenCV uses extensions intelligently
 	
-	publisher->publish(img_out, cinfo);	
+    // Save the lossless PNG if raw data saving enabled
+    if (true == _save_data_if->saveRawEnabled())
+    {
+    	ROS_ASSERT( cv::imwrite( qualified_filename_no_extension.str() + ".png",  cv_ptr->image ) ); // OpenCV uses extensions intelligently    	
+    }
 }
 
 void NDNode::publishStatus()

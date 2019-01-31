@@ -116,6 +116,8 @@ protected:
 	void publishImage(int img_id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp);
 	void publishImage(int img_id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo);
 
+	virtual void saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img);
+
 private:
 	bool _paused = false;
 	ros::Publisher _status_pub;

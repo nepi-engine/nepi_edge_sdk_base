@@ -40,6 +40,15 @@ public:
 	void initPublishers() override;
 	void initSubscribers() override;
 
+	inline bool saveContinuousEnabled() {return (_save_continuous == true);}
+	inline bool saveRawEnabled() {return (_save_continuous == true && _save_raw == true);}
+	inline const std::string& getFilenamePrefix() {return _filename_prefix;}
+
+	/**
+	 * Non-user-configurable base path
+	 */
+	const std::string _save_data_dir = "/home/nvidia/Desktop/test_data"; // TODO: Decide on a real and persistent filesystem location
+
 protected:
 	/**
 	 * Param-server-backed bool indicating whether the parent node should save data continuously
@@ -55,11 +64,6 @@ protected:
 	 * User-configurable identifying prefix
 	 */
 	std::string _filename_prefix;
-
-	/**
-	 * Non-user-configurable base path
-	 */
-	std::string _save_data_dir = "/var/volatile"; // TODO: Decide on a real and persistent filesystem location
 
 	/**
 	 * ROS publisher for the save_status topic
