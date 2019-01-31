@@ -31,7 +31,16 @@ NDNode::NDNode():
 	_gain_enabled{"gain_enabled", true, this},
 	_gain{"gain", 1.0f, this},
 	_filter_enabled{"filter_enabled", true, this},
-	_filter_control{"filter_control", 1.0f, this}
+	_filter_control{"filter_control", 1.0f, this},
+	_img_0_name{"img_0_name", "img_0", this},
+	_img_1_name{"img_1_name", "img_1", this},
+	_alt_img_name{"alt_img_name", "alt", this},
+	_img_0_frame_id{"img_0_frame_id", "img_0_frame", this},
+	_img_1_frame_id{"img_1_frame_id", "img_1_frame", this},
+	_alt_img_frame_id{"alt_img_frame_id", "alt_img_frame", this},
+	_img_width{"img_width", 1920, this},
+	_img_height{"img_height", 1080, this},
+	_img_encoding{"img_encoding", sensor_msgs::image_encodings::RGB8, this}
 {
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
 	
@@ -59,9 +68,14 @@ void NDNode::initPublishers()
 	// Call the base method
 	SDKNode::initPublishers();
 
-	img_0_pub = img_trans.advertise("img_0", 1);
-	img_1_pub = img_trans.advertise("img_1", 1);
-	img_alt_pub = img_trans.advertise("img_alt", 1);
+	// The image names are NodeParam types, so we need a conversion to their data type
+	// through an assignment - use a tmp_name string
+	std::string tmp_name = _img_0_name;
+	img_0_pub = img_trans.advertiseCamera(tmp_name + "/image_raw", 1);
+	tmp_name = _img_1_name;
+	img_1_pub = img_trans.advertiseCamera(tmp_name + "/image_raw", 1);
+	tmp_name = _alt_img_name;
+	img_alt_pub = img_trans.advertiseCamera(tmp_name + "/image_raw", 1);
 
 	// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
@@ -85,6 +99,17 @@ void NDNode::retrieveParams()
 	_gain.retrieve();
 	_filter_enabled.retrieve();
 	_filter_control.retrieve();
+	_img_0_name.retrieve();
+	_img_1_name.retrieve();
+	_alt_img_name.retrieve();
+	_img_0_frame_id.retrieve();
+	_img_1_frame_id.retrieve();
+	_alt_img_frame_id.retrieve();
+	_img_width.retrieve();
+	_img_height.retrieve();
+	_img_encoding.retrieve();
+
+	ROS_ERROR_STREAM("JRM Debugging: After retrieveParams have _img_width = " << _img_width);
 
 	// Image transport parameters are ROS "dynamic_params", so don't need to be retrieved manually
 
@@ -261,42 +286,37 @@ void NDNode::setFilterHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPt
 	}
 }
 
-void NDNode::publishImage(IMG_ID id, cv::Mat *img, ros::Time *tstamp, const std::string encoding)
+void NDNode::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp)
 {
-	static uint32_t seq_ctr = 0;
-	static const std::string frame_id = getName() + "_frame";
-	
-	// Build the header
-	std_msgs::Header hdr;
-	hdr.seq = seq_ctr;
-	hdr.stamp = *tstamp;
-	hdr.frame_id = frame_id;
+	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(cinfo->header, _img_encoding, *img).toImageMsg();
 
-	image_transport::Publisher *publisher = nullptr;
-	cv::Mat *img_out = nullptr;
-	// Choose an appropriate publisher and output image based on id and _simulated_data
+	publishImage(id, msg, cinfo);
+}
+
+void NDNode::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo)
+{
+	image_transport::CameraPublisher *publisher = nullptr;
+	sensor_msgs::ImagePtr img_out = nullptr;
 	switch (id)
 	{
 	case IMG_0:
 		publisher = &img_0_pub;
-		img_out = (true == _simulated_data)? &img_0_sim_data : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, _img_encoding, img_0_sim_data).toImageMsg() : img;
 		break;
 	case IMG_1:
 		publisher = &img_1_pub;
-		img_out = (true == _simulated_data)? &img_1_sim_data : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, _img_encoding, img_1_sim_data).toImageMsg() : img;
 		break;
 	case IMG_ALT:
 		publisher = &img_alt_pub;
-		img_out = (true == _simulated_data)? &img_alt_sim_data : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, _img_encoding, img_alt_sim_data).toImageMsg() : img;
 		break;
 	default:
 		ROS_ERROR("%s: Request to publish unknown image id (%d)", getName().c_str(), id);
 		return; // Don't increment sequence counter
 	}
-
-	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(hdr, encoding, *img_out).toImageMsg();
-	publisher->publish(msg);
-	++seq_ctr;
+	
+	publisher->publish(img_out, cinfo);	
 }
 
 void NDNode::publishStatus()

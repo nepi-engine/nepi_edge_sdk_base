@@ -56,13 +56,42 @@ protected:
 	SaveDataInterface *_save_data_if = nullptr;
 	image_transport::ImageTransport img_trans;
 	// TODO: Should these be image_transport::CameraPublisher instances instead?
-	image_transport::Publisher img_0_pub;
-	image_transport::Publisher img_1_pub;
-	image_transport::Publisher img_alt_pub;
+	image_transport::CameraPublisher img_0_pub;
+	image_transport::CameraPublisher img_1_pub;
+	image_transport::CameraPublisher img_alt_pub;
 
 	cv::Mat img_0_sim_data;
 	cv::Mat img_1_sim_data;
 	cv::Mat img_alt_sim_data;
+
+	SDKNode::NodeParam<bool> _simulated_data;
+	
+	SDKNode::NodeParam<float> _min_range;
+	SDKNode::NodeParam<float> _max_range;
+
+	SDKNode::NodeParam<float> _angle_offset;
+	SDKNode::NodeParam<float> _total_angle;
+
+	SDKNode::NodeParam<bool> _manual_resolution_enabled;
+	SDKNode::NodeParam<float> _manual_resolution;
+
+	SDKNode::NodeParam<bool> _gain_enabled;
+	SDKNode::NodeParam<float> _gain;
+
+	SDKNode::NodeParam<bool> _filter_enabled;
+	SDKNode::NodeParam<float> _filter_control;
+
+	SDKNode::NodeParam<std::string> _img_0_name;
+	SDKNode::NodeParam<std::string> _img_1_name;
+	SDKNode::NodeParam<std::string> _alt_img_name;
+
+	SDKNode::NodeParam<std::string> _img_0_frame_id;
+	SDKNode::NodeParam<std::string> _img_1_frame_id;
+	SDKNode::NodeParam<std::string> _alt_img_frame_id;
+
+    SDKNode::NodeParam<int> _img_width;
+    SDKNode::NodeParam<int> _img_height;
+    SDKNode::NodeParam<std::string> _img_encoding;
 	
 	// Inherited from SDKNode
 	virtual inline bool validateNamespace() override {return ns_tokens.size() > 4;}
@@ -84,27 +113,11 @@ protected:
 	virtual void setGainHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
 	virtual void setFilterHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
 
-	void publishImage(IMG_ID id, cv::Mat *img, ros::Time *tstamp, const std::string encoding = "bgr8");
+	void publishImage(int img_id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp);
+	void publishImage(int img_id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo);
 
 private:
 	bool _paused = false;
-	SDKNode::NodeParam<bool> _simulated_data;
-	
-	SDKNode::NodeParam<float> _min_range;
-	SDKNode::NodeParam<float> _max_range;
-
-	SDKNode::NodeParam<float> _angle_offset;
-	SDKNode::NodeParam<float> _total_angle;
-
-	SDKNode::NodeParam<bool> _manual_resolution_enabled;
-	SDKNode::NodeParam<float> _manual_resolution;
-
-	SDKNode::NodeParam<bool> _gain_enabled;
-	SDKNode::NodeParam<float> _gain;
-
-	SDKNode::NodeParam<bool> _filter_enabled;
-	SDKNode::NodeParam<float> _filter_control;
-
 	ros::Publisher _status_pub;
 
 	void publishStatus();
