@@ -117,11 +117,24 @@ private:
 	~SDKNode();
 
 	/**
+	 * @brief      Initialize the node
+	 * 
+	 * 			   This method calls initPublishers(), retrieveParams(), initSubscribers, and initServices() 
+	 * 			   (in that order) to completely initialize the ROS components of the node. If not called explicitly
+	 * 			   (and it should be), run() will call this method
+	 * 			   
+	 * @note       Subclasses may override this method but should call back to this base implementation or otherwise replicate its behavior	
+	 */
+	virtual void init();
+
+	/**
 	 * @brief      Execute the main work method
 	 * 
-	 * 			   This base implementation simply calls init() and ros::spin(). 
+	 * 			   This base implementation simply calls ros::spin(). It will call init() if it hasn't already been called
+	 * 			   to preserve a previous behavior, but users should call init() explicitly before run() to control when the
+	 * 			   initializations occur. 
 	 * 			   
-	 * @note       {Subclasses may override this methods but must ensure that they call init() and some version of ros::spin()}			   
+	 * @note       Subclasses may override this method but should preserve the conditional init() and some version of ros::spin()			   
 	 */
 	virtual void run();
 	
@@ -314,15 +327,8 @@ protected:
 private:
 	ros::Publisher _store_params_pub;
 	bool _save_cfg_rt = false;
+	bool _initialized = false;
 		
-	/**
-	 * @brief      Initialize the node
-	 * 
-	 * 			   This method calls initPublishers(), retrieveParams(), initSubscribers, and initServices() 
-	 * 			   (in that order) to completely initialize the ROS components of the node. It is private, and
-	 * 			   not called directly - instead the run() method calls this before spinning.
-	 */	
-	void init();
 };
 
 } // namespace Numurus

@@ -51,9 +51,35 @@ SDKNode::SDKNode() :
 SDKNode::~SDKNode()
 {}
 
+void SDKNode::init()
+{
+	// initPublishers() first to ensure that any messages published by the other inits() are valid
+	initPublishers();
+	retrieveParams();
+	initSubscribers();
+	initServices();
+	initServiceClients();
+
+	// Do the interfaces, too
+	for (auto interface : sdk_interfaces)
+	{
+		interface->initPublishers();
+		interface->retrieveParams();
+		interface->initSubscribers();
+		interface->initServices();
+		interface->initServiceClients();
+	}
+
+	_initialized = true;
+}
+
 void SDKNode::run() 
 {
-	init();
+	// Do init() if it hasn't already been done
+	if (false == _initialized)
+	{
+		init();
+	}
 	ros::spin();
 }
 
@@ -205,26 +231,6 @@ void SDKNode::saveCfg()
 	std_msgs::String node_name;
 	node_name.data = getQualifiedName(); // config_mgr expects a fully namespaced name
 	_store_params_pub.publish(node_name);
-}
-
-void SDKNode::init()
-{
-	// initPublishers() first to ensure that any messages published by the other inits() are valid
-	initPublishers();
-	retrieveParams();
-	initSubscribers();
-	initServices();
-	initServiceClients();
-
-	// Do the interfaces, too
-	for (auto interface : sdk_interfaces)
-	{
-		interface->initPublishers();
-		interface->retrieveParams();
-		interface->initSubscribers();
-		interface->initServices();
-		interface->initServiceClients();
-	}
 }
 
 } // namespace Numurus
