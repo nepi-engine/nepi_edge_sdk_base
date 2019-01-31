@@ -22,9 +22,16 @@ void NetTriggerInterface::initSubscribers()
 
 void NetTriggerInterface::executeSwTrig(const std_msgs::UInt32::ConstPtr& trig_mask)
 {
+	// First, check if triggering is enabled - if not (e.g., NDNode is paused, just return without doing the callback)
+	if (false == _trig_enabled) return; 
+
 	// Check if the mask includes our value (index). If not, just ignore and return
 	const bool mask_match = (trig_mask->data & (1 << _trig_index)) != 0;
 	if (false == mask_match) return;
+
+	const int delay_usecs = _trig_delay;
+	const float delay_secs = ((float)delay_usecs) / 1000000.0f;
+	ros::Duration(delay_secs).sleep();
 
 	// Execute the callback
 	_parent_trig_callback(*_parent_node);
