@@ -13,7 +13,7 @@ set(OpenCV_DIR /opt/ros/kinetic/share/OpenCV-3.3.1-dev)
 ## are combined into the generic corresponding catkin_<ENV_VARIABLE> stuff, so, for example
 ## we don't need to explicitly link OpenCV_LIBRARIES, instead just link to catkin_LIBRARIES and
 ## get OpenCV for free (same holds for catkin_INCLUDE_DIRS, etc.)
-find_package(catkin REQUIRED COMPONENTS num_sdk_msgs roscpp image_transport cv_bridge OpenCV)
+find_package(catkin REQUIRED COMPONENTS message_generation num_sdk_msgs roscpp image_transport cv_bridge OpenCV)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -24,7 +24,7 @@ find_package(catkin REQUIRED COMPONENTS num_sdk_msgs roscpp image_transport cv_b
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -51,14 +51,17 @@ find_package(catkin REQUIRED COMPONENTS num_sdk_msgs roscpp image_transport cv_b
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#    FILES)
-#)
+add_message_files(
+   FILES
+   MatrixF32.msg
+)
+
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#    FILES
-# )
+add_service_files(
+   FILES
+   NepiDataDir.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -68,11 +71,11 @@ find_package(catkin REQUIRED COMPONENTS num_sdk_msgs roscpp image_transport cv_b
 # )
 
 ## Generate added messages and services with any dependencies listed here
-#generate_messages(
-#     DEPENDENCIES
-#     std_msgs  # Or other packages containing msgs
-#     num_sdk_msgs
-#)
+generate_messages(
+     DEPENDENCIES
+     std_msgs  # Or other packages containing msgs
+     num_sdk_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -177,6 +180,8 @@ add_library(${PROJECT_NAME}
 catkin_install_python(PROGRAMS
   scripts/config_mgr.py
   scripts/nepi_core_mgr.py
+  scripts/pipeline_mgr.py
+  pipeline/scripts/accel_driver.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

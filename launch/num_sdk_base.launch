@@ -20,6 +20,8 @@
 
         <node name="nepi_core_mgr" pkg="num_sdk_base" type="nepi_core_mgr.py" respawn="true" output="log"/>
 
+        <node name="pipeline_mgr" pkg="num_sdk_base" type="pipeline_mgr.py" respawn="true" output="log"/>
+
         <rosparam command="load" file="/opt/numurus/ros/etc/timestamp_mgr.yaml" ns="timestamp_mgr" />
         <node name="timestamp_mgr" pkg="num_sdk_zynq" type="timestamp_mgr_node" respawn="true" output="log" />
 

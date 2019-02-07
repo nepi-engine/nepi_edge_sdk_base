@@ -7,6 +7,7 @@ import os
 import datetime
 
 from num_sdk_msgs.msg import OotStatus
+from num_sdk_base.srv import NepiDataDir, NepiDataDirResponse
 
 NEPI_ROOT = "/home/nepi-usr"
 
@@ -77,9 +78,13 @@ class NepiCoreMgr:
             rospy.logwarn("Data directory ({}) already exists, copying files anyway...".format(data_dir))
         else:
             os.mkdir(data_dir)
+        self.current_data_dir = data_dir
 
         with open(os.path.join(data_dir, "sys_stat.json"), "w") as f:
             json.dump(oot_status_dict, f, indent=4)
+
+    def get_current_data_dir(self, req):
+        return NepiDataDirResponse(self.current_data_dir)
 
     def run(self):
         rospy.spin()
@@ -90,6 +95,9 @@ class NepiCoreMgr:
         rospy.loginfo("Starting the {} node".format(self.NODE_NAME))
 
         rospy.Subscriber("oot_status", OotStatus, self.handle_oot_status)
+
+        self.current_data_dir = ""
+        rospy.Service("get_current_data_dir", NepiDataDir, self.get_current_data_dir)
 
         self.run()
 
