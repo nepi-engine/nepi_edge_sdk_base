@@ -98,7 +98,8 @@ class PipelineNode(object):
         else:
             with open(os.path.join(data_dir, metadata_file), "w") as f:
                 json.dump(metadata, f, indent=4)
-            fs_write = cv2.FileStorage(os.path.join(data_dir, data_file), cv2.FILE_STORAGE_WRITE)
+                f.write("\n")
+            fs_write = cv2.FileStorage(os.path.join(data_dir, data_file+"?base64"), cv2.FILE_STORAGE_WRITE)
             fs_write.write("data", data)
             fs_write.release()
             if change_data is not None:
