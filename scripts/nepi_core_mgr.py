@@ -82,6 +82,7 @@ class NepiCoreMgr:
 
         with open(os.path.join(data_dir, "sys_stat.json"), "w") as f:
             json.dump(oot_status_dict, f, indent=4)
+            f.write("\n")
 
     def get_current_data_dir(self, req):
         return NepiDataDirResponse(self.current_data_dir)
