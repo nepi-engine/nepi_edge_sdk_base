@@ -22,21 +22,21 @@
 
         <node name="pipeline_mgr" pkg="num_sdk_base" type="pipeline_mgr.py" respawn="true" output="log"/>
 
-        <rosparam command="load" file="/opt/numurus/ros/etc/timestamp_mgr.yaml" ns="timestamp_mgr" />
+        <rosparam command="load" file="/opt/numurus/ros/etc/timestamp_mgr/timestamp_mgr.yaml" ns="timestamp_mgr" />
         <node name="timestamp_mgr" pkg="num_sdk_zynq" type="timestamp_mgr_node" respawn="true" output="log" />
 
-        <rosparam command="load" file="/opt/numurus/ros/etc/trigger_mgr.yaml" ns="trigger_mgr" />
+        <rosparam command="load" file="/opt/numurus/ros/etc/trigger_mgr/trigger_mgr.yaml" ns="trigger_mgr" />
         <node name="trigger_mgr" pkg="num_sdk_zynq" type="trigger_mgr_node" respawn="true" output="log" />
 
-        <rosparam command="load" file="/opt/numurus/ros/etc/time_sync_mgr.yaml" ns="time_sync_mgr" />
+        <rosparam command="load" file="/opt/numurus/ros/etc/time_sync_mgr/time_sync_mgr.yaml" ns="time_sync_mgr" />
         <node name="time_sync_mgr" pkg="num_sdk_zynq" type="time_sync_mgr.py" respawn="true" output="log" />
 
-        <rosparam command="load" file="/opt/numurus/ros/etc/nav_pos_mgr.yaml" ns="nav_pos_mgr" />
+        <rosparam command="load" file="/opt/numurus/ros/etc/nav_pos_mgr/nav_pos_mgr.yaml" ns="nav_pos_mgr" />
         <node name="nav_pos_mgr" pkg="num_sdk_zynq" type="nav_pos_mgr_node" respawn="true" output="log" />
 
         <!-- ND Nodes. Must provide a sensor_type as part of the namespace -->
         <group ns="nd_sim_device">
-            <rosparam command="load" file="/opt/numurus/ros/etc/test_pat_generator.yaml" ns="test_pat_generator" />
+            <rosparam command="load" file="/opt/numurus/ros/etc/test_pat_generator/test_pat_generator.yaml" ns="test_pat_generator" />
             <node name="test_pat_generator" pkg="num_sdk_zynq" type="test_pat_generator_node" respawn="true" output="log" />
         </group>
     </group>

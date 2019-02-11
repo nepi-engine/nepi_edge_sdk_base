@@ -39,7 +39,7 @@ def symlink_force(target, link_name):
     return True
 
 def separate_node_name_in_msg(qualified_node_name):
-    return [qualified_node_name, qualified_node_name.split("/")[-1]]
+    return qualified_node_name.split("/")[-1]
 
 def update_from_file(file_pathname, namespace):
     try:
@@ -52,16 +52,21 @@ def update_from_file(file_pathname, namespace):
 
     return [True]
 
+def get_cfg_pathname(qualified_node_name):
+    node_name = separate_node_name_in_msg(qualified_node_name)
+    cfg_pathname = CFG_PATH + '/' + node_name  + '/' + node_name + CFG_SUFFIX
+    return cfg_pathname
+
 def user_reset(req):
-    qualified_node_name, node_name = separate_node_name_in_msg(req.node_name)
-    cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
+    qualified_node_name = req.node_name
+    cfg_pathname = get_cfg_pathname(qualified_node_name)
 
     # Now update the param server
     return update_from_file(cfg_pathname, qualified_node_name)
 
 def factory_reset(req):
-    qualified_node_name, node_name = separate_node_name_in_msg(req.node_name)
-    cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
+    qualified_node_name = req.node_name
+    cfg_pathname = get_cfg_pathname(qualified_node_name)
     factory_cfg_pathname = cfg_pathname + FACTORY_SUFFIX
 
     # First, move the symlink
@@ -72,8 +77,8 @@ def factory_reset(req):
     return update_from_file(cfg_pathname, qualified_node_name)
 
 def store_params(msg):
-    qualified_node_name, node_name = separate_node_name_in_msg(msg.data)
-    cfg_pathname = CFG_PATH + node_name + CFG_SUFFIX
+    qualified_node_name = msg.data
+    cfg_pathname = get_cfg_pathname(qualified_node_name)
     user_cfg_pathname = cfg_pathname + USER_SUFFIX
 
     # First, write to the user file
