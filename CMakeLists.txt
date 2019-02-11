@@ -13,7 +13,21 @@ set(OpenCV_DIR /opt/ros/kinetic/share/OpenCV-3.3.1-dev)
 ## are combined into the generic corresponding catkin_<ENV_VARIABLE> stuff, so, for example
 ## we don't need to explicitly link OpenCV_LIBRARIES, instead just link to catkin_LIBRARIES and
 ## get OpenCV for free (same holds for catkin_INCLUDE_DIRS, etc.)
-find_package(catkin REQUIRED COMPONENTS message_generation num_sdk_msgs roscpp image_transport cv_bridge OpenCV)
+find_package(
+    catkin
+    REQUIRED
+    COMPONENTS
+    message_generation
+    num_sdk_msgs
+    roscpp
+    image_transport
+    cv_bridge
+    OpenCV
+    sensor_msgs
+    cv_bridge
+    rospy
+    std_msgs
+)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -53,8 +67,8 @@ catkin_python_setup()
 ## Generate messages in the 'msg' folder
 add_message_files(
    FILES
-   MatrixF32.msg
    WakeUpEvent.msg
+   NodeOutput.msg
 )
 
 
@@ -75,6 +89,7 @@ add_service_files(
 generate_messages(
      DEPENDENCIES
      std_msgs  # Or other packages containing msgs
+     sensor_msgs
      num_sdk_msgs
 )
 

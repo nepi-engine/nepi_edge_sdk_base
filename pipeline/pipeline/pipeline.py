@@ -3,11 +3,13 @@ import json
 import base64
 import numbers
 import cv2
+from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 
 import rospy
 
 from num_sdk_base.srv import NepiDataDir
+from num_sdk_base.msg import NodeOutput
 from num_sdk_msgs.srv import NavPosQuery
 
 class PipelineNode(object):
@@ -41,11 +43,20 @@ class PipelineNode(object):
         self.change_data = change_data
         self.node_score = node_score
 
+        self.bridge = CvBridge()
+
     def process(self, msg):
         return msg
 
-    def extract_data(self, msg):
-        return np.fromstring(msg.data, np.float32)
+    def data_to_msg(self, data):
+        return NodeOutput(
+                [self.bridge.cv2_to_imgmsg(np.array(data[i], ndmin=2, dtype=np.float32)) for i in range(len(data))]
+        )
+
+    def msg_to_data(self, msg):
+        return np.array(
+                [self.bridge.imgmsg_to_cv2(msg.time_series[i]) for i in range(len(msg.time_series))]
+        )
 
     def calculate_quality(self, msg):
         return 0.0
@@ -71,7 +82,7 @@ class PipelineNode(object):
             self._nepi_write(msg_out)
     
     def _nepi_write(self, msg):
-        data = self.extract_data(msg)
+        data = self.msg_to_data(msg)
         change_data = self._calculate_diff(data)\
                 if (self.change_data and self.last_data is not None)\
                 else None

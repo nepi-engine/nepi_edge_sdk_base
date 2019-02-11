@@ -8,7 +8,7 @@ import argparse
 import pipeline
 
 from num_sdk_sb2.srv import LppAccelData
-from num_sdk_base.msg import MatrixF32, WakeUpEvent
+from num_sdk_base.msg import WakeUpEvent, NodeOutput
 
 NODE_TYPE="ACL"
 
@@ -16,7 +16,7 @@ class AccelDriver(pipeline.DriverNode):
 
     def __init__(self, inst, interval, samples, nepi_out=False, change_data=False):
         super(AccelDriver, self).__init__(NODE_TYPE, inst,
-                msg_out=MatrixF32,
+                msg_out=NodeOutput,
                 nepi_out=nepi_out, change_data=change_data, node_score=1.0)
 
         self.samples = samples
@@ -36,13 +36,9 @@ class AccelDriver(pipeline.DriverNode):
             rospy.logwarn("lpp_request_accel_data failed: {}".format(exc))
             return
 
-        msg = self._convert_to_matrix_f32(resp)
+        msg = self.data_to_msg(resp.data)
 
         self._handle_input(msg)
-
-    def _convert_to_matrix_f32(self, resp):
-        arr = np.array(resp.data, np.int16).astype(np.float32)
-        return MatrixF32(1, arr.shape[0], arr.tostring())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
