@@ -54,6 +54,7 @@ catkin_python_setup()
 add_message_files(
    FILES
    MatrixF32.msg
+   WakeUpEvent.msg
 )
 
 

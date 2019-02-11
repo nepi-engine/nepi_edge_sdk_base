@@ -8,7 +8,7 @@ import argparse
 import pipeline
 
 from num_sdk_sb2.srv import LppAccelData
-from num_sdk_base.msg import MatrixF32
+from num_sdk_base.msg import MatrixF32, WakeUpEvent
 
 NODE_TYPE="ACL"
 
@@ -20,10 +20,10 @@ class AccelDriver(pipeline.DriverNode):
                 nepi_out=nepi_out, change_data=change_data, node_score=1.0)
 
         self.samples = samples
-        rospy.Timer(rospy.Duration(interval), self._get_data)
+        rospy.Subscriber("wake_up_event", WakeUpEvent, self._get_data)
         rospy.spin()
 
-    def _get_data(self, ev):
+    def _get_data(self, msg):
         try:
             rospy.wait_for_service("lpp_request_accel_data")
         except rospy.ROSException, exc:
