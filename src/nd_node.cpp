@@ -70,14 +70,13 @@ void NDNode::initPublishers()
 	// Call the base method
 	SDKNode::initPublishers();
 
-	// The image names are NodeParam types, so we need a conversion to their data type
-	// through an assignment - use a tmp_name string
-	std::string tmp_name = _img_0_name;
-	img_0_pub = img_trans.advertiseCamera(tmp_name + "/image_raw", 1);
-	tmp_name = _img_1_name;
-	img_1_pub = img_trans.advertiseCamera(tmp_name + "/image_raw", 1);
-	tmp_name = _alt_img_name;
-	img_alt_pub = img_trans.advertiseCamera(tmp_name + "/image_raw", 1);
+	// The image names are NodeParam types, so we need to obtain them first and use a conversion operator to their data type
+	_img_0_name.retrieve();
+	img_0_pub = img_trans.advertiseCamera((std::string)_img_0_name + "/image_raw", 1);
+	_img_1_name.retrieve();
+	img_1_pub = img_trans.advertiseCamera((std::string)_img_1_name + "/image_raw", 1);
+	_alt_img_name.retrieve();
+	img_alt_pub = img_trans.advertiseCamera((std::string)_alt_img_name + "/image_raw", 1);
 
 	// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
@@ -101,9 +100,9 @@ void NDNode::retrieveParams()
 	_gain.retrieve();
 	_filter_enabled.retrieve();
 	_filter_control.retrieve();
-	_img_0_name.retrieve();
-	_img_1_name.retrieve();
-	_alt_img_name.retrieve();
+	_img_0_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
+	_img_1_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
+	_alt_img_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
 	_img_0_frame_id.retrieve();
 	_img_1_frame_id.retrieve();
 	_alt_img_frame_id.retrieve();
