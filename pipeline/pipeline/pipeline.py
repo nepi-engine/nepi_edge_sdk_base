@@ -98,7 +98,8 @@ class PipelineNode(object):
                 "heading": self._get_current_heading(),
                 "quality": self.calculate_quality(data),
                 "node_id_score": self.node_score,
-                "data_file": data_file
+                "data_file": data_file,
+                "change_file": "NC"
         }
         if change_data is not None:
             metadata["change_data_file"] = change_data_file
