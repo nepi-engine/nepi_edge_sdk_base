@@ -17,15 +17,12 @@ class PipelineNode(object):
 
     def __init__(self, typ, inst,
             src_typ=None, src_inst=None,
-            msg_in=None, msg_out=None,
             nepi_out=False, change_data=False, node_score=0.0):
         """
         typ: Node type (see ICD).
         inst: Node instance # (see ICD).
         src_typ: Source node type (see ICD).
         src_inst: Source node instance # (see ICD).
-        msg_in: Type of ROS msg that the source node produces.
-        msg_out: Type of ROS msg that this node should produce.
         nepi_out: Whether or not to write output to the NEPI FS.
         node_score: Used in PIPO scoring.
         """
@@ -36,8 +33,8 @@ class PipelineNode(object):
         rospy.init_node(self.node_id)
         rospy.loginfo("Starting the {} node".format(self.node_id))
 
-        self.data_source = self._init_data_source(src_typ, src_inst, msg_in)
-        self.data_sink = self._init_data_sink(msg_out)
+        self.data_source = self._init_data_source(src_typ, src_inst)
+        self.data_sink = self._init_data_sink()
 
         self.nepi_out = nepi_out
         self.change_data = change_data
@@ -61,18 +58,15 @@ class PipelineNode(object):
     def calculate_quality(self, msg):
         return 0.0
 
-    def _init_data_source(self, src_typ, src_inst, msg_in):
-        if None in (src_typ, src_inst, msg_in):
+    def _init_data_source(self, src_typ, src_inst):
+        if None in (src_typ, src_inst):
             return None
 
-        return rospy.Subscriber("_".join((src_typ, src_inst)), msg_in, self._handle_input)
+        return rospy.Subscriber("_".join((src_typ, src_inst)), NodeOutput, self._handle_input)
 
-    def _init_data_sink(self, msg_out):
-        if msg_out is None:
-            return None
-
+    def _init_data_sink(self):
         # TODO: support configurable queue_size or latch?
-        return rospy.Publisher(self.node_id, msg_out, queue_size=1)
+        return rospy.Publisher(self.node_id, NodeOutput, queue_size=1)
 
     def _handle_input(self, msg):
         msg_out = self.process(msg)

@@ -16,7 +16,6 @@ class AccelDriver(pipeline.DriverNode):
 
     def __init__(self, inst, interval, samples, nepi_out=False, change_data=False):
         super(AccelDriver, self).__init__(NODE_TYPE, inst,
-                msg_out=NodeOutput,
                 nepi_out=nepi_out, change_data=change_data, node_score=1.0)
 
         self.samples = samples
