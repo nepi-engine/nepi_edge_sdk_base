@@ -18,7 +18,7 @@ class PipelineNode(object):
 
     def __init__(self, typ, inst,
             src_typ=None, src_inst=None,
-            nepi_out=False, change_data=False, node_score=0.0):
+            nepi_out=False, node_score=0.0):
         """
         typ: Node type (see ICD).
         inst: Node instance # (see ICD).
@@ -38,8 +38,9 @@ class PipelineNode(object):
         self.data_sink = self._init_data_sink()
 
         self.nepi_out = nepi_out
-        self.change_data = change_data
         self.node_score = node_score
+
+        self.previous_data = None
 
         self.bridge = CvBridge()
 
@@ -53,6 +54,26 @@ class PipelineNode(object):
         inner dimensions are unspecified at this level.
         """
         return data
+
+    def derive_change_data(self, current_data, previous_data):
+        """Derive change data product.
+
+        This method may be overridden by subclasses to enable the use
+        of change data products, which may in turn reduce bandwidth
+        requirements for data transmission.
+
+        The two arguments may be assumed to be the two most recent
+        data products, though note that "previous_data" will be None
+        in the case of the first data product.
+
+        This method should return either:
+        * None: Indicates no data change product should be used.
+        * "NC": Indicates that current_data and previous_data are
+                identical.
+        * A change data representation suitable for passing to Python's
+          FileIO.write() method.
+        """
+        return None
 
     def data_to_msg(self, data):
         return NodeOutput(
@@ -88,12 +109,15 @@ class PipelineNode(object):
     
     def _nepi_write(self, msg):
         data = self.msg_to_data(msg)
-        change_data = self._calculate_diff(data)\
-                if (self.change_data and self.last_data is not None)\
-                else None
+        change_data = self.derive_change_data(data, self.previous_data)
+
         metadata_file = "{}_meta.json".format(self.node_id)
         data_file = "{}_std.json".format(self.node_id)
         change_data_file = "{}_change.json".format(self.node_id)
+        if change_data is None:
+            change_data_file = "null"
+        elif change_data == "NC":
+            change_data_file = "NC"
 
         ts = rospy.get_rostime()
         metadata = {
@@ -104,10 +128,8 @@ class PipelineNode(object):
                 "quality": self.calculate_quality(data),
                 "node_id_score": self.node_score,
                 "data_file": data_file,
-                "change_file": "NC"
+                "change_file": change_data_file
         }
-        if change_data is not None:
-            metadata["change_data_file"] = change_data_file
 
         data_dir = self._get_current_data_dir()
         if data_dir == "" or not os.path.isdir(data_dir):
@@ -119,15 +141,12 @@ class PipelineNode(object):
             fs_write = cv2.FileStorage(os.path.join(data_dir, data_file+"?base64"), cv2.FILE_STORAGE_WRITE)
             fs_write.write("data", data)
             fs_write.release()
-            if change_data is not None:
+            if change_data is not None and change_data != "NC":
+                # FIXME: Untested.
                 with open(os.path.join(data_dir, change_data_file), "w") as f:
-                    json.dump(change_data, f, indent=4)
+                    f.write(change_data)
 
-        self.last_data = data
-
-    def _calculate_diff(self, msg):
-        # TODO: implement, remember no change case
-        raise NotImplementedError()
+        self.previous_data = data
 
     def _get_current_data_dir(self):
         try:
@@ -170,9 +189,9 @@ class ServiceDriverNode(PipelineNode):
     SRV_TYPE=None
 
     def __init__(self, inst, interval, samples,
-            nepi_out=False, change_data=False, node_score=0.0):
-        super(ServiceDriverNode, self).__init__(self.NODE_TYPE, inst, nepi_out=nepi_out,
-                change_data=change_data, node_score=node_score)
+            nepi_out=False, node_score=0.0):
+        super(ServiceDriverNode, self).__init__(self.NODE_TYPE, inst,
+                nepi_out=nepi_out, node_score=node_score)
 
         self.samples = samples
         rospy.Subscriber("wake_up_event", WakeUpEvent, self._get_data)
@@ -240,71 +259,4 @@ class ServiceDriverNode(PipelineNode):
 
         msg = self.data_to_msg(resp.data)
         self._handle_input(msg)
-
-#class ProcessingNode(NumurusPipelineNode):
-#    """Numurus SDK Pipeline Processing Node.
-#
-#    This is the base implementation of a processing node for use
-#    within the Numurus SDK. It ingests data from a ROS topic, calls
-#    a processing routine on this data, then emits the result as a
-#    different ROS topic. Subclasses must define
-#    """
-#
-#    def __init__(self, typ, inst, subscriber_tup, publisher_tup):
-#        super(ProcessingNode, self).__init__(typ, inst, subscriber_tup, publisher_tup)
-#        rospy.spin()
-#
-#    def _handle_input(self, msg):
-#        self.publisher.publish(self.process(msg))
-#
-#    def process(self, msg):
-#        """Turn an input message into an output message.
-#
-#        This is the meat of the processing node. The single argument
-#        is a msg received via subscriber. This routine is responsible
-#        for parsing that msg, doing any necessary processing to
-#        generate an output msg, and returning that output msg. The
-#        default implementation is a simple pass-through.
-#        """
-#        return msg
-#
-#class SourceNode(NumurusPipelineNode):
-#    """Numurus SDK Pipeline Source Node.
-#
-#    This is the base implementation of a data source node or driver
-#    within the Numurus SDK. It fetches data from a ROS service or
-#    other source and emits it as a ROS topic formatted for use within
-#    other pipeline nodes.
-#    """
-#
-#    def __init__(self, typ, inst, publisher_tup):
-#        super(SourceNode, self).__init__(typ, inst, None, publisher_tup)
-#        self.source_init()
-#        rospy.spin()
-#
-#    def source_init(self, *args, **kwargs):
-#        """Set up data source.
-#
-#        Perform whatever additional setup is required to generate
-#        data to output. This may include setting a periodic timer,
-#        connecting to a signal, or anything else.
-#        """
-#        raise NotImplementedError("Must be overridden by subclass.")
-#
-#class SinkNode(NumurusPipelineNode):
-#    """Numurus SDK Pipeline Sink Node.
-#
-#    This is the base implementation of a data sink node within the
-#    Numurus SDK. It ingests data from a ROS topic, optionally performs
-#    compression and/or differencing and writes the products to the
-#    NEPI filesystem interface. Sink nodes are also responsible for
-#    assigning each output a quality score for use by the PIPO.
-#    """
-#
-#    def __init__(self, typ, inst, subscriber_tup, diff=False, node_score=0.0):
-#        super(SinkNode, self).__init__(typ, inst, subscriber_tup, None)
-#        self.diff = diff
-#        self.node_score = node_score
-#        self.last_data = None
-#        rospy.spin()
 
