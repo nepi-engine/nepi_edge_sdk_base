@@ -5,11 +5,12 @@ import numbers
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
+import argparse
 
 import rospy
 
 from num_sdk_base.srv import NepiDataDir
-from num_sdk_base.msg import NodeOutput
+from num_sdk_base.msg import WakeUpEvent, NodeOutput
 from num_sdk_msgs.srv import NavPosQuery
 
 class PipelineNode(object):
@@ -160,8 +161,85 @@ class PipelineNode(object):
 
         return resp.nav_pos.heading
 
-class DriverNode(PipelineNode):
-    pass # TODO
+class ServiceDriverNode(PipelineNode):
+    """Driver that gets data from a ROS Service."""
+
+    # These must be defined by subclass.
+    NODE_TYPE=None
+    SRV_NAME=None
+    SRV_TYPE=None
+
+    def __init__(self, inst, interval, samples,
+            nepi_out=False, change_data=False, node_score=0.0):
+        super(ServiceDriverNode, self).__init__(self.NODE_TYPE, inst, nepi_out=nepi_out,
+                change_data=change_data, node_score=node_score)
+
+        self.samples = samples
+        rospy.Subscriber("wake_up_event", WakeUpEvent, self._get_data)
+        rospy.spin()
+
+    @classmethod
+    def from_clargs(cls, argv):
+        # Remove executable name arg.
+        argv = argv[1:]
+        # Comb out roslaunch args.
+        argv = [arg for arg in argv if not arg.startswith(("__name", "__log"))]
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+                "--inst",
+                type=int,
+                required=True,
+                dest="inst",
+                help="Node instance #"
+                )
+        parser.add_argument(
+                "--interval",
+                type=float,
+                default=1.0,
+                dest="interval",
+                help="Data fetch interval (s)"
+                )
+        parser.add_argument(
+                "--samples",
+                type=int,
+                default=10,
+                dest="samples",
+                help="Number of samples to fetch"
+                )
+        parser.add_argument(
+                "--nepi-out",
+                action="store_true",
+                dest="nepi_out",
+                help="Output data to NEPI FS"
+                )
+        parser.add_argument(
+                "--node-score",
+                type=float,
+                default=0.0,
+                dest="node_score",
+                help="Node score"
+                )
+
+        args = parser.parse_args(argv)
+
+        return cls(args.inst, args.interval, args.samples, nepi_out=args.nepi_out, node_score=args.node_score)
+
+    def _get_data(self, msg):
+        try:
+            rospy.wait_for_service(self.SRV_NAME)
+        except rospy.ROSException, exc:
+            rospy.logwarn("{} failed: {}".format(self.SRV_NAME, exc))
+            return
+        try:
+            proxy = rospy.ServiceProxy(self.SRV_NAME, self.SRV_TYPE)
+            resp = proxy(self.samples)
+        except rospy.ServiceException, exc:
+            rospy.logwarn("{} failed: {}".format(self.SRV_NAME, exc))
+            return
+
+        msg = self.data_to_msg(resp.data)
+        self._handle_input(msg)
 
 #class ProcessingNode(NumurusPipelineNode):
 #    """Numurus SDK Pipeline Processing Node.
