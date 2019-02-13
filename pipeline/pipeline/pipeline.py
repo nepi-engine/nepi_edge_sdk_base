@@ -42,8 +42,16 @@ class PipelineNode(object):
 
         self.bridge = CvBridge()
 
-    def process(self, msg):
-        return msg
+    def process(self, data):
+        """Process input data and return output data.
+
+        This method may be overridden by subclasses to perform some
+        processing on input data objects. The "data" argument is
+        assumed to be a 3d numpy array (equivalent to an OpenCV
+        matrix), in which the outermost dimension is time and the two
+        inner dimensions are unspecified at this level.
+        """
+        return data
 
     def data_to_msg(self, data):
         return NodeOutput(
@@ -69,7 +77,9 @@ class PipelineNode(object):
         return rospy.Publisher(self.node_id, NodeOutput, queue_size=1)
 
     def _handle_input(self, msg):
-        msg_out = self.process(msg)
+        data = self.msg_to_data(msg)
+        data_out = self.process(data)
+        msg_out = self.data_to_msg(data_out)
         if self.data_sink is not None:
             self.data_sink.publish(msg_out)
         if self.nepi_out:
