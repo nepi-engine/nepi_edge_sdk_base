@@ -244,6 +244,9 @@ class ServiceDriverNode(PipelineNode):
 
         return cls(args.inst, args.interval, args.samples, nepi_out=args.nepi_out, node_score=args.node_score)
 
+    def parse_raw_data(self):
+        raise NotImplemented("Must be overridded by subclass.")
+
     def _get_data(self, msg):
         try:
             rospy.wait_for_service(self.SRV_NAME)
@@ -257,6 +260,7 @@ class ServiceDriverNode(PipelineNode):
             rospy.logwarn("{} failed: {}".format(self.SRV_NAME, exc))
             return
 
-        msg = self.data_to_msg(resp.data)
+        data = self.parse_raw_data(resp.data)
+        msg = self.data_to_msg(data)
         self._handle_input(msg)
 
