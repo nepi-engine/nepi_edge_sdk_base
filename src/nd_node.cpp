@@ -377,12 +377,20 @@ void NDNode::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
 	std::stringstream qualified_filename_no_extension;
     qualified_filename_no_extension << _save_data_if->_save_data_dir << "/" << display_name << _save_data_if->getFilenamePrefix() << "_" << image_identifier << "_" << time_str;  
     
-    ROS_ASSERT( cv::imwrite( qualified_filename_no_extension.str() + ".jpg",  cv_ptr->image ) ); // OpenCV uses extensions intelligently
+    bool success = cv::imwrite( qualified_filename_no_extension.str() + ".jpg",  cv_ptr->image ); // OpenCV uses extensions intelligently
+	if (false == success)
+	{
+		ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".jpg"); 
+	}
 	
     // Save the lossless PNG if raw data saving enabled
     if (true == _save_data_if->saveRawEnabled())
     {
-    	ROS_ASSERT( cv::imwrite( qualified_filename_no_extension.str() + ".png",  cv_ptr->image ) ); // OpenCV uses extensions intelligently    	
+    	success = cv::imwrite( qualified_filename_no_extension.str() + ".png",  cv_ptr->image ); // OpenCV uses extensions intelligently
+    	if (false == success)
+		{
+			ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".png"); 
+		}    	
     }
 }
 
