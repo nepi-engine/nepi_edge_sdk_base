@@ -76,6 +76,7 @@ add_message_files(
 add_service_files(
    FILES
    NepiDataDir.srv
+   ProcessCfgUpdates.srv
 )
 
 ## Generate actions in the 'action' folder
