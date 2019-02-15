@@ -47,9 +47,8 @@ void SaveDataInterface::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &
 		_save_continuous = msg->save_continuous;
 		_save_raw = msg->save_raw;
 
-		ROS_DEBUG("%s data save settings updated to (save_continuous=%s, save_raw=%s)", _parent_node->getName().c_str(),
+		ROS_INFO("%s data save settings updated to (save_continuous=%s, save_raw=%s)", _parent_node->getName().c_str(),
 				  BOOL_TO_ENABLED(_save_continuous), BOOL_TO_ENABLED(_save_raw));
-		
 	}
 	// Always publish the update
 	publishSaveStatus();
