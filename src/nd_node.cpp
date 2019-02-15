@@ -49,13 +49,13 @@ NDNode::NDNode():
 	// Load the sim mode files
 	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getName() + "/sim_img_";
 	
-	const std::string IMG_0_SIM_FILENAME = SIM_IMG_BASENAME + "0.jpg";
+	const std::string IMG_0_SIM_FILENAME = SIM_IMG_BASENAME + "0.png";
 	loadSimData(IMG_0_SIM_FILENAME, &img_0_sim_data);
 
-	const std::string IMG_1_SIM_FILENAME = SIM_IMG_BASENAME + "1.jpg";
+	const std::string IMG_1_SIM_FILENAME = SIM_IMG_BASENAME + "1.png";
 	loadSimData(IMG_1_SIM_FILENAME, &img_1_sim_data);
 
-	const std::string IMG_ALT_SIM_FILENAME = SIM_IMG_BASENAME + "alt.jpg";
+	const std::string IMG_ALT_SIM_FILENAME = SIM_IMG_BASENAME + "alt.png";
 	loadSimData(IMG_ALT_SIM_FILENAME, &img_alt_sim_data);
 }
 
