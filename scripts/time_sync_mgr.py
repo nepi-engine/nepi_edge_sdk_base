@@ -150,11 +150,14 @@ def handle_time_status_query(req):
     time_status.current_time = rospy.get_rostime()
 
     # Get Last PPS time from the sysfs node
-    pps_string = subprocess.check_output(["cat", "/sys/class/pps/pps0/assert"])
-    pps_tokens = pps_string.split('#')
-    if (len(pps_tokens) >= 2):
-        time_status.last_pps = rospy.Time(float(pps_string.split('#')[0]))
-    else:
+    try:
+        pps_string = subprocess.check_output(["cat", "/sys/class/pps/pps0/assert"])
+        pps_tokens = pps_string.split('#')
+        if (len(pps_tokens) >= 2):
+            time_status.last_pps = rospy.Time(float(pps_string.split('#')[0]))
+        else:
+            time_status.last_pps = rospy.Time(0)
+    except: # Failed to find the assert file - just return no PPS
         time_status.last_pps = rospy.Time(0)
         
     # Gather NTP info from chronyc application
@@ -174,10 +177,13 @@ def handle_time_status_query(req):
 def set_time(msg):
     # TODO: Bounds checking?
     # Use the Linux 'date -s' command-line utility.
+    rospy.loginfo("Setting time from set_time topic to %ds, %dns", msg.data.secs, msg.data.nsecs)
     timestring = '@' + str(float(msg.data.secs) + (float(msg.data.nsecs) / float(1e9))) 
     subprocess.call(["date", "-s", timestring])
     global g_last_set_time
     g_last_set_time = msg.data
+    new_date = subprocess.check_output(["date"])
+    rospy.loginfo("Updated date: %s", new_date)
 
     # TODO: Should we use this CTypes call into librt instead?
 #    import ctypes
