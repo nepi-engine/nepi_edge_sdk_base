@@ -157,8 +157,11 @@ def handle_time_status_query(req):
             time_status.last_pps = rospy.Time(float(pps_string.split('#')[0]))
         else:
             time_status.last_pps = rospy.Time(0)
+            rospy.logwarn_throttle(60, "Unable to parse /sys/class/pps/pps0/assert");
     except: # Failed to find the assert file - just return no PPS
         time_status.last_pps = rospy.Time(0)
+        rospy.logwarn_throttle(60, "Unable to parse /sys/class/pps/pps0/assert");
+
         
     # Gather NTP info from chronyc application
     chronyc_sources = subprocess.check_output(["chronyc", "sources"]).splitlines()
