@@ -6,6 +6,7 @@ import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 import argparse
+import datetime
 
 import rospy
 
@@ -13,12 +14,17 @@ from num_sdk_base.srv import NepiDataDir
 from num_sdk_base.msg import WakeUpEvent, NodeOutput
 from num_sdk_msgs.srv import NavPosQuery
 
+# For now put this here so that we don't clog up the rootfs partition during development.
+# TODO: find an actual place for this to go, probably in a dedicated partition
+RAW_DATA_ROOT="/tmp"
+
 class PipelineNode(object):
     """Numurus SDK Pipeline Node Abstract Base Class."""
 
     def __init__(self, typ, inst,
             src_typ=None, src_inst=None,
-            nepi_out=False, node_score=0.0):
+            nepi_out=False, node_score=0.0,
+            raw_data_out=False):
         """
         typ: Node type (see ICD).
         inst: Node instance # (see ICD).
@@ -39,6 +45,8 @@ class PipelineNode(object):
 
         self.nepi_out = nepi_out
         self.node_score = node_score
+
+        self.raw_data_out = raw_data_out
 
         self.previous_data = None
 
@@ -106,8 +114,11 @@ class PipelineNode(object):
             self.data_sink.publish(msg_out)
         if self.nepi_out:
             self._nepi_write(msg_out)
+        if self.raw_data_out:
+            self._raw_data_write(data_out)
     
     def _nepi_write(self, msg):
+        # FIXME: we do msg_to_data then data_to_msg then here msg_to_data again
         data = self.msg_to_data(msg)
         change_data = self.derive_change_data(data, self.previous_data)
 
@@ -147,6 +158,22 @@ class PipelineNode(object):
                     f.write(change_data)
 
         self.previous_data = data
+
+    # FIXME: duplicate of NepiCoreMgr method
+    @staticmethod
+    def _timestamp():
+        return datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S.%f")[:-3]
+
+    def _raw_data_write(self, data):
+        if not (os.path.exists(RAW_DATA_ROOT) and os.path.isdir(RAW_DATA_ROOT)):
+            rospy.logerr("Unable to save raw data, target directory missing ({})".format(RAW_DATA_ROOT))
+
+        fn = os.path.join(RAW_DATA_ROOT, "{}_{}_{}.json".format(self.typ, self.inst, self._timestamp()))
+
+        # TODO: do we actually want to base64 encode this?
+        fs_write = cv2.FileStorage(fn+"?base64", cv2.FILE_STORAGE_WRITE)
+        fs_write.write("data", data)
+        fs_write.release()
 
     def _get_current_data_dir(self):
         try:
@@ -189,9 +216,10 @@ class ServiceDriverNode(PipelineNode):
     SRV_TYPE=None
 
     def __init__(self, inst, interval, samples,
-            nepi_out=False, node_score=0.0):
+            nepi_out=False, node_score=0.0,
+            raw_data_out=True):
         super(ServiceDriverNode, self).__init__(self.NODE_TYPE, inst,
-                nepi_out=nepi_out, node_score=node_score)
+                nepi_out=nepi_out, node_score=node_score, raw_data_out=raw_data_out)
 
         self.samples = samples
         rospy.Subscriber("wake_up_event", WakeUpEvent, self._get_data)
@@ -239,10 +267,17 @@ class ServiceDriverNode(PipelineNode):
                 dest="node_score",
                 help="Node score"
                 )
+        parser.add_argument(
+                "--discard-raw-data",
+                action="store_true",
+                dest="discard_raw_data",
+                help="Do not save raw data to disk"
+                )
 
         args = parser.parse_args(argv)
 
-        return cls(args.inst, args.interval, args.samples, nepi_out=args.nepi_out, node_score=args.node_score)
+        return cls(args.inst, args.interval, args.samples, nepi_out=args.nepi_out,
+                node_score=args.node_score, raw_data_out=(not args.discard_raw_data))
 
     def parse_raw_data(self):
         raise NotImplemented("Must be overridded by subclass.")
