@@ -200,7 +200,7 @@ catkin_install_python(PROGRAMS
   scripts/time_sync_mgr.py
   scripts/nepi_core_mgr.py
   scripts/pipeline_mgr.py
-  pipeline/scripts/accel_driver.py
+  pipeline/scripts/acl.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

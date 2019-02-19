@@ -29,7 +29,7 @@ class PipelineMgr:
 
         # TODO: launch pipeline nodes!
         accel_driver = roslaunch.core.Node("num_sdk_base",
-                "accel_driver.py",
+                "acl.py",
                 namespace=namespace,
                 args="--inst=1 --interval=10.0 --nepi-out",
                 respawn=True, respawn_delay=10.0)

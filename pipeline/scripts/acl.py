@@ -8,7 +8,7 @@ import pipeline
 
 from num_sdk_sb2.srv import LppAccelData
 
-class AccelDriver(pipeline.ServiceDriverNode):
+class ACL(pipeline.ServiceDriverNode):
     NODE_TYPE="ACL"
     SRV_NAME="lpp_request_accel_data"
     SRV_TYPE=LppAccelData
@@ -22,4 +22,4 @@ class AccelDriver(pipeline.ServiceDriverNode):
         return ret
 
 if __name__ == "__main__":
-    node = AccelDriver.from_clargs(sys.argv)
+    node = ACL.from_clargs(sys.argv)
