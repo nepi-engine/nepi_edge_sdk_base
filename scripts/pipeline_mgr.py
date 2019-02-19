@@ -28,16 +28,34 @@ class PipelineMgr:
         namespace = "/numurus/sb1/0000_01"
 
         # TODO: launch pipeline nodes!
-        accel_driver = roslaunch.core.Node("num_sdk_base",
+        acl1 = roslaunch.core.Node("num_sdk_base",
                 "acl.py",
                 namespace=namespace,
-                args="--inst=1 --interval=10.0 --nepi-out",
+                args="--inst=1 --nepi-out",
+                respawn=True, respawn_delay=10.0)
+        gyr1 = roslaunch.core.Node("num_sdk_base",
+                "gyr.py",
+                namespace=namespace,
+                args="--inst=1 --nepi-out",
+                respawn=True, respawn_delay=10.0)
+        mag1 = roslaunch.core.Node("num_sdk_base",
+                "mag.py",
+                namespace=namespace,
+                args="--inst=1 --nepi-out",
+                respawn=True, respawn_delay=10.0)
+        bat1 = roslaunch.core.Node("num_sdk_base",
+                "bat.py",
+                namespace=namespace,
+                args="--inst=1 --nepi-out",
                 respawn=True, respawn_delay=10.0)
 
         launch = roslaunch.scriptapi.ROSLaunch()
         launch.start()
 
-        self.process = launch.launch(accel_driver)
+        self.acl1 = launch.launch(acl1)
+        self.gyr1 = launch.launch(gyr1)
+        self.mag1 = launch.launch(mag1)
+        self.bat1 = launch.launch(bat1)
 
         # TODO: define config interface
 

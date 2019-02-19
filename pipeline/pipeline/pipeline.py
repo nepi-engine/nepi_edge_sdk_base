@@ -215,7 +215,7 @@ class ServiceDriverNode(PipelineNode):
     SRV_NAME=None
     SRV_TYPE=None
 
-    def __init__(self, inst, interval, samples,
+    def __init__(self, inst, samples,
             nepi_out=False, node_score=0.0,
             raw_data_out=True):
         super(ServiceDriverNode, self).__init__(self.NODE_TYPE, inst,
@@ -239,13 +239,6 @@ class ServiceDriverNode(PipelineNode):
                 required=True,
                 dest="inst",
                 help="Node instance #"
-                )
-        parser.add_argument(
-                "--interval",
-                type=float,
-                default=1.0,
-                dest="interval",
-                help="Data fetch interval (s)"
                 )
         parser.add_argument(
                 "--samples",
@@ -276,7 +269,7 @@ class ServiceDriverNode(PipelineNode):
 
         args = parser.parse_args(argv)
 
-        return cls(args.inst, args.interval, args.samples, nepi_out=args.nepi_out,
+        return cls(args.inst, args.samples, nepi_out=args.nepi_out,
                 node_score=args.node_score, raw_data_out=(not args.discard_raw_data))
 
     def parse_raw_data(self):

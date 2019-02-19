@@ -201,6 +201,9 @@ catkin_install_python(PROGRAMS
   scripts/nepi_core_mgr.py
   scripts/pipeline_mgr.py
   pipeline/scripts/acl.py
+  pipeline/scripts/gyr.py
+  pipeline/scripts/mag.py
+  pipeline/scripts/bat.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
