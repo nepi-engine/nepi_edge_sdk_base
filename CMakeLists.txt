@@ -204,6 +204,11 @@ catkin_install_python(PROGRAMS
   pipeline/scripts/gyr.py
   pipeline/scripts/mag.py
   pipeline/scripts/bat.py
+  pipeline/scripts/thr.py
+  pipeline/scripts/gps.py
+  pipeline/scripts/hmt.py
+  pipeline/scripts/tdt.py
+  pipeline/scripts/sbt.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
