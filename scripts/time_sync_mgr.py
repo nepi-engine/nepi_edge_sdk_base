@@ -150,17 +150,18 @@ def handle_time_status_query(req):
     time_status.current_time = rospy.get_rostime()
 
     # Get Last PPS time from the sysfs node
-    try:
+    pps_exists = os.path.isfile('/sys/class/pps/pps0/assert')
+    if pps_exists:
         pps_string = subprocess.check_output(["cat", "/sys/class/pps/pps0/assert"])
         pps_tokens = pps_string.split('#')
         if (len(pps_tokens) >= 2):
             time_status.last_pps = rospy.Time(float(pps_string.split('#')[0]))
         else:
             time_status.last_pps = rospy.Time(0)
-            rospy.logwarn_throttle(60, "Unable to parse /sys/class/pps/pps0/assert");
-    except: # Failed to find the assert file - just return no PPS
+            rospy.logwarn_throttle(300, "Unable to parse /sys/class/pps/pps0/assert");
+    else: # Failed to find the assert file - just return no PPS
         time_status.last_pps = rospy.Time(0)
-        rospy.logwarn_throttle(60, "Unable to parse /sys/class/pps/pps0/assert");
+        rospy.logwarn_throttle(300, "Unable to parse /sys/class/pps/pps0/assert");
 
         
     # Gather NTP info from chronyc application
