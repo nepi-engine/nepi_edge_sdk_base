@@ -55,7 +55,7 @@ protected:
 	TriggerInterface *_trig_if = nullptr;
 	SaveDataInterface *_save_data_if = nullptr;
 	image_transport::ImageTransport img_trans;
-	// TODO: Should these be image_transport::CameraPublisher instances instead?
+	
 	image_transport::CameraPublisher img_0_pub;
 	image_transport::CameraPublisher img_1_pub;
 	image_transport::CameraPublisher img_alt_pub;
