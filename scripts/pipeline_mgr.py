@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #TODO License
 
+import os
 import rospy
 import roslaunch
 
@@ -33,7 +34,9 @@ class PipelineMgr:
         rospy.loginfo("Starting the {} node".format(self.NODE_NAME))
 
         # FIXME: needs to be read from env variables
-        namespace = "/numurus/sb1/0000_01"
+        namespace = "/{}/{}/{}".format(os.environ["ROOTNAME"],
+                                       os.environ["DEVICE_TYPE"],
+                                       os.environ["DEVICE_SN"])
 
         # TODO: launch pipeline nodes!
         acl1 = roslaunch.core.Node("num_sdk_base",
