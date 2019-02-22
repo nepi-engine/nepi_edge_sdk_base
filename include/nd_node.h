@@ -16,6 +16,8 @@
 #include "num_sdk_msgs/NDAutoManualSelection.h"
 #include "num_sdk_msgs/NDStatus.h"
 
+#define IMG_ENCODING  "rgb8"
+
 namespace Numurus
 {
 // Forward declarations
@@ -49,6 +51,9 @@ public:
 		IMG_1,
 		IMG_ALT
 	};
+
+	// TODO: Probably belongs in a utility class
+	static void loadSimData(std::string filename, cv::Mat *out_mat);
 
 protected:
 	static constexpr auto SENSOR_TYPE_INDEX = 4;
@@ -89,10 +94,6 @@ protected:
 	SDKNode::NodeParam<std::string> _img_1_frame_id;
 	SDKNode::NodeParam<std::string> _alt_img_frame_id;
 
-    SDKNode::NodeParam<int> _img_width;
-    SDKNode::NodeParam<int> _img_height;
-    SDKNode::NodeParam<std::string> _img_encoding;
-	
 	// Inherited from SDKNode
 	virtual inline bool validateNamespace() override {return ns_tokens.size() > 4;}
 	virtual void initPublishers() override;
@@ -105,6 +106,11 @@ protected:
 	virtual void pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg);
 	void simulateDataHandler(const std_msgs::Bool::ConstPtr &msg);
 
+	static inline bool autoManualMsgIsValid(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
+	{
+		return (msg->adjustment >= 0.0f && msg->adjustment <= 1.0f);
+	}
+
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
 	// though we provide a very basic private member setter implementation in this baseclass
 	virtual void setRangeHandler(const num_sdk_msgs::NDRange::ConstPtr &msg);
@@ -113,6 +119,8 @@ protected:
 	virtual void setGainHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
 	virtual void setFilterHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
 
+	void publishStatus();
+	
 	void publishImage(int img_id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp);
 	void publishImage(int img_id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo);
 
@@ -121,8 +129,6 @@ protected:
 private:
 	bool _paused = false;
 	ros::Publisher _status_pub;
-
-	void publishStatus();
 };
 
 }

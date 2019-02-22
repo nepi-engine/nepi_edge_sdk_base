@@ -12,15 +12,6 @@
 namespace Numurus
 {
 
-static void loadSimData(std::string filename, cv::Mat *out_mat)
-{
-	*out_mat = cv::imread(filename);
-	if (NULL == out_mat->data)
-	{
-		ROS_ERROR("Unable to load sim data from file %s", filename.c_str());
-	}
-}
-
 NDNode::NDNode():
 	img_trans{n_priv}, // Image topics are published in the node-specific namespace
 	_simulated_data{"simulated_data", false, this},
@@ -39,10 +30,7 @@ NDNode::NDNode():
 	_alt_img_name{"alt_img_name", "alt", this},
 	_img_0_frame_id{"img_0_frame_id", "img_0_frame", this},
 	_img_1_frame_id{"img_1_frame_id", "img_1_frame", this},
-	_alt_img_frame_id{"alt_img_frame_id", "alt_img_frame", this},
-	_img_width{"img_width", 1920, this},
-	_img_height{"img_height", 1080, this},
-	_img_encoding{"img_encoding", sensor_msgs::image_encodings::RGB8, this}
+	_alt_img_frame_id{"alt_img_frame_id", "alt_img_frame", this}
 {
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
 
@@ -63,6 +51,15 @@ NDNode::~NDNode()
 {
 	delete _save_data_if;
 	_save_data_if = nullptr;
+}
+
+void NDNode::loadSimData(std::string filename, cv::Mat *out_mat)
+{
+	*out_mat = cv::imread(filename);
+	if (NULL == out_mat->data)
+	{
+		ROS_ERROR("Unable to load sim data from file %s", filename.c_str());
+	}
 }
 
 void NDNode::initPublishers()
@@ -106,9 +103,6 @@ void NDNode::retrieveParams()
 	_img_0_frame_id.retrieve();
 	_img_1_frame_id.retrieve();
 	_alt_img_frame_id.retrieve();
-	_img_width.retrieve();
-	_img_height.retrieve();
-	_img_encoding.retrieve();
 
 	// Image transport parameters are ROS "dynamic_params", so don't need to be retrieved manually
 
@@ -233,11 +227,6 @@ void NDNode::setAngleHandler(const num_sdk_msgs::NDAngle::ConstPtr &msg)
 	}
 }
 
-static bool autoManualMsgIsValid(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
-{
-	return (msg->adjustment >= 0.0f && msg->adjustment <= 1.0f);
-}
-
 void NDNode::setResolutionHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
@@ -300,7 +289,7 @@ void NDNode::setFilterHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPt
 
 void NDNode::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp)
 {
-	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(cinfo->header, _img_encoding, *img).toImageMsg();
+	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(cinfo->header, IMG_ENCODING, *img).toImageMsg();
 
 	publishImage(id, msg, cinfo);
 }
@@ -314,15 +303,15 @@ void NDNode::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::Camera
 	{
 	case IMG_0:
 		publisher = &img_0_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, _img_encoding, img_0_sim_data).toImageMsg() : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, IMG_ENCODING, img_0_sim_data).toImageMsg() : img;
 		break;
 	case IMG_1:
 		publisher = &img_1_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, _img_encoding, img_1_sim_data).toImageMsg() : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, IMG_ENCODING, img_1_sim_data).toImageMsg() : img;
 		break;
 	case IMG_ALT:
 		publisher = &img_alt_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, _img_encoding, img_alt_sim_data).toImageMsg() : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, IMG_ENCODING, img_alt_sim_data).toImageMsg() : img;
 		break;
 	default:
 		ROS_ERROR("%s: Request to publish unknown image id (%d)", getName().c_str(), id);
