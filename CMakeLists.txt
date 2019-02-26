@@ -198,6 +198,7 @@ add_library(${PROJECT_NAME}
 catkin_install_python(PROGRAMS
   scripts/config_mgr.py
   scripts/time_sync_mgr.py
+  scripts/network_mgr.py
   scripts/nepi_core_mgr.py
   scripts/pipeline_mgr.py
   pipeline/scripts/acl.py
