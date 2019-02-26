@@ -69,21 +69,6 @@ class PipelineMgr:
                 namespace=namespace,
                 args="--inst=1 --nepi-out",
                 respawn=True, respawn_delay=10.0)
-        hmt1 = roslaunch.core.Node("num_sdk_base",
-                "hmt.py",
-                namespace=namespace,
-                args="--inst=1 --nepi-out",
-                respawn=True, respawn_delay=10.0)
-        tdt1 = roslaunch.core.Node("num_sdk_base",
-                "tdt.py",
-                namespace=namespace,
-                args="--inst=1 --nepi-out",
-                respawn=True, respawn_delay=10.0)
-        sbt1 = roslaunch.core.Node("num_sdk_base",
-                "sbt.py",
-                namespace=namespace,
-                args="--inst=1 --nepi-out",
-                respawn=True, respawn_delay=10.0)
         self.nodes = {
                 "acl1": acl1,
                 "gyr1": gyr1,
@@ -91,9 +76,6 @@ class PipelineMgr:
                 "bat1": bat1,
                 "thr1": thr1,
                 "gps1": gps1,
-                "hmt1": hmt1,
-                "tdt1": tdt1,
-                "sbt1": sbt1,
         }
 
         launch = roslaunch.scriptapi.ROSLaunch()
