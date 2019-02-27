@@ -39,43 +39,43 @@ class PipelineMgr:
                                        os.environ["DEVICE_SN"])
 
         # TODO: launch pipeline nodes!
-        acl1 = roslaunch.core.Node("num_sdk_base",
-                "acl.py",
-                namespace=namespace,
-                args="--inst=1 --nepi-out",
-                respawn=True, respawn_delay=10.0)
-        gyr1 = roslaunch.core.Node("num_sdk_base",
-                "gyr.py",
-                namespace=namespace,
-                args="--inst=1 --nepi-out",
-                respawn=True, respawn_delay=10.0)
-        mag1 = roslaunch.core.Node("num_sdk_base",
-                "mag.py",
-                namespace=namespace,
-                args="--inst=1 --nepi-out",
-                respawn=True, respawn_delay=10.0)
-        bat1 = roslaunch.core.Node("num_sdk_base",
-                "bat.py",
-                namespace=namespace,
-                args="--inst=1 --nepi-out",
-                respawn=True, respawn_delay=10.0)
-        thr1 = roslaunch.core.Node("num_sdk_base",
-                "thr.py",
-                namespace=namespace,
-                args="--inst=1 --nepi-out",
-                respawn=True, respawn_delay=10.0)
-        gps1 = roslaunch.core.Node("num_sdk_base",
-                "gps.py",
+#       acl1 = roslaunch.core.Node("num_sdk_base",
+#               "acl.py",
+#               namespace=namespace,
+#               args="--inst=1 --nepi-out",
+#               respawn=True, respawn_delay=10.0)
+#       gyr1 = roslaunch.core.Node("num_sdk_base",
+#               "gyr.py",
+#               namespace=namespace,
+#               args="--inst=1 --nepi-out",
+#               respawn=True, respawn_delay=10.0)
+#       mag1 = roslaunch.core.Node("num_sdk_base",
+#               "mag.py",
+#               namespace=namespace,
+#               args="--inst=1 --nepi-out",
+#               respawn=True, respawn_delay=10.0)
+#       bat1 = roslaunch.core.Node("num_sdk_base",
+#               "bat.py",
+#               namespace=namespace,
+#               args="--inst=1 --nepi-out",
+#               respawn=True, respawn_delay=10.0)
+#       thr1 = roslaunch.core.Node("num_sdk_base",
+#               "thr.py",
+#               namespace=namespace,
+#               args="--inst=1 --nepi-out",
+#               respawn=True, respawn_delay=10.0)
+#       gps1 = roslaunch.core.Node("num_sdk_base",
+#               "gps.py",
+#               namespace=namespace,
+#               args="--inst=1 --nepi-out",
+#               respawn=True, respawn_delay=10.0)
+        lpd1 = roslaunch.core.Node("num_sdk_base",
+                "lpd.py",
                 namespace=namespace,
                 args="--inst=1 --nepi-out",
                 respawn=True, respawn_delay=10.0)
         self.nodes = {
-                "acl1": acl1,
-                "gyr1": gyr1,
-                "mag1": mag1,
-                "bat1": bat1,
-                "thr1": thr1,
-                "gps1": gps1,
+                "lpd1": lpd1
         }
 
         launch = roslaunch.scriptapi.ROSLaunch()

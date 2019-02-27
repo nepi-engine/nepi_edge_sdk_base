@@ -2,7 +2,7 @@ import os
 import json
 import base64
 import numbers
-import cv2
+from cv2 import FileStorage, FILE_STORAGE_WRITE
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 import argparse
@@ -117,14 +117,17 @@ class PipelineNode(object):
         if self.raw_data_out:
             self._raw_data_write(data_out)
     
-    def _nepi_write(self, msg):
+    def _nepi_write(self, msg, typ_override=None):
+        typ = self.typ if typ_override is None else typ_override
+
         # FIXME: we do msg_to_data then data_to_msg then here msg_to_data again
         data = self.msg_to_data(msg)
         change_data = self.derive_change_data(data, self.previous_data)
 
-        metadata_file = "{}_meta.json".format(self.node_id)
-        data_file = "{}_std.json".format(self.node_id)
-        change_data_file = "{}_change.json".format(self.node_id)
+        node_id = "_".join((typ, str(self.inst)))
+        metadata_file = "{}_meta.json".format(node_id)
+        data_file = "{}_std.json".format(node_id)
+        change_data_file = "{}_change.json".format(node_id)
         if change_data is None:
             change_data_file = "null"
         elif change_data == "NC":
@@ -132,7 +135,7 @@ class PipelineNode(object):
 
         ts = rospy.get_rostime()
         metadata = {
-                "node_type": self.typ,
+                "node_type": typ,
                 "instance": self.inst,
                 "timestamp": ts.secs + ts.nsecs // 1e6 / 1e3,
                 "heading": self._get_current_heading(),
@@ -149,7 +152,7 @@ class PipelineNode(object):
             with open(os.path.join(data_dir, metadata_file), "w") as f:
                 json.dump(metadata, f, indent=4)
                 f.write("\n")
-            fs_write = cv2.FileStorage(os.path.join(data_dir, data_file+"?base64"), cv2.FILE_STORAGE_WRITE)
+            fs_write = FileStorage(os.path.join(data_dir, data_file+"?base64"), FILE_STORAGE_WRITE)
             fs_write.write("data", data)
             fs_write.release()
             if change_data is not None and change_data != "NC":
@@ -164,14 +167,16 @@ class PipelineNode(object):
     def _timestamp():
         return datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S.%f")[:-3]
 
-    def _raw_data_write(self, data):
+    def _raw_data_write(self, data, typ_override=None):
+        typ = self.typ if typ_override is None else typ_override
+
         if not (os.path.exists(RAW_DATA_ROOT) and os.path.isdir(RAW_DATA_ROOT)):
             rospy.logerr("Unable to save raw data, target directory missing ({})".format(RAW_DATA_ROOT))
 
-        fn = os.path.join(RAW_DATA_ROOT, "{}_{}_{}.json".format(self.typ, self.inst, self._timestamp()))
+        fn = os.path.join(RAW_DATA_ROOT, "{}_{}_{}.json".format(typ, self.inst, self._timestamp()))
 
         # TODO: do we actually want to base64 encode this?
-        fs_write = cv2.FileStorage(fn+"?base64", cv2.FILE_STORAGE_WRITE)
+        fs_write = FileStorage(fn+"?base64", FILE_STORAGE_WRITE)
         fs_write.write("data", data)
         fs_write.release()
 
@@ -291,4 +296,52 @@ class ServiceDriverNode(PipelineNode):
         data = self.parse_raw_data(resp.data)
         msg = self.data_to_msg(data)
         self._handle_input(msg)
+
+class ServiceDriverCollectionNode(ServiceDriverNode):
+
+    NODE_NAME=None
+    SUBNODE_NAMES=None
+    SRV_NAMES=None
+    SRV_TYPES=None
+
+    def _get_data_from_service(self, name, typ):
+        try:
+            rospy.wait_for_service(name)
+        except rospy.ROSException, exc:
+            rospy.logwarn("{} failed: {}".format(name, exc))
+            return
+        try:
+            proxy = rospy.ServiceProxy(name, typ)
+            resp = proxy(self.samples)
+        except rospy.ServiceException, exc:
+            rospy.logwarn("{} failed: {}".format(name, exc))
+            return
+
+        data = self.parse_raw_data(name, resp.data)
+        msg = self.data_to_msg(data)
+        self._handle_input(name, msg)
+
+    def _get_data(self, msg):
+        for i in range(len(self.SRV_NAMES)):
+            self._get_data_from_service(self.SRV_NAMES[i], self.SRV_TYPES[i])
+
+    def _init_data_sink(self):
+        ret = {}
+        for name in self.SUBNODE_NAMES:
+            ret[name] = rospy.Publisher("_".join((name, str(self.inst))), NodeOutput, queue_size=1)
+        return ret
+
+    def _handle_input(self, name, msg):
+        data = self.msg_to_data(msg)
+        data_out = self.process(data)
+        msg_out = self.data_to_msg(data_out)
+        index = self.SRV_NAMES.index(name)
+        subtyp = self.SUBNODE_NAMES[index]
+        if self.data_sink is not None:
+            sink = self.data_sink[subtyp]
+            sink.publish(msg_out)
+        if self.nepi_out:
+            self._nepi_write(msg_out, typ_override=subtyp)
+        if self.raw_data_out:
+            self._raw_data_write(data_out, typ_override=subtyp)
 

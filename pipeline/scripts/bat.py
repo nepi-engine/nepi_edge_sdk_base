@@ -13,7 +13,8 @@ class BAT(pipeline.ServiceDriverNode):
     SRV_NAME="lpp_request_charge_state_data"
     SRV_TYPE=LppChargeState
 
-    def parse_raw_data(self, data):
+    @staticmethod
+    def parse_raw_data(data):
         ret = np.zeros((len(data), 1, 1, 1))
         for i in range(len(data)):
             ret[i][0][0][0] = data[i]

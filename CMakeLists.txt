@@ -210,6 +210,7 @@ catkin_install_python(PROGRAMS
   pipeline/scripts/hmt.py
   pipeline/scripts/tdt.py
   pipeline/scripts/sbt.py
+  pipeline/scripts/lpd.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
