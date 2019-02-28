@@ -10,7 +10,6 @@ SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pu
 	_save_continuous{"save_data_continuous", false, parent},
 	_save_raw{"save_data_raw", false, parent}
 {
-	ROS_ERROR_STREAM("Must provide a better default file save location. Currently " << _save_data_dir);
 }
 
 SaveDataInterface::~SaveDataInterface(){}

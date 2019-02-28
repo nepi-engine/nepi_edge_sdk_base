@@ -47,7 +47,7 @@ public:
 	/**
 	 * Non-user-configurable base path
 	 */
-	const std::string _save_data_dir = "/home/nvidia/Desktop/test_data"; // TODO: Decide on a real and persistent filesystem location
+	const std::string _save_data_dir = "/home/numurus_user/data";
 
 protected:
 	/**
