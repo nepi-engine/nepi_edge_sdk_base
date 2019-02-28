@@ -1,3 +1,5 @@
+#include "boost/filesystem.hpp"
+
 #include "save_data_interface.h"
 #include "sdk_utils.h"
 
@@ -33,8 +35,7 @@ void SaveDataInterface::initSubscribers()
 	
 	// Private namespace subscriptions
 	subscribers.push_back(_parent_priv_nh->subscribe("save_data", 3, &SaveDataInterface::saveDataHandler, this));
-	// TODO: Should we allow per-node prefixes?
-	//subscribers.push_back(_parent_priv_nh->subscribe("save_data_prefix", 3, &SaveDataInterface::saveDataPrefixHandler, this));
+	subscribers.push_back(_parent_priv_nh->subscribe("save_data_prefix", 3, &SaveDataInterface::saveDataPrefixHandler, this));
 }
 
 void SaveDataInterface::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg)
@@ -56,6 +57,17 @@ void SaveDataInterface::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &
 void SaveDataInterface::saveDataPrefixHandler(const std_msgs::String::ConstPtr &msg)
 {
 	_filename_prefix = msg->data;
+
+	// Need to check if this defines a subdirectory and if so, ensure it exists
+	const std::string new_path = _save_data_dir + "/" + _filename_prefix;
+	boost::filesystem::path p(new_path);
+	boost::filesystem::path parent_p = p.parent_path();
+
+	if (false == boost::filesystem::exists(parent_p))
+	{
+		// Using boost because the equivalent std::filesystem::create_directories only exists since C++17
+		boost::filesystem::create_directories(parent_p);	
+	}	
 
 	publishSaveStatus();
 }

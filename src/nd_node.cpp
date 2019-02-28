@@ -364,7 +364,8 @@ void NDNode::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
     
     // Create the filename - defer the extension so that we can adjust as necessary for save_raw
 	std::stringstream qualified_filename_no_extension;
-    qualified_filename_no_extension << _save_data_if->_save_data_dir << "/" << display_name << _save_data_if->getFilenamePrefix() << "_" << image_identifier << "_" << time_str;  
+    qualified_filename_no_extension << _save_data_if->_save_data_dir << "/" << _save_data_if->getFilenamePrefix() <<
+    									display_name << "_" << image_identifier << "_" << time_str;  
     
     bool success = cv::imwrite( qualified_filename_no_extension.str() + ".jpg",  cv_ptr->image ); // OpenCV uses extensions intelligently
 	if (false == success)

@@ -42,7 +42,7 @@ public:
 
 	inline bool saveContinuousEnabled() {return (_save_continuous == true);}
 	inline bool saveRawEnabled() {return (_save_continuous == true && _save_raw == true);}
-	inline const std::string& getFilenamePrefix() {return _filename_prefix;}
+	inline const std::string getFilenamePrefix() {return _filename_prefix;}
 
 	/**
 	 * Non-user-configurable base path
