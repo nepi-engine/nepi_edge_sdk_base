@@ -1,3 +1,5 @@
+#include <sys/stat.h>
+
 #include "opencv2/highgui.hpp"
 #include "cv_bridge/cv_bridge.h"
 
@@ -362,25 +364,34 @@ void NDNode::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
     const std::string display_name = _display_name;
     boost::posix_time::ptime posix_time = img->header.stamp.toBoost();
 	std::string time_str = boost::posix_time::to_iso_extended_string(posix_time);
+
+	// To change the permissions - opencv API doesn't seem to give us that control at creation
+	static const mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; // 664
     
     // Create the filename - defer the extension so that we can adjust as necessary for save_raw
 	std::stringstream qualified_filename_no_extension;
     qualified_filename_no_extension << _save_data_if->_save_data_dir << "/" << _save_data_if->getFilenamePrefix() <<
     									display_name << "_" << image_identifier << "_" << time_str;  
-    
-    bool success = cv::imwrite( qualified_filename_no_extension.str() + ".jpg",  cv_ptr->image ); // OpenCV uses extensions intelligently
+    const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
+    bool success = cv::imwrite( jpg_filename,  cv_ptr->image ); // OpenCV uses extensions intelligently
 	if (false == success)
 	{
 		ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".jpg"); 
 	}
+	chmod(jpg_filename.c_str(), mode);
 	
     // Save the lossless PNG if raw data saving enabled
     if (true == _save_data_if->saveRawEnabled())
     {
-    	success = cv::imwrite( qualified_filename_no_extension.str() + ".png",  cv_ptr->image ); // OpenCV uses extensions intelligently
+    	const std::string png_filename = qualified_filename_no_extension.str() + ".png";
+    	success = cv::imwrite( png_filename, cv_ptr->image ); // OpenCV uses extensions intelligently
     	if (false == success)
 		{
 			ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".png"); 
+		}
+		else
+		{
+			chmod(png_filename.c_str(), mode);
 		}    	
     }
 }
