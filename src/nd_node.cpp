@@ -349,7 +349,8 @@ void NDNode::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
 	cv_bridge::CvImageConstPtr cv_ptr;
     try
     {
-      cv_ptr = cv_bridge::toCvShare(img, img->encoding);
+      //cv_ptr = cv_bridge::toCvShare(img, img->encoding);
+      cv_ptr = cv_bridge::toCvShare(img, "bgr8"); // Last minute hack. TODO: Fix this!
     }
     catch (cv_bridge::Exception& e)
     {
