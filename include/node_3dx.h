@@ -1,5 +1,5 @@
-#ifndef _ND_NODE_H
-#define _ND_NODE_H
+#ifndef _NODE_3DX_H
+#define _NODE_3DX_H
 
 #include <string>
 
@@ -11,10 +11,10 @@
 #include "sdk_node.h"
 
 #include "num_sdk_msgs/SaveData.h"
-#include "num_sdk_msgs/NDRange.h"
-#include "num_sdk_msgs/NDAngle.h"
-#include "num_sdk_msgs/NDAutoManualSelection.h"
-#include "num_sdk_msgs/NDStatus.h"
+#include "num_sdk_msgs/Range3DX.h"
+#include "num_sdk_msgs/Angle3DX.h"
+#include "num_sdk_msgs/AutoManualSelection3DX.h"
+#include "num_sdk_msgs/Status3DX.h"
 
 #define IMG_ENCODING  "rgb8"
 
@@ -25,25 +25,25 @@ class TriggerInterface;
 class SaveDataInterface;
 
 /**
- * @brief      The NDNode class represents a Numurus sensor capable of producing multidimensional imagery
+ * @brief      The Node3DX class represents a Numurus sensor capable of producing multidimensional imagery
  * 
- * 			   All NDNodes adhere to a common ROS interface in the form of guaranteed published and 
+ * 			   All Node3DXs adhere to a common ROS interface in the form of guaranteed published and 
  * 			   subscribed topics. This class provides a base from which sensor-specific implementation can
  * 			   be derived.
  * 			   
  * @note:	   This class inherits from abstract SDKNode, and does not implement all of the pure virtual 
  * 			   methods so, it is, itself, abstract.
  */
-class NDNode : public SDKNode
+class Node3DX : public SDKNode
 {
 public:
 	/**
 	 * @brief      Constructor
 	 *
 	 */
-	NDNode();
+	Node3DX();
 
-	virtual ~NDNode();
+	virtual ~Node3DX();
 
 	enum IMG_ID
 	{
@@ -106,18 +106,18 @@ protected:
 	virtual void pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg);
 	void simulateDataHandler(const std_msgs::Bool::ConstPtr &msg);
 
-	static inline bool autoManualMsgIsValid(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
+	static inline bool autoManualMsgIsValid(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
 	{
 		return (msg->adjustment >= 0.0f && msg->adjustment <= 1.0f);
 	}
 
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
 	// though we provide a very basic private member setter implementation in this baseclass
-	virtual void setRangeHandler(const num_sdk_msgs::NDRange::ConstPtr &msg);
-	virtual void setAngleHandler(const num_sdk_msgs::NDAngle::ConstPtr &msg);
-	virtual void setResolutionHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
-	virtual void setGainHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
-	virtual void setFilterHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg);
+	virtual void setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg);
+	virtual void setAngleHandler(const num_sdk_msgs::Angle3DX::ConstPtr &msg);
+	virtual void setResolutionHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
+	virtual void setGainHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
+	virtual void setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
 
 	void publishStatus();
 	

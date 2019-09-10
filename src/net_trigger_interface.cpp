@@ -22,7 +22,7 @@ void NetTriggerInterface::initSubscribers()
 
 void NetTriggerInterface::executeSwTrig(const std_msgs::UInt32::ConstPtr& trig_mask)
 {
-	// First, check if triggering is enabled - if not (e.g., NDNode is paused, just return without doing the callback)
+	// First, check if triggering is enabled - if not (e.g., Node3DX is paused, just return without doing the callback)
 	if (false == _trig_enabled) return; 
 
 	// Check if the mask includes our value (index). If not, just ignore and return

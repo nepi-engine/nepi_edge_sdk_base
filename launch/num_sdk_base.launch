@@ -35,7 +35,7 @@
         <node name="nav_pos_mgr" pkg="num_sdk_zynq" type="nav_pos_mgr_node" respawn="true" output="log" />
 
         <!-- ND Nodes. Must provide a sensor_type as part of the namespace -->
-        <group ns="nd_sim_device">
+        <group ns="sim_3dx_device">
             <rosparam command="load" file="/opt/numurus/ros/etc/test_pat_generator/test_pat_generator.yaml" ns="test_pat_generator" />
             <node name="test_pat_generator" pkg="num_sdk_zynq" type="test_pat_generator_node" respawn="true" output="log" />
         </group>

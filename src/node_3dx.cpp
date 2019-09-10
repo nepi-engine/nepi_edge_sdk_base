@@ -5,7 +5,7 @@
 
 #include "boost/date_time/posix_time/posix_time.hpp"
 
-#include "nd_node.h"
+#include "node_3dx.h"
 #include "trigger_interface.h"
 #include "save_data_interface.h"
 
@@ -14,7 +14,7 @@
 namespace Numurus
 {
 
-NDNode::NDNode():
+Node3DX::Node3DX():
 	img_trans{n_priv}, // Image topics are published in the node-specific namespace
 	_simulated_data{"simulated_data", false, this},
 	_min_range{"min_range", 0.0f, this},
@@ -49,13 +49,13 @@ NDNode::NDNode():
 	loadSimData(IMG_ALT_SIM_FILENAME, &img_alt_sim_data);
 }
 
-NDNode::~NDNode()
+Node3DX::~Node3DX()
 {
 	delete _save_data_if;
 	_save_data_if = nullptr;
 }
 
-void NDNode::loadSimData(std::string filename, cv::Mat *out_mat)
+void Node3DX::loadSimData(std::string filename, cv::Mat *out_mat)
 {
 	*out_mat = cv::imread(filename);
 	if (NULL == out_mat->data)
@@ -64,7 +64,7 @@ void NDNode::loadSimData(std::string filename, cv::Mat *out_mat)
 	}
 }
 
-void NDNode::initPublishers()
+void Node3DX::initPublishers()
 {
 	// Call the base method
 	SDKNode::initPublishers();
@@ -77,17 +77,17 @@ void NDNode::initPublishers()
 	_alt_img_name.retrieve();
 	img_alt_pub = img_trans.advertiseCamera((std::string)_alt_img_name + "/image_raw", 1);
 
-	// Advertise the nd_status topic, using the overload form that provides a callback on new subscriber connection.
+	// Advertise the status_3dx topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
-	_status_pub = n_priv.advertise<num_sdk_msgs::NDStatus>("nd_status", 3, boost::bind(&NDNode::publishStatus, this));
+	_status_pub = n_priv.advertise<num_sdk_msgs::Status3DX>("status_3dx", 3, boost::bind(&Node3DX::publishStatus, this));
 }
 
-void NDNode::retrieveParams()
+void Node3DX::retrieveParams()
 {
 	// Call the base method
 	SDKNode::retrieveParams(); 
 	
-	// Grab the nd_node parameters
+	// Grab the node_3dx parameters
 	_simulated_data.retrieve();
 	_min_range.retrieve();
 	_max_range.retrieve();
@@ -122,26 +122,26 @@ void NDNode::retrieveParams()
 	publishStatus();
 }
 
-void NDNode::initSubscribers()
+void Node3DX::initSubscribers()
 {
 	// Call the base method
 	SDKNode::initSubscribers();
 
 	// Now subscribe to the set of global nd controls
 	// These versions are in the public namespace so that we can support global commands
-	subscribers.push_back(n.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
-	subscribers.push_back(n.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
+	subscribers.push_back(n.subscribe("pause_enable", 3, &Node3DX::pauseEnableHandler, this));
+	subscribers.push_back(n.subscribe("simulate_data", 3, &Node3DX::simulateDataHandler, this));
 
 	// Now subscribe to the private namespace versions
-	subscribers.push_back(n_priv.subscribe("pause_enable", 3, &NDNode::pauseEnableHandler, this));
-	subscribers.push_back(n_priv.subscribe("simulate_data", 3, &NDNode::simulateDataHandler, this));
+	subscribers.push_back(n_priv.subscribe("pause_enable", 3, &Node3DX::pauseEnableHandler, this));
+	subscribers.push_back(n_priv.subscribe("simulate_data", 3, &Node3DX::simulateDataHandler, this));
 
 	// Also in the private namespace are the various generic "tweaks"
-	subscribers.push_back(n_priv.subscribe("set_range", 3, &NDNode::setRangeHandler, this));
-	subscribers.push_back(n_priv.subscribe("set_angle", 3, &NDNode::setAngleHandler, this));
-	subscribers.push_back(n_priv.subscribe("set_resolution", 3, &NDNode::setResolutionHandler, this));
-	subscribers.push_back(n_priv.subscribe("set_gain", 3, &NDNode::setGainHandler, this));
-	subscribers.push_back(n_priv.subscribe("set_filter", 3, &NDNode::setFilterHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_range", 3, &Node3DX::setRangeHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_angle", 3, &Node3DX::setAngleHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_resolution", 3, &Node3DX::setResolutionHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_gain", 3, &Node3DX::setGainHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_filter", 3, &Node3DX::setFilterHandler, this));
 
 	// And init the interface subscribers
 	if (nullptr != _save_data_if)
@@ -154,7 +154,7 @@ void NDNode::initSubscribers()
 	}
 }
 
-void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
+void Node3DX::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 {
 	if (msg->data != _paused)
 	{
@@ -172,7 +172,7 @@ void NDNode::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 	}
 }
 
-void NDNode::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
+void Node3DX::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
 {
 	const bool simulated_data_updated = (msg->data != _simulated_data);
 	if (true == simulated_data_updated)
@@ -185,7 +185,7 @@ void NDNode::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
 
 // Node-specific subscription callbacks. Concrete instances should define what actions these take,
 // though we provide a very basic private member setter implementation in this baseclass
-void NDNode::setRangeHandler(const num_sdk_msgs::NDRange::ConstPtr &msg)
+void Node3DX::setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg)
 {
 	// Range-check inputs
 	if (msg->min_range < 0.0f || 
@@ -207,7 +207,7 @@ void NDNode::setRangeHandler(const num_sdk_msgs::NDRange::ConstPtr &msg)
 	}
 }
 
-void NDNode::setAngleHandler(const num_sdk_msgs::NDAngle::ConstPtr &msg)
+void Node3DX::setAngleHandler(const num_sdk_msgs::Angle3DX::ConstPtr &msg)
 {
 	/* TODO: Figure out generic bounds checking for "angle"
 	if (msg->angle_offset < 0.0f || 
@@ -229,7 +229,7 @@ void NDNode::setAngleHandler(const num_sdk_msgs::NDAngle::ConstPtr &msg)
 	}
 }
 
-void NDNode::setResolutionHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
+void Node3DX::setResolutionHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -249,7 +249,7 @@ void NDNode::setResolutionHandler(const num_sdk_msgs::NDAutoManualSelection::Con
 	}
 }
 
-void NDNode::setGainHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
+void Node3DX::setGainHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -269,7 +269,7 @@ void NDNode::setGainHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr 
 	}
 }
 
-void NDNode::setFilterHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPtr &msg)
+void Node3DX::setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -289,14 +289,14 @@ void NDNode::setFilterHandler(const num_sdk_msgs::NDAutoManualSelection::ConstPt
 	}
 }
 
-void NDNode::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp)
+void Node3DX::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp)
 {
 	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(cinfo->header, IMG_ENCODING, *img).toImageMsg();
 
 	publishImage(id, msg, cinfo);
 }
 
-void NDNode::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo)
+void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo)
 {
 	// TODO: This method is not threadsafe, but called by multiple threads in e.g., gs_multicam
 	image_transport::CameraPublisher *publisher = nullptr;
@@ -325,7 +325,7 @@ void NDNode::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::Camera
 	saveDataIfNecessary(id, img_out);
 }
 
-void NDNode::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
+void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
 {
 	if (false == _save_data_if->saveContinuousEnabled())
 	{
@@ -396,9 +396,9 @@ void NDNode::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
     }
 }
 
-void NDNode::publishStatus()
+void Node3DX::publishStatus()
 {
-	num_sdk_msgs::NDStatus msg;
+	num_sdk_msgs::Status3DX msg;
 
 	msg.display_name = _display_name;
 	
