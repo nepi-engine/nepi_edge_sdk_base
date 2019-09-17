@@ -39,6 +39,7 @@ protected:
 	virtual void initSubscribers() override;
 	virtual void initPublishers() override;
 	virtual void initServices() override;
+	virtual void retrieveParams() override;
 
 	virtual void executeSwTrig(const std_msgs::UInt32::ConstPtr& trig_mask);
 	// Pure virtual h/w capability functions
@@ -75,6 +76,16 @@ private:
 	std::map<uint32_t, std::string> trig_indices;
 
 	/**
+	 * Configurable param for a default periodic trigger mask to execute on start-up (in concert)
+	 */
+	SDKNode::NodeParam<int> default_periodic_trig_mask_;
+
+	/**
+	 * Configurable param for the rate for the default_trig_mask_
+	 */
+	SDKNode::NodeParam<float> default_periodic_trig_rate_;
+
+	/**
 	 * @brief      Sets a periodic software trig. configuration
 	 * 
 	 * 			   This method serves as a callback for the set_periodic_sw_trig topic
@@ -83,6 +94,8 @@ private:
 	 * @param[in]  trig_cfg  The trig configuration message
 	 */
 	void setPeriodicSwTrig(const num_sdk_msgs::PeriodicSwTrig::ConstPtr& trig_cfg);
+
+	void setPeriodicSwTrigImpl(bool enabled, uint32_t sw_trig_mask, float rate_hz);
 
 	/**
 	 * @brief      Worker method for periodic trigger threads

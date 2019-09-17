@@ -10,10 +10,15 @@
 #define HW_TRIG_OUT_IDX 			MAX_TRIG_IDX
 #define HW_TRIG_OUT_FIXED_MASK 		(1 << MAX_TRIG_IDX) // Highest bit set. 
 
+#define DEFAULT_TRIG_MASK_VAL		0x40000000			// Everything but the output trigger -- can be changed easily in the config file
+#define DEFAULT_TRIG_RATE_VAL		2.0f				// 2 Hz
+
 namespace Numurus
 {
 
-TriggerMgrBase::TriggerMgrBase()
+TriggerMgrBase::TriggerMgrBase() :
+	default_periodic_trig_mask_{"default_periodic_trig_mask", DEFAULT_TRIG_MASK_VAL, this},
+	default_periodic_trig_rate_{"default_periodic_trig_rate", DEFAULT_TRIG_RATE_VAL, this}  
 {
 	trig_indices[HW_TRIG_OUT_IDX] = "H/W Out";
 }
@@ -62,6 +67,20 @@ void TriggerMgrBase::initServices()
 	servicers.push_back(n.advertiseService("trigger_defs", &Numurus::TriggerMgrBase::provideTriggerDefs, this));
 }
 
+void TriggerMgrBase::retrieveParams()
+{
+	// Call the base method
+	SDKNode::retrieveParams();
+
+	default_periodic_trig_mask_.retrieve();
+	default_periodic_trig_rate_.retrieve();
+
+	if ((0 != default_periodic_trig_mask_) && (0.0f != default_periodic_trig_rate_))
+	{
+		setPeriodicSwTrigImpl(true, (uint32_t)default_periodic_trig_mask_, default_periodic_trig_rate_);
+	}
+}
+
 void TriggerMgrBase::executeSwTrig(const std_msgs::UInt32::ConstPtr& trig_val)
 {
 	// Just set the map of trigger times to now - this doesn't account for whether the trigger was successful or not
@@ -70,20 +89,25 @@ void TriggerMgrBase::executeSwTrig(const std_msgs::UInt32::ConstPtr& trig_val)
 
 void TriggerMgrBase::setPeriodicSwTrig(const num_sdk_msgs::PeriodicSwTrig::ConstPtr& trig_cfg)
 {
+	setPeriodicSwTrigImpl(trig_cfg->enabled, trig_cfg->sw_trig_mask, trig_cfg->rate_hz);
+}
+
+void TriggerMgrBase::setPeriodicSwTrigImpl(bool enabled, uint32_t sw_trig_mask, float rate_hz)
+{
 	// Bounds checking
-	if ((true == trig_cfg->enabled) && (0.0f >= trig_cfg->rate_hz))
+	if ((true == enabled) && (0.0f >= rate_hz))
 	{
-		ROS_WARN("Invalid periodic trigger rate (%f Hz)... ignoring", trig_cfg->rate_hz);
+		ROS_WARN("Invalid periodic trigger rate (%f Hz)... ignoring", rate_hz);
 		return;
 	}
 
 	// If disabling, just signal the worker thread by removing the map entry
-	if (false == trig_cfg->enabled)
+	if (false == enabled)
 	{
-		auto map_entry = periodic_trig_map.find(trig_cfg->sw_trig_mask);
+		auto map_entry = periodic_trig_map.find(sw_trig_mask);
 		if (map_entry != periodic_trig_map.end())
 		{
-			ROS_INFO("Cancelling periodic sw trigger with mask 0x%x", trig_cfg->sw_trig_mask);
+			ROS_INFO("Cancelling periodic sw trigger with mask 0x%x", sw_trig_mask);
 			// Remove it from the map. The timer threads will (eventually) check this map for updates and
 			// cancel themselves accordingly
 			trig_map_mutex.lock();
@@ -92,20 +116,20 @@ void TriggerMgrBase::setPeriodicSwTrig(const num_sdk_msgs::PeriodicSwTrig::Const
 		}
 		else
 		{
-			ROS_WARN("No periodic trigger with mask 0x%x... ignoring cancellation request", trig_cfg->sw_trig_mask);
+			ROS_WARN("No periodic trigger with mask 0x%x... ignoring cancellation request", sw_trig_mask);
 		}
 	}
 	else // Setting up a new trigger or modifying an existing one
 	{
 		trig_map_mutex.lock();
-		const bool periodic_trig_exists = (periodic_trig_map.find(trig_cfg->sw_trig_mask) != periodic_trig_map.end());
-		periodic_trig_map[trig_cfg->sw_trig_mask] = trig_cfg->rate_hz;
+		const bool periodic_trig_exists = (periodic_trig_map.find(sw_trig_mask) != periodic_trig_map.end());
+		periodic_trig_map[sw_trig_mask] = rate_hz;
 		trig_map_mutex.unlock();
 		
 		if (false == periodic_trig_exists)
 		{
-			ROS_INFO("Starting periodic sw trigger (mask=0x%x, rate=%f)", trig_cfg->sw_trig_mask, trig_cfg->rate_hz);
-				std::thread t(&TriggerMgrBase::runPeriodicTrig, this, trig_cfg->sw_trig_mask);
+			ROS_INFO("Starting periodic sw trigger (mask=0x%x, rate=%f)", sw_trig_mask, rate_hz);
+				std::thread t(&TriggerMgrBase::runPeriodicTrig, this, sw_trig_mask);
 				t.detach();
 		}
 	}
