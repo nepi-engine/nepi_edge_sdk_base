@@ -5,7 +5,7 @@ source /opt/numurus/ros/setup.bash
 # The sys_env script must exist and be valid. The committed base file is 
 # (intentionally) not valid because TBD fields are not populated
 if [ ! -f /opt/numurus/ros/etc/sys_env.bash ]; then
-	echo "ERROR! Could not find /opt/numurus/ros/sys_env.bash"
+	echo "ERROR! Could not find /opt/numurus/ros/etc/sys_env.bash"
 	exit 1
 fi
 
