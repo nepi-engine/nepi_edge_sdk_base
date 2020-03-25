@@ -291,7 +291,7 @@ void Node3DX::setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::Const
 
 void Node3DX::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp)
 {
-	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(cinfo->header, IMG_ENCODING, *img).toImageMsg();
+	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(cinfo->header, ROS_CAM_COLOR_ENCODING_NAME, *img).toImageMsg();
 
 	publishImage(id, msg, cinfo);
 }
@@ -305,15 +305,15 @@ void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::Camer
 	{
 	case IMG_0:
 		publisher = &img_0_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, IMG_ENCODING, img_0_sim_data).toImageMsg() : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ROS_CAM_COLOR_ENCODING_NAME, img_0_sim_data).toImageMsg() : img;
 		break;
 	case IMG_1:
 		publisher = &img_1_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, IMG_ENCODING, img_1_sim_data).toImageMsg() : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ROS_CAM_COLOR_ENCODING_NAME, img_1_sim_data).toImageMsg() : img;
 		break;
 	case IMG_ALT:
 		publisher = &img_alt_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, IMG_ENCODING, img_alt_sim_data).toImageMsg() : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ROS_CAM_COLOR_ENCODING_NAME, img_alt_sim_data).toImageMsg() : img;
 		break;
 	default:
 		ROS_ERROR("%s: Request to publish unknown image id (%d)", getName().c_str(), id);

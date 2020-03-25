@@ -16,7 +16,7 @@
 #include "num_sdk_msgs/AutoManualSelection3DX.h"
 #include "num_sdk_msgs/Status3DX.h"
 
-#define IMG_ENCODING  "rgb8"
+#define ROS_CAM_COLOR_ENCODING_NAME	"yuv422"
 
 namespace Numurus
 {
