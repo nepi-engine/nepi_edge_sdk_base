@@ -16,8 +16,6 @@
 #include "num_sdk_msgs/AutoManualSelection3DX.h"
 #include "num_sdk_msgs/Status3DX.h"
 
-#define ROS_CAM_COLOR_ENCODING_NAME	"yuv422"
-
 namespace Numurus
 {
 // Forward declarations
@@ -69,8 +67,10 @@ protected:
 	cv::Mat img_1_sim_data;
 	cv::Mat img_alt_sim_data;
 
+	std::string ros_cam_color_encoding_name;
+
 	SDKNode::NodeParam<bool> _simulated_data;
-	
+
 	SDKNode::NodeParam<float> _min_range;
 	SDKNode::NodeParam<float> _max_range;
 
@@ -120,9 +120,9 @@ protected:
 	virtual void setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
 
 	void publishStatus();
-	
-	void publishImage(int img_id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp);
-	void publishImage(int img_id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo);
+
+	void publishImage(int img_id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp, bool save_if_necessary = true);
+	void publishImage(int img_id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo, bool save_if_necessary = true);
 
 	virtual void saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img);
 

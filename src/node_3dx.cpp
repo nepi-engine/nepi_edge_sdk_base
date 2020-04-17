@@ -25,8 +25,8 @@ Node3DX::Node3DX():
 	_manual_resolution{"manual_resolution", 1.0f, this},
 	_gain_enabled{"gain_enabled", true, this},
 	_gain{"gain", 1.0f, this},
-	_filter_enabled{"filter_enabled", true, this},
-	_filter_control{"filter_control", 1.0f, this},
+	_filter_enabled{"filter_enabled", false, this},
+	_filter_control{"filter_control", 0.0f, this},
 	_img_0_name{"img_0_name", "img_0", this},
 	_img_1_name{"img_1_name", "img_1", this},
 	_alt_img_name{"alt_img_name", "alt", this},
@@ -47,6 +47,8 @@ Node3DX::Node3DX():
 
 	const std::string IMG_ALT_SIM_FILENAME = SIM_IMG_BASENAME + "alt.png";
 	loadSimData(IMG_ALT_SIM_FILENAME, &img_alt_sim_data);
+
+	ros_cam_color_encoding_name = "rgb8"; // Default
 }
 
 Node3DX::~Node3DX()
@@ -242,8 +244,8 @@ void Node3DX::setResolutionHandler(const num_sdk_msgs::AutoManualSelection3DX::C
 	{
 		_manual_resolution_enabled = msg->enabled;
 		_manual_resolution = msg->adjustment;
-		ROS_DEBUG("%s updated resolution to %s:%.3f", getName().c_str(), 
-			(_manual_resolution_enabled)? "manual":"auto", 
+		ROS_DEBUG("%s updated resolution to %s:%.3f", getName().c_str(),
+			(_manual_resolution_enabled)? "manual":"auto",
 			(_manual_resolution_enabled)? _manual_resolution : 0.0f);
 		publishStatus();
 	}
@@ -289,14 +291,14 @@ void Node3DX::setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::Const
 	}
 }
 
-void Node3DX::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp)
+void Node3DX::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp, bool save_if_necessary)
 {
-	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(cinfo->header, ROS_CAM_COLOR_ENCODING_NAME, *img).toImageMsg();
+	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, *img).toImageMsg();
 
-	publishImage(id, msg, cinfo);
+	publishImage(id, msg, cinfo, save_if_necessary);
 }
 
-void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo)
+void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo, bool save_if_necessary)
 {
 	// TODO: This method is not threadsafe, but called by multiple threads in e.g., gs_multicam
 	image_transport::CameraPublisher *publisher = nullptr;
@@ -305,15 +307,15 @@ void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::Camer
 	{
 	case IMG_0:
 		publisher = &img_0_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ROS_CAM_COLOR_ENCODING_NAME, img_0_sim_data).toImageMsg() : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_0_sim_data).toImageMsg() : img;
 		break;
 	case IMG_1:
 		publisher = &img_1_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ROS_CAM_COLOR_ENCODING_NAME, img_1_sim_data).toImageMsg() : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_1_sim_data).toImageMsg() : img;
 		break;
 	case IMG_ALT:
 		publisher = &img_alt_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ROS_CAM_COLOR_ENCODING_NAME, img_alt_sim_data).toImageMsg() : img;
+		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_alt_sim_data).toImageMsg() : img;
 		break;
 	default:
 		ROS_ERROR("%s: Request to publish unknown image id (%d)", getName().c_str(), id);
@@ -322,7 +324,10 @@ void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::Camer
 
 	publisher->publish(img_out, cinfo);
 
-	saveDataIfNecessary(id, img_out);
+	if (true == save_if_necessary)
+	{
+		saveDataIfNecessary(id, img_out);
+	}
 }
 
 void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
@@ -401,23 +406,23 @@ void Node3DX::publishStatus()
 	num_sdk_msgs::Status3DX msg;
 
 	msg.display_name = _display_name;
-	
+
 	msg.pause_enable = _paused;
-	
+
 	msg.simulate_data = _simulated_data;
-	
+
 	msg.range.min_range = _min_range;
 	msg.range.max_range = _max_range;
-	
+
 	msg.angle.angle_offset = _angle_offset;
 	msg.angle.total_angle = _total_angle;
-	
+
 	msg.resolution_settings.enabled = _manual_resolution_enabled;
 	msg.resolution_settings.adjustment = _manual_resolution;
-	
+
 	msg.gain_settings.enabled = _gain_enabled;
 	msg.gain_settings.adjustment = _gain;
-	
+
 	msg.filter_settings.enabled = _filter_enabled;
 	msg.filter_settings.adjustment = _filter_control;
 
