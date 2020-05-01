@@ -37,8 +37,8 @@ Node3DX::Node3DX():
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
 
 	// Load the sim mode files
-	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getName() + "/sim_img_";
-	
+	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getUnqualifiedName() + "/sim_img_";
+
 	const std::string IMG_0_SIM_FILENAME = SIM_IMG_BASENAME + "0.png";
 	loadSimData(IMG_0_SIM_FILENAME, &img_0_sim_data);
 
@@ -167,9 +167,9 @@ void Node3DX::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
 		}
 		else
 		{
-			ROS_ERROR("%s: The TriggerInterface was not properly initialized", getName().c_str());
+			ROS_ERROR("%s: The TriggerInterface was not properly initialized", getUnqualifiedName().c_str());
 		}
-		ROS_DEBUG("%s pause settings updated (pause=%s)", getName().c_str(), BOOL_TO_ENABLED(_paused));
+		ROS_DEBUG("%s pause settings updated (pause=%s)", getUnqualifiedName().c_str(), BOOL_TO_ENABLED(_paused));
 		publishStatus();
 	}
 }
@@ -180,7 +180,7 @@ void Node3DX::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
 	if (true == simulated_data_updated)
 	{
 		_simulated_data = msg->data;
-		ROS_DEBUG("%s:  simulation mode is now %s", getName().c_str(), BOOL_TO_ENABLED(_simulated_data));
+		ROS_DEBUG("%s:  simulation mode is now %s", getUnqualifiedName().c_str(), BOOL_TO_ENABLED(_simulated_data));
 		publishStatus();
 	}
 }
@@ -190,11 +190,11 @@ void Node3DX::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
 void Node3DX::setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg)
 {
 	// Range-check inputs
-	if (msg->min_range < 0.0f || 
-		msg->max_range > 1.0f || 
+	if (msg->min_range < 0.0f ||
+		msg->max_range > 1.0f ||
 		msg->min_range > msg->max_range)
 	{
-		ROS_ERROR("%s received invalid range settings (%.3f,%.3f)", getName().c_str(), msg->min_range, msg->max_range);
+		ROS_ERROR("%s received invalid range settings (%.3f,%.3f)", getUnqualifiedName().c_str(), msg->min_range, msg->max_range);
 		return;
 	}
 
@@ -204,7 +204,7 @@ void Node3DX::setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg)
 	{
 		_min_range = msg->min_range;
 		_max_range = msg->max_range;
-		ROS_DEBUG("%s updated range to (%.3f,%.3f)", getName().c_str(), msg->min_range, msg->max_range);
+		ROS_DEBUG("%s updated range to (%.3f,%.3f)", getUnqualifiedName().c_str(), msg->min_range, msg->max_range);
 		publishStatus();
 	}
 }
@@ -212,11 +212,11 @@ void Node3DX::setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg)
 void Node3DX::setAngleHandler(const num_sdk_msgs::Angle3DX::ConstPtr &msg)
 {
 	/* TODO: Figure out generic bounds checking for "angle"
-	if (msg->angle_offset < 0.0f || 
+	if (msg->angle_offset < 0.0f ||
 		msg->total_angle < 0.0f  ||
 		msg->angle_offset + msg->total_angle > 1.0)
 	{
-		ROS_ERROR("%s received invalid angle settings (%.3f,%.3f)", getName().c_str(), msg->angle_offset, msg->total_angle);
+		ROS_ERROR("%s received invalid angle settings (%.3f,%.3f)", getUnqualifiedName().c_str(), msg->angle_offset, msg->total_angle);
 		return;
 	}
 	*/
@@ -226,7 +226,7 @@ void Node3DX::setAngleHandler(const num_sdk_msgs::Angle3DX::ConstPtr &msg)
 	{
 		_angle_offset = msg->angle_offset;
 		_total_angle = msg->total_angle;
-		ROS_DEBUG("%s updated angle to (%.3f,%.3f)", getName().c_str(), msg->angle_offset, msg->total_angle);
+		ROS_DEBUG("%s updated angle to (%.3f,%.3f)", getUnqualifiedName().c_str(), msg->angle_offset, msg->total_angle);
 		publishStatus();
 	}
 }
@@ -235,7 +235,7 @@ void Node3DX::setResolutionHandler(const num_sdk_msgs::AutoManualSelection3DX::C
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
-		ROS_ERROR("%s received invalid resolution settings (adjustment = %.3f)", getName().c_str(), msg->adjustment);
+		ROS_ERROR("%s received invalid resolution settings (adjustment = %.3f)", getUnqualifiedName().c_str(), msg->adjustment);
 		return;
 	}
 
@@ -244,7 +244,7 @@ void Node3DX::setResolutionHandler(const num_sdk_msgs::AutoManualSelection3DX::C
 	{
 		_manual_resolution_enabled = msg->enabled;
 		_manual_resolution = msg->adjustment;
-		ROS_DEBUG("%s updated resolution to %s:%.3f", getName().c_str(),
+		ROS_DEBUG("%s updated resolution to %s:%.3f", getUnqualifiedName().c_str(),
 			(_manual_resolution_enabled)? "manual":"auto",
 			(_manual_resolution_enabled)? _manual_resolution : 0.0f);
 		publishStatus();
@@ -255,7 +255,7 @@ void Node3DX::setGainHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPt
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
-		ROS_ERROR("%s received invalid gain settings (adjustment = %.3f)", getName().c_str(), msg->adjustment);
+		ROS_ERROR("%s received invalid gain settings (adjustment = %.3f)", getUnqualifiedName().c_str(), msg->adjustment);
 		return;
 	}
 
@@ -264,8 +264,8 @@ void Node3DX::setGainHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPt
 	{
 		_gain_enabled = msg->enabled;
 		_gain = msg->adjustment;
-		ROS_DEBUG("%s updated gain to %s:%.3f", getName().c_str(), 
-			(_gain_enabled)? "enabled":"disabled", 
+		ROS_DEBUG("%s updated gain to %s:%.3f", getUnqualifiedName().c_str(),
+			(_gain_enabled)? "enabled":"disabled",
 			(_gain_enabled)? _gain : 0.0f);
 		publishStatus();
 	}
@@ -275,7 +275,7 @@ void Node3DX::setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::Const
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
-		ROS_ERROR("%s received invalid filter settings (adjustment = %.3f)", getName().c_str(), msg->adjustment);
+		ROS_ERROR("%s received invalid filter settings (adjustment = %.3f)", getUnqualifiedName().c_str(), msg->adjustment);
 		return;
 	}
 
@@ -284,8 +284,8 @@ void Node3DX::setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::Const
 	{
 		_filter_enabled = msg->enabled;
 		_filter_control = msg->adjustment;
-		ROS_DEBUG("%s updated filter settings to %s:%.3f", getName().c_str(), 
-			(_filter_enabled)? "enabled":"disabled", 
+		ROS_DEBUG("%s updated filter settings to %s:%.3f", getUnqualifiedName().c_str(),
+			(_filter_enabled)? "enabled":"disabled",
 			(_filter_enabled)? _filter_control : 0.0f);
 		publishStatus();
 	}
@@ -318,7 +318,7 @@ void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::Camer
 		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_alt_sim_data).toImageMsg() : img;
 		break;
 	default:
-		ROS_ERROR("%s: Request to publish unknown image id (%d)", getName().c_str(), id);
+		ROS_ERROR("%s: Request to publish unknown image id (%d)", getUnqualifiedName().c_str(), id);
 		return;
 	}
 
@@ -350,7 +350,7 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
 		image_identifier = "img_alt";
 		break;
 	default:
-		ROS_ERROR("%s: Request to save for unknown image id (%d)", getName().c_str(), img_id);
+		ROS_ERROR("%s: Request to save for unknown image id (%d)", getUnqualifiedName().c_str(), img_id);
 	}
 
 	cv_bridge::CvImageConstPtr cv_ptr;

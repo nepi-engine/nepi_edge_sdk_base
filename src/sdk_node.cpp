@@ -123,7 +123,7 @@ void SDKNode::initServiceClients()
 
 void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
 {
-	ROS_DEBUG("%s: Initiating config save by request", getName().c_str());
+	ROS_DEBUG("%s: Initiating config save by request", getUnqualifiedName().c_str());
 	saveCfg();
 }
 
@@ -133,8 +133,8 @@ void SDKNode::saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg)
 	if (true == save_data_updated)
 	{
 		_save_cfg_rt = msg->data;
-		ROS_DEBUG("%s realtime configuration saving is now %s", getName().c_str(), BOOL_TO_ENABLED(_save_cfg_rt));
-		
+		ROS_DEBUG("%s realtime configuration saving is now %s", getUnqualifiedName().c_str(), BOOL_TO_ENABLED(_save_cfg_rt));
+
 		// If we're enabling RT saving, save the current configuration right now
 		if (true == _save_cfg_rt)
 		{
@@ -150,26 +150,26 @@ void SDKNode::resetHandler(const num_sdk_msgs::Reset::ConstPtr &msg)
 	switch (reset_type)
 	{
 	case num_sdk_msgs::Reset::USER_RESET:
-		ROS_INFO("%s: Executing user-level reset by request", getName().c_str());
+		ROS_INFO("%s: Executing user-level reset by request", getUnqualifiedName().c_str());
 		userReset();
 		break;
 	case num_sdk_msgs::Reset::FACTORY_RESET:
 	{
-		ROS_INFO("%s: Executing factory reset by request", getName().c_str());
+		ROS_INFO("%s: Executing factory reset by request", getUnqualifiedName().c_str());
 		factoryReset();
-	}	
+	}
 		break;
 	case num_sdk_msgs::Reset::SOFTWARE_RESET:
-		ROS_INFO("%s: Executing software reset by request", getName().c_str());
+		ROS_INFO("%s: Executing software reset by request", getUnqualifiedName().c_str());
 		softwareReset();
 		break;
 	// No implentation for HARDWARE_RESET in this base class
 	case num_sdk_msgs::Reset::HARDWARE_RESET:
-		ROS_INFO("%s: Executing hardware reset by request", getName().c_str());
+		ROS_INFO("%s: Executing hardware reset by request", getUnqualifiedName().c_str());
 		hardwareReset();
 	default:
-		ROS_WARN("%s: No available hardware reset. Request ignored", getName().c_str());
-		// TODO: 
+		ROS_WARN("%s: No available hardware reset. Request ignored", getUnqualifiedName().c_str());
+		// TODO:
 	}
 }
 
@@ -177,11 +177,11 @@ void SDKNode::userReset()
 {
 	ros::ServiceClient client = n.serviceClient<num_sdk_msgs::FileReset>("user_reset");
 	num_sdk_msgs::FileReset srv;
-	srv.request.node_name = getName();
-	
+	srv.request.node_name = getUnqualifiedName();
+
 	if (false == client.call(srv) || false == srv.response.success)
 	{
-		ROS_ERROR("%s: User reset request failed", getName().c_str());
+		ROS_ERROR("%s: User reset request failed", getUnqualifiedName().c_str());
 	}
 	else
 	{
@@ -194,10 +194,10 @@ void SDKNode::factoryReset()
 {
 	ros::ServiceClient client = n.serviceClient<num_sdk_msgs::FileReset>("factory_reset");
 	num_sdk_msgs::FileReset srv;
-	srv.request.node_name = getName();
+	srv.request.node_name = getUnqualifiedName();
 	if (false == client.call(srv) || false == srv.response.success)
 	{
-		ROS_ERROR("%s: Factory reset request failed", getName().c_str());
+		ROS_ERROR("%s: Factory reset request failed", getUnqualifiedName().c_str());
 	}
 	else
 	{
@@ -224,7 +224,7 @@ void SDKNode::hardwareReset()
 
 void SDKNode::saveCfg()
 {
-	ROS_INFO("%s: Saving current config", getName().c_str());
+	ROS_INFO("%s: Saving current config", getUnqualifiedName().c_str());
 
 	// Inform the config_mgr so it can store the file. We don't do this directly here
 	// because ROS has no C++ API for rosparam

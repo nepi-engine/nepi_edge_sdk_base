@@ -62,12 +62,12 @@ public:
 	{
 		if (true == _parent->n_priv.getParam(_param_name, _param_data))
 		{
-			ROS_INFO("%s: Updating %s from param server", _parent->getName().c_str(), _param_name.c_str());
+			ROS_INFO("%s: Updating %s from param server", _parent->getUnqualifiedName().c_str(), _param_name.c_str());
 			return true;
 		}
 		else
 		{
-			ROS_WARN("%s: unable to init %s from param server, using existing val instead", _parent->getName().c_str(), _param_name.c_str());
+			ROS_WARN("%s: unable to init %s from param server, using existing val instead", _parent->getUnqualifiedName().c_str(), _param_name.c_str());
 			// And attempt write it back so that the config file has something for next time
 			_parent->n_priv.setParam(_param_name, _param_data);
 		}
@@ -150,7 +150,7 @@ private:
 	 *
 	 * @return     The simple name (no namespace).
 	 */
-	inline const std::string getName() const {return ns_tokens[NODE_NAME_INDEX];}
+	inline const std::string getUnqualifiedName() const {return ns_tokens[NODE_NAME_INDEX];}
 
 	/**
 	 * @brief      Gets the display name.
