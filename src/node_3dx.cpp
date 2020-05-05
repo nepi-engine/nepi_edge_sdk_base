@@ -330,6 +330,46 @@ void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::Camer
 	}
 }
 
+void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_msgs::CameraInfoConstPtr cinfo, bool save_if_necessary)
+{
+	switch (img_id)
+	{
+	case IMG_0:
+		{
+			sensor_msgs::ImageConstPtr img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_0_sim_data).toImageMsg() : img;
+			img_0_pub.publish(img_out, cinfo);
+			if (true == save_if_necessary)
+			{
+				//TODO: Restore saveDataIfNecessary(img_id, img_out);
+			}
+		}
+		break;
+	case IMG_1:
+		{
+			sensor_msgs::ImageConstPtr img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_1_sim_data).toImageMsg() : img;
+			img_1_pub.publish(img_out, cinfo);
+			if (true == save_if_necessary)
+			{
+				//TODO: Restore saveDataIfNecessary(img_id, img_out);
+			}
+		}
+		break;
+	case IMG_ALT:
+		{
+			sensor_msgs::ImageConstPtr img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_alt_sim_data).toImageMsg() : img;
+			img_alt_pub.publish(img_out, cinfo);
+			if (true == save_if_necessary)
+			{
+				//TODO: Restore saveDataIfNecessary(img_id, img_out);
+			}
+		}
+		break;
+	default:
+		ROS_ERROR("%s: Request to publish unknown image id (%d)", getUnqualifiedName().c_str(), img_id);
+		return;
+	}
+}
+
 void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
 {
 	if (false == _save_data_if->saveContinuousEnabled())
