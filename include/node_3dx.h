@@ -125,7 +125,7 @@ protected:
 	void publishImage(int img_id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo, bool save_if_necessary = true);
 	void publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_msgs::CameraInfoConstPtr cinfo, bool save_if_necessary = true);
 
-	virtual void saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img);
+	virtual void saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img);
 
 private:
 	bool _paused = false;

@@ -18,9 +18,9 @@ Node3DX::Node3DX():
 	img_trans{n_priv}, // Image topics are published in the node-specific namespace
 	_simulated_data{"simulated_data", false, this},
 	_min_range{"min_range", 0.0f, this},
-	_max_range{"max_range", 0.0f, this},
+	_max_range{"max_range", 1.0f, this},
 	_angle_offset{"angle_offset", 0.0f, this},
-	_total_angle{"total_angle", 0.0f, this},
+	_total_angle{"total_angle", 1.0f, this},
 	_manual_resolution_enabled{"manual_resolution_enabled", true, this},
 	_manual_resolution{"manual_resolution", 1.0f, this},
 	_gain_enabled{"gain_enabled", true, this},
@@ -211,15 +211,15 @@ void Node3DX::setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg)
 
 void Node3DX::setAngleHandler(const num_sdk_msgs::Angle3DX::ConstPtr &msg)
 {
-	/* TODO: Figure out generic bounds checking for "angle"
+	// Generic bounds checking for "angle"
 	if (msg->angle_offset < 0.0f ||
-		msg->total_angle < 0.0f  ||
-		msg->angle_offset + msg->total_angle > 1.0)
+		  msg->total_angle < 0.0f  ||
+		  msg->angle_offset > 1.0f ||
+		  msg->total_angle > 1.0f)
 	{
 		ROS_ERROR("%s received invalid angle settings (%.3f,%.3f)", getUnqualifiedName().c_str(), msg->angle_offset, msg->total_angle);
 		return;
 	}
-	*/
 
 	const bool updated_angle = (msg->angle_offset != _angle_offset) || (msg->total_angle != _total_angle);
 	if (true == updated_angle)
@@ -340,7 +340,7 @@ void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_ms
 			img_0_pub.publish(img_out, cinfo);
 			if (true == save_if_necessary)
 			{
-				//TODO: Restore saveDataIfNecessary(img_id, img_out);
+				saveDataIfNecessary(img_id, img_out);
 			}
 		}
 		break;
@@ -350,7 +350,7 @@ void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_ms
 			img_1_pub.publish(img_out, cinfo);
 			if (true == save_if_necessary)
 			{
-				//TODO: Restore saveDataIfNecessary(img_id, img_out);
+				saveDataIfNecessary(img_id, img_out);
 			}
 		}
 		break;
@@ -360,7 +360,7 @@ void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_ms
 			img_alt_pub.publish(img_out, cinfo);
 			if (true == save_if_necessary)
 			{
-				//TODO: Restore saveDataIfNecessary(img_id, img_out);
+				saveDataIfNecessary(img_id, img_out);
 			}
 		}
 		break;
@@ -370,7 +370,7 @@ void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_ms
 	}
 }
 
-void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
+void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 {
 	if (false == _save_data_if->saveContinuousEnabled())
 	{
@@ -394,51 +394,51 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImagePtr img)
 	}
 
 	cv_bridge::CvImageConstPtr cv_ptr;
-    try
-    {
-      //cv_ptr = cv_bridge::toCvShare(img, img->encoding);
-      cv_ptr = cv_bridge::toCvShare(img, "bgr8"); // Last minute hack. TODO: Fix this!
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-       
-    // Capture the timestamp in a good format for filenames        
-    const std::string display_name = _display_name;
-    boost::posix_time::ptime posix_time = img->header.stamp.toBoost();
+  try
+  {
+    //cv_ptr = cv_bridge::toCvShare(img, img->encoding);
+    cv_ptr = cv_bridge::toCvShare(img);
+  }
+  catch (cv_bridge::Exception& e)
+  {
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    return;
+  }
+
+  // Capture the timestamp in a good format for filenames
+  const std::string display_name = _display_name;
+  boost::posix_time::ptime posix_time = img->header.stamp.toBoost();
 	std::string time_str = boost::posix_time::to_iso_extended_string(posix_time);
 
 	// To change the permissions - opencv API doesn't seem to give us that control at creation
 	static const mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; // 664
-    
-    // Create the filename - defer the extension so that we can adjust as necessary for save_raw
+
+  // Create the filename - defer the extension so that we can adjust as necessary for save_raw
 	std::stringstream qualified_filename_no_extension;
-    qualified_filename_no_extension << _save_data_if->_save_data_dir << "/" << _save_data_if->getFilenamePrefix() <<
-    									display_name << "_" << image_identifier << "_" << time_str;  
-    const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
-    bool success = cv::imwrite( jpg_filename,  cv_ptr->image ); // OpenCV uses extensions intelligently
+  qualified_filename_no_extension << _save_data_if->_save_data_dir << "/" << _save_data_if->getFilenamePrefix() <<
+    									display_name << "_" << image_identifier << "_" << time_str;
+  const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
+  bool success = cv::imwrite( jpg_filename,  cv_ptr->image ); // OpenCV uses extensions intelligently
 	if (false == success)
 	{
-		ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".jpg"); 
+		ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".jpg");
 	}
 	chmod(jpg_filename.c_str(), mode);
-	
-    // Save the lossless PNG if raw data saving enabled
-    if (true == _save_data_if->saveRawEnabled())
-    {
-    	const std::string png_filename = qualified_filename_no_extension.str() + ".png";
-    	success = cv::imwrite( png_filename, cv_ptr->image ); // OpenCV uses extensions intelligently
-    	if (false == success)
+
+  // Save the lossless PNG if raw data saving enabled
+  if (true == _save_data_if->saveRawEnabled())
+  {
+  	const std::string png_filename = qualified_filename_no_extension.str() + ".png";
+  	success = cv::imwrite( png_filename, cv_ptr->image ); // OpenCV uses extensions intelligently
+  	if (false == success)
 		{
-			ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".png"); 
+			ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".png");
 		}
 		else
 		{
 			chmod(png_filename.c_str(), mode);
-		}    	
-    }
+		}
+  }
 }
 
 void Node3DX::publishStatus()
