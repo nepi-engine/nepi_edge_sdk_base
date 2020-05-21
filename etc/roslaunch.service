@@ -6,6 +6,7 @@ After=network.target
 Type=simple
 User=root
 ExecStart=/opt/numurus/ros/etc/roslaunch.sh
+Restart=always
 
 [Install]
-WantedBy=multi-user.target 
+WantedBy=multi-user.target
