@@ -35,6 +35,7 @@ static const std::string extractDeviceNamespace(const std::vector<std::string> &
 SDKNode::SDKNode() :
 	ns_tokens{splitNamespace()},
 	NODE_NAME_INDEX{ns_tokens.size() - 1},
+  current_rate_hz{0},
 	n{extractDeviceNamespace(ns_tokens)},
 	n_priv{"~"}, // Create a private namespace for this node - just use the fully qualified node name
 	_display_name{"display_name", ns_tokens[NODE_NAME_INDEX], this} // Default to the fixed node name
@@ -70,17 +71,26 @@ void SDKNode::init()
 		interface->initServiceClients();
 	}
 
+  current_rate_hz = max_rate_hz;
+
 	_initialized = true;
 }
 
-void SDKNode::run() 
+void SDKNode::run()
 {
 	// Do init() if it hasn't already been done
 	if (false == _initialized)
 	{
 		init();
 	}
-	ros::spin();
+
+  // Spin at the current rate
+  while (ros::ok())
+  {
+    ros::Rate r(current_rate_hz);
+	  ros::spinOnce();
+    r.sleep();
+  }
 }
 
 void SDKNode::initPublishers()
@@ -104,11 +114,13 @@ void SDKNode::initSubscribers()
 	subscribers.push_back(n.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
 	subscribers.push_back(n.subscribe("save_config_rt", 3, &SDKNode::saveCfgRtHandler, this));
 	subscribers.push_back(n.subscribe("reset", 3, &SDKNode::resetHandler, this));
+  subscribers.push_back(n.subscribe("apply_throttle", 3, &SDKNode::applyThrottleHandler, this));
 
 	// These versions are in this nodes private namespace so that just this node can be reinit'd and/or updated
 	subscribers.push_back(n_priv.subscribe("save_config", 3, &SDKNode::saveCfgHandler, this));
 	subscribers.push_back(n_priv.subscribe("save_config_rt", 3, &SDKNode::saveCfgRtHandler, this));
-	subscribers.push_back(n_priv.subscribe("reset", 3, &SDKNode::resetHandler, this));	
+	subscribers.push_back(n_priv.subscribe("reset", 3, &SDKNode::resetHandler, this));
+  subscribers.push_back(n_priv.subscribe("apply_throttle", 3, &SDKNode::applyThrottleHandler, this));
 }
 
 void SDKNode::initServices()
@@ -173,6 +185,11 @@ void SDKNode::resetHandler(const num_sdk_msgs::Reset::ConstPtr &msg)
 	}
 }
 
+void SDKNode::applyThrottleHandler(const std_msgs::Float32::ConstPtr &msg)
+{
+  setThrottleRatio(msg->data);
+}
+
 void SDKNode::userReset()
 {
 	ros::ServiceClient client = n.serviceClient<num_sdk_msgs::FileReset>("user_reset");
@@ -231,6 +248,17 @@ void SDKNode::saveCfg()
 	std_msgs::String node_name;
 	node_name.data = getQualifiedName(); // config_mgr expects a fully namespaced name
 	_store_params_pub.publish(node_name);
+}
+
+void SDKNode::setThrottleRatio(float throttle_ratio)
+{
+  // Bound the inputs to [0.0 - 1.0]
+  if (throttle_ratio > 1.0f) throttle_ratio = 1.0f;
+  else if (throttle_ratio < 0.0f) throttle_ratio = 0.0f;
+
+  const double rate_spread = max_rate_hz - min_rate_hz;
+  current_rate_hz = min_rate_hz + (rate_spread * throttle_ratio);
+	ROS_INFO("%s: Updating current rate to %.2fHz for throttle ratio %.2f", getUnqualifiedName().c_str(), current_rate_hz, throttle_ratio);
 }
 
 } // namespace Numurus

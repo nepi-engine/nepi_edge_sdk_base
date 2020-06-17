@@ -9,6 +9,7 @@
 #include "std_msgs/Empty.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Float32.h"
 #include "num_sdk_msgs/Reset.h"
 
 namespace Numurus
@@ -16,11 +17,10 @@ namespace Numurus
 
 /**
  * @brief      Base class to represent a ROS node in the Numurus SDK
- * 
+ *
  * 			   This class encapsulates the components required for a ROS node, including both a public namespace and private namespace NodeHandle, and
  * 			   vectors of subscribers, servicers, etc. for ROS operations.
- * 			   
- * 			   Concrete base classes must provide implementations for the run() method and may provide implementations for the init() method.
+ *
  */
 class SDKNode
 {
@@ -180,6 +180,10 @@ protected:
 	static constexpr auto DEV_SN_INDEX = 3;
 	const size_t NODE_NAME_INDEX; // Will be the last token, whichever that one is
 
+  double min_rate_hz = 0.25;
+  double max_rate_hz = 40;
+  double current_rate_hz;
+
 	/**
 	 * The public namespace node handle. This is used for any ROS primitives that should resolve into the top-level namespace for this node. In particular, subscribing to
 	 * general topics and services occurs through this node handle.
@@ -279,6 +283,15 @@ protected:
 	 */
 	void resetHandler(const num_sdk_msgs::Reset::ConstPtr &msg);
 
+  /**
+	 * @brief      Handle a request to set the node's throttle value
+	 *
+	 * 			   This assigns a rate between min_rate_hz and max_rate_hz
+	 *
+	 * @param[in]  msg   The message containing the throttle ration [0.0 - 1.0]
+	 */
+	void applyThrottleHandler(const std_msgs::Float32::ConstPtr &msg);
+
 	/**
 	 * @brief      Execute a user reset
 	 * 			   
@@ -323,6 +336,14 @@ protected:
 	 */
 	void saveCfg();
 
+  /**
+   * @brief    Set the throttle ratio for the node
+   *
+   *        The throttle ratio controls the rate that the node executes. A value
+   *        of 1.0 means run at the max_rate and a value of 0.0 means run at the min
+   *        rate, linearly scaling between the two
+   */
+  void setThrottleRatio(float throttle_ratio);
 
 private:
 	ros::Publisher _store_params_pub;
