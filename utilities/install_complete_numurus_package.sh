@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This interactive script installs an entire local copy of the /opt/numurus/ros directory
-# to a remote machine, overwriting the existing folder if it exists. 
+# to a remote machine, overwriting the existing folder if it exists.
 # Before overwriting, the existing /opt/numurus/ros directory on the remote target
 # is archived locally.
 
@@ -48,7 +48,7 @@ if [ ! -d "./ros" ]; then
 fi
 
 if [ -z "$SERIAL_NUM" ]; then
-	SERIAL_NUM=10000X
+	SERIAL_NUM=000000
 	read -e -p "Enter the serial number for the device
 	> " -i $SERIAL_NUM SERIAL_NUM
 fi
@@ -59,13 +59,13 @@ echo "   Source Path   = `pwd`/ros"
 echo "   Serial Number = $SERIAL_NUM"
 read CONTINUE
 
-cp ros/etc/sys_env_base.bash ros/etc/sys_env.bash
-sed -i 's/DEVICE_TYPE=TBD/DEVICE_TYPE=3dsc/' ros/etc/sys_env.bash
+#cp ros/etc/sys_env_base.bash ros/etc/sys_env.bash
+#sed -i 's/DEVICE_TYPE=TBD/DEVICE_TYPE=3dsc/' ros/etc/sys_env.bash
 sed -i 's/DEVICE_SN=TBD/DEVICE_SN='$SERIAL_NUM'/' ros/etc/sys_env.bash
-sed -i 's/SDK_PROJECT=TBD/SDK_PROJECT=num_sdk_jetson/' ros/etc/sys_env.bash
+#sed -i 's/SDK_PROJECT=TBD/SDK_PROJECT=num_sdk_jetson/' ros/etc/sys_env.bash
 
 # Stop the running SDK
-echo numurus | ssh -tt -i $SSH_KEY_PATH numurus@$REMOTE_HOST "sudo systemctl stop roslaunch"
+echo numurus | ssh -tt -i $SSH_KEY_PATH numurus@$REMOTE_HOST "sudo systemctl stop roslaunch; sudo systemctl stop numurus_rui"
 
 # Copy the entire existing folder for archive purposes
 NOW=`date +"%F_%H%M%S"`
