@@ -201,6 +201,7 @@ catkin_install_python(PROGRAMS
   scripts/network_mgr.py
   scripts/nepi_core_mgr.py
   scripts/pipeline_mgr.py
+  scripts/image_color_converter.py
   pipeline/scripts/acl.py
   pipeline/scripts/gyr.py
   pipeline/scripts/mag.py
