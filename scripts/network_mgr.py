@@ -61,14 +61,13 @@ class NetworkMgr:
         try:
             fixed_ip_bits = socket.inet_aton(fixed_ip_addr)
         except:
-            # This 
             rospy.logerr("Cannot validate IP address becaused fixed IP %s appears invalid", fixed_ip_addr)
             return False
         if (new_ip_bits == fixed_ip_bits):
             rospy.logerr("IP address invalid because it matches fixed primary IP")
             return False
 
-        return True 
+        return True
 
     def add_ip_impl(self, new_addr):
         try:
@@ -80,7 +79,7 @@ class NetworkMgr:
             self.add_ip_impl(new_addr_msg.data)
         else:
             rospy.logerr("Unable to add invalid/ineligible IP address")
-            
+
     def remove_ip_impl(self, old_addr):
         try:
             subprocess.check_call(['ip','addr','del',old_addr,'dev',self.NET_IFACE])
@@ -94,14 +93,15 @@ class NetworkMgr:
 
     def set_ips_from_params(self):
         curr_ips = self.get_current_ip_addrs()
-        for ip in curr_ips[1:]:
+        for ip in curr_ips[1:]: # Skip the first one -- that is the factory default
             rospy.loginfo("Purging IP address %s to produce a clean slate", ip)
             self.remove_ip_impl(ip)
 
-        configured_ips = rospy.get_param('~configured_ip_addrs')
-        for ip in configured_ips:
-            rospy.loginfo("Adding configured IP address %s", ip)
-            self.add_ip_impl(ip)
+        if (rospy.has_param('~configured_ip_addrs')):
+            configured_ips = rospy.get_param('~configured_ip_addrs')
+            for ip in configured_ips:
+                rospy.loginfo("Adding configured IP address %s", ip)
+                self.add_ip_impl(ip)
 
     def reset(self, msg):
         if Reset.USER_RESET == msg.reset_type:
@@ -136,15 +136,17 @@ class NetworkMgr:
         # First update param server - only set entries 1:end because 0 is
         # the fixed IP
         current_ips = self.get_current_ip_addrs()
-        rospy.set_param('~configured_ip_addrs', current_ips[1:])
-
+        if (len(current_ips) > 1):
+            rospy.set_param('~configured_ip_addrs', current_ips[1:])
+        else:
+            rospy.set_param('~configured_ip_addrs', [])
         # Now tell config_mgr to save the file
         self.store_params_publisher.publish(rospy.get_name())
 
     def handle_ip_addr_query(self, req):
         ips = self.get_current_ip_addrs()
         return {'ip_addrs':ips}
-    
+
     def __init__(self):
         rospy.init_node(self.NODE_NAME)
 
@@ -166,7 +168,7 @@ class NetworkMgr:
         rospy.Service('ip_addr_query', IPAddrQuery, self.handle_ip_addr_query)
 
         self.store_params_publisher = rospy.Publisher('store_params', String, queue_size=1)
-        
+
         self.run()
 
 if __name__ == "__main__":
