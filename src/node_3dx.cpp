@@ -87,8 +87,8 @@ void Node3DX::initPublishers()
 void Node3DX::retrieveParams()
 {
 	// Call the base method
-	SDKNode::retrieveParams(); 
-	
+	SDKNode::retrieveParams();
+
 	// Grab the node_3dx parameters
 	_simulated_data.retrieve();
 	_min_range.retrieve();
@@ -378,6 +378,7 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 	}
 
 	std::string image_identifier;
+	const std::string output_img_encoding = (img_id == IMG_ALT)? "mono8" : "bgr8";
 	switch(img_id)
 	{
 	case IMG_0:
@@ -397,7 +398,7 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
   try
   {
     //cv_ptr = cv_bridge::toCvShare(img, img->encoding);
-    cv_ptr = cv_bridge::toCvShare(img);
+    cv_ptr = cv_bridge::toCvShare(img, output_img_encoding);
   }
   catch (cv_bridge::Exception& e)
   {
@@ -414,31 +415,16 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 	static const mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; // 664
 
   // Create the filename - defer the extension so that we can adjust as necessary for save_raw
-	std::stringstream qualified_filename_no_extension;
-  qualified_filename_no_extension << _save_data_if->_save_data_dir << "/" << _save_data_if->getFilenamePrefix() <<
-    									display_name << "_" << image_identifier << "_" << time_str;
-  const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
-  bool success = cv::imwrite( jpg_filename,  cv_ptr->image ); // OpenCV uses extensions intelligently
+	std::stringstream qualified_filename;
+  qualified_filename << _save_data_if->_save_data_dir << "/" << _save_data_if->getFilenamePrefix() <<
+    									display_name << "_" << image_identifier << "_" << time_str << ".png";
+  //const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
+	bool success = cv::imwrite( qualified_filename.str(),  cv_ptr->image ); // OpenCV uses extensions intelligently
 	if (false == success)
 	{
-		ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".jpg");
+		ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename.str());
 	}
-	chmod(jpg_filename.c_str(), mode);
-
-  // Save the lossless PNG if raw data saving enabled
-  if (true == _save_data_if->saveRawEnabled())
-  {
-  	const std::string png_filename = qualified_filename_no_extension.str() + ".png";
-  	success = cv::imwrite( png_filename, cv_ptr->image ); // OpenCV uses extensions intelligently
-  	if (false == success)
-		{
-			ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename_no_extension.str() << ".png");
-		}
-		else
-		{
-			chmod(png_filename.c_str(), mode);
-		}
-  }
+	chmod(qualified_filename.str().c_str(), mode);
 }
 
 void Node3DX::publishStatus()
