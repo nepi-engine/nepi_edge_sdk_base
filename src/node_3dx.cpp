@@ -35,6 +35,9 @@ Node3DX::Node3DX():
 	_alt_img_frame_id{"alt_img_frame_id", "alt_img_frame", this}
 {
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
+	_save_data_if->registerDataProduct("img_0");
+	_save_data_if->registerDataProduct("img_1");
+	_save_data_if->registerDataProduct("img_alt");
 
 	// Load the sim mode files
 	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getUnqualifiedName() + "/sim_img_";
@@ -149,6 +152,7 @@ void Node3DX::initSubscribers()
 	if (nullptr != _save_data_if)
 	{
 		_save_data_if->initSubscribers();
+		_save_data_if->initServices();
 	}
 	if (nullptr != _trig_if)
 	{
@@ -392,6 +396,13 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 		break;
 	default:
 		ROS_ERROR("%s: Request to save for unknown image id (%d)", getUnqualifiedName().c_str(), img_id);
+	}
+
+	// Check that it is time to save this data product
+	if (false == _save_data_if->dataProductShouldSave(image_identifier))
+	{
+		// Not time yet -- just return silently
+		return;
 	}
 
 	cv_bridge::CvImageConstPtr cv_ptr;
