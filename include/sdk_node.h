@@ -44,8 +44,11 @@ public:
 		_param_name{param_name},
 		_param_data{default_val},
 		_parent{parent}
-	{}
-	
+	{
+		// Retrieve automatically to establish parameter in the param server
+		retrieve();
+	}
+
 	/**
 	 * @brief      Conversion operator to allow a NodeParam to be implicitly converted to its template type
 	 */
