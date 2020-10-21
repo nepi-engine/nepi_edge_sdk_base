@@ -161,9 +161,9 @@ add_library(${PROJECT_NAME}
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-#add_executable(<node_name> 
+#add_executable(<node_name>
 #	<src/<node_name>.cpp
-#) 
+#)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -216,7 +216,7 @@ catkin_install_python(PROGRAMS
 )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS ${PROJECT_NAME} 
+install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -239,11 +239,25 @@ install(DIRECTORY launch/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
+# Developer convenience to create a backup sys_env file before overwriting with the non-functional one in the repo.
+install(FILES ${CMAKE_INSTALL_PREFIX}/${CATKIN_GLOBAL_ETC_DESTINATION}/sys_env.bash
+  DESTINATION ${CATKIN_GLOBAL_ETC_DESTINATION}
+  RENAME sys_env.bash.bak
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ
+  OPTIONAL)
+
 # Install etc files (startup scripts, factory configs, etc.) to the global (not project) etc destination
-install(DIRECTORY etc/ 
+install(DIRECTORY etc/
   DESTINATION ${CATKIN_GLOBAL_ETC_DESTINATION}
   USE_SOURCE_PERMISSIONS
 )
+
+# Developer convenience to restore a backup sys_env file if one exists
+install(FILES ${CMAKE_INSTALL_PREFIX}/${CATKIN_GLOBAL_ETC_DESTINATION}/sys_env.bash.bak
+  DESTINATION ${CATKIN_GLOBAL_ETC_DESTINATION}
+  RENAME sys_env.bash
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ
+  OPTIONAL)
 
 install(DIRECTORY utilities/
   DESTINATION ${CATKIN_GLOBAL_SHARE_DESTINATION}
