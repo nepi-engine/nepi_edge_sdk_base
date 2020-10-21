@@ -147,17 +147,6 @@ void Node3DX::initSubscribers()
 	subscribers.push_back(n_priv.subscribe("set_resolution", 3, &Node3DX::setResolutionHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_gain", 3, &Node3DX::setGainHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_filter", 3, &Node3DX::setFilterHandler, this));
-
-	// And init the interface subscribers
-	if (nullptr != _save_data_if)
-	{
-		_save_data_if->initSubscribers();
-		_save_data_if->initServices();
-	}
-	if (nullptr != _trig_if)
-	{
-		_trig_if->initSubscribers();
-	}
 }
 
 void Node3DX::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
