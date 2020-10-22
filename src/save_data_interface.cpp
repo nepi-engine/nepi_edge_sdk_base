@@ -1,4 +1,5 @@
 #include "boost/filesystem.hpp"
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 #include "save_data_interface.h"
 #include "sdk_utils.h"
@@ -82,6 +83,17 @@ bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ro
 	}
 	// Otherwise, not time yet
 	return false;
+}
+
+std::string SaveDataInterface::getTimestampString(const ros::Time &tstamp_ros)
+{
+	boost::posix_time::ptime posix_time = tstamp_ros.toBoost();
+	tm stamp_tm = boost::posix_time::to_tm(posix_time);
+	char tstamp_str[128];
+	const size_t offset = strftime(tstamp_str, 128, "%FT%H%M%S.", &stamp_tm);
+	const int32_t fractional_secs = (int32_t)(tstamp_ros.nsec / 1000000.0); // nsecs to milliseconds
+	snprintf(tstamp_str + offset, 128 - offset, "%03d", fractional_secs);
+	return tstamp_str;
 }
 
 void SaveDataInterface::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg)

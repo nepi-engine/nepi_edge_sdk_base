@@ -3,8 +3,6 @@
 #include "opencv2/highgui.hpp"
 #include "cv_bridge/cv_bridge.h"
 
-#include "boost/date_time/posix_time/posix_time.hpp"
-
 #include "node_3dx.h"
 #include "trigger_interface.h"
 #include "save_data_interface.h"
@@ -408,16 +406,14 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 
   // Capture the timestamp in a good format for filenames
   const std::string display_name = _display_name;
-  boost::posix_time::ptime posix_time = img->header.stamp.toBoost();
-	std::string time_str = boost::posix_time::to_iso_extended_string(posix_time);
-
+	const std::string tstamp_str = _save_data_if->getTimestampString(img->header.stamp);
 	// To change the permissions - opencv API doesn't seem to give us that control at creation
 	static const mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; // 664
 
   // Create the filename - defer the extension so that we can adjust as necessary for save_raw
 	std::stringstream qualified_filename;
   qualified_filename << _save_data_if->_save_data_dir << "/" << _save_data_if->getFilenamePrefix() <<
-    									display_name << "_" << image_identifier << "_" << time_str << ".png";
+    									display_name << "_" << image_identifier << "_" << tstamp_str << ".png";
   //const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
 	bool success = cv::imwrite( qualified_filename.str(),  cv_ptr->image ); // OpenCV uses extensions intelligently
 	if (false == success)
