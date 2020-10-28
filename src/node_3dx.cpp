@@ -451,4 +451,32 @@ void Node3DX::publishStatus()
 	_status_pub.publish(msg);
 }
 
+void Node3DX::run()
+{
+	// Do init() if it hasn't already been done
+	if (false == _initialized)
+	{
+		init();
+	}
+
+	// Set up periodic publishing of the 3DX status
+	const ros::Duration status_pub_period(2.0);
+	ros::Time next_status_pub = ros::Time::now() + status_pub_period;
+	ROS_ERROR_STREAM("Debugging: now = " << ros::Time::now() << ", first status pub = " << next_status_pub);
+  // Spin at the current rate
+	while (ros::ok())
+  {
+    ros::Rate r(current_rate_hz);
+		const ros::Time now = ros::Time::now();
+		if (now >= next_status_pub)
+		{
+			ROS_ERROR("Debugging: About to publish periodic status");
+			publishStatus();
+			next_status_pub = now + status_pub_period;
+		}
+	  ros::spinOnce();
+    r.sleep();
+  }
+}
+
 } // namespace numurus

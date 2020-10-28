@@ -24,12 +24,12 @@ class SaveDataInterface;
 
 /**
  * @brief      The Node3DX class represents a Numurus sensor capable of producing multidimensional imagery
- * 
- * 			   All Node3DXs adhere to a common ROS interface in the form of guaranteed published and 
+ *
+ * 			   All Node3DXs adhere to a common ROS interface in the form of guaranteed published and
  * 			   subscribed topics. This class provides a base from which sensor-specific implementation can
  * 			   be derived.
- * 			   
- * @note:	   This class inherits from abstract SDKNode, and does not implement all of the pure virtual 
+ *
+ * @note:	   This class inherits from abstract SDKNode, and does not implement all of the pure virtual
  * 			   methods so, it is, itself, abstract.
  */
 class Node3DX : public SDKNode
@@ -58,7 +58,7 @@ protected:
 	TriggerInterface *_trig_if = nullptr;
 	SaveDataInterface *_save_data_if = nullptr;
 	image_transport::ImageTransport img_trans;
-	
+
 	image_transport::CameraPublisher img_0_pub;
 	image_transport::CameraPublisher img_1_pub;
 	image_transport::CameraPublisher img_alt_pub;
@@ -99,7 +99,8 @@ protected:
 	virtual void initPublishers() override;
 	virtual void retrieveParams() override;
 	virtual void initSubscribers() override;
-	
+	virtual void run() override;
+
 	// Generic subscription callbacks. In many cases, the default implementation in this base class will
 	// be sufficient, but subclasses can override as necessary (ensuring that they call back to the base
 	// class or embed the base class logic as necessary).

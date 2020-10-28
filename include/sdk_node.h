@@ -56,7 +56,7 @@ public:
 
 	/**
 	 * @brief      Retrieves a parameter from the param server
-	 * 
+	 *
 	 * 			   If param server has no value for requested param, this will establish it in the param server from value of param_storage.
 	 *
 	 * @return     true if parameter was found on server, false otherwise (but param thereafter exists on server)
@@ -121,26 +121,26 @@ private:
 
 	/**
 	 * @brief      Initialize the node
-	 * 
-	 * 			   This method calls initPublishers(), retrieveParams(), initSubscribers, and initServices() 
+	 *
+	 * 			   This method calls initPublishers(), retrieveParams(), initSubscribers, and initServices()
 	 * 			   (in that order) to completely initialize the ROS components of the node. If not called explicitly
 	 * 			   (and it should be), run() will call this method
-	 * 			   
-	 * @note       Subclasses may override this method but should call back to this base implementation or otherwise replicate its behavior	
+	 *
+	 * @note       Subclasses may override this method but should call back to this base implementation or otherwise replicate its behavior
 	 */
 	virtual void init();
 
 	/**
 	 * @brief      Execute the main work method
-	 * 
+	 *
 	 * 			   This base implementation simply calls ros::spin(). It will call init() if it hasn't already been called
 	 * 			   to preserve a previous behavior, but users should call init() explicitly before run() to control when the
-	 * 			   initializations occur. 
-	 * 			   
-	 * @note       Subclasses may override this method but should preserve the conditional init() and some version of ros::spin()			   
+	 * 			   initializations occur.
+	 *
+	 * @note       Subclasses may override this method but should preserve the conditional init() and some version of ros::spin()
 	 */
 	virtual void run();
-	
+
 	/**
 	 * @brief      Get the name of the SDK Node including fully qualified namespace.
 	 *
@@ -197,7 +197,7 @@ protected:
 	 * The private namespace node handle. This is used for any ROS primitives that must resolve into a subnamespace of this node to avoid conflicts. In particular, param access
 	 * use this node handle.
 	 */
-	ros::NodeHandle n_priv; 
+	ros::NodeHandle n_priv;
 
 	/**
 	 * Display name of the node. Could be modified by users (though no interface to do so for this generic base class)
@@ -221,6 +221,8 @@ protected:
 	 */
 	std::vector<SDKInterface *> sdk_interfaces;
 
+	bool _initialized = false;
+
 	/**
 	 * @brief      Determine whether the namespace is valid
 	 *
@@ -230,20 +232,20 @@ protected:
 
 	/**
 	 * @brief      Advertise topics to be published
-	 * 
+	 *
 	 * @note       {Subclasses may override this method, but should call back to the base
-	 * 				class method to ensure the generic initialization proceeds.} 
+	 * 				class method to ensure the generic initialization proceeds.}
 	 */
 	virtual void initPublishers();
 
 	/**
 	 * @brief      Retrieve all ROS parameters from param server.
-	 * 
+	 *
 	 * 			   The ROS parameter server launches with parameters from the various config. files.
 	 * 			   SDKNodes never interact with these files directly, rather gathering params from the
 	 * 			   param server, and leveraging the config_mgr node to save and restore params to/from
 	 * 			   the config files.
-	 * 			   
+	 *
 	 * @note       {Subclasses may override this method to do specific param initialization, but should call SDKNode::retrieveParams() wihin the overriden implementation
 	 * 				to ensure the generic initialization proceeds.}
 	 */
@@ -251,17 +253,17 @@ protected:
 
 	/**
 	 * @brief      Initialize subscribers and add to the list of subscriber handles
-	 * 
+	 *
 	 * @note       {Subclasses may override this method, but should call back to the base
-	 * 				class method to ensure the generic initialization proceeds.} 
+	 * 				class method to ensure the generic initialization proceeds.}
 	 */
 	virtual void initSubscribers();
 
 	/**
 	 * @brief      Advertise services to be provided
-	 * 
+	 *
 	 * @note       {Subclasses may override this method, but should call back to the base
-	 * 				class method to ensure the generic initialization proceeds.} 
+	 * 				class method to ensure the generic initialization proceeds.}
 	 */
 	virtual void initServices();
 
@@ -275,10 +277,10 @@ protected:
 	void saveCfgHandler(const std_msgs::Empty::ConstPtr &empty);
 
 	void saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg);
-	
+
 	/**
 	 * @brief      Handle a request to reset the node
-	 * 
+	 *
 	 * 			   The request can be one of a number of reset types. This methods simply calls into
 	 * 			   reset type-specific functions that may be overridden by subclasses
 	 *
@@ -297,43 +299,43 @@ protected:
 
 	/**
 	 * @brief      Execute a user reset
-	 * 			   
+	 *
 	 * 			   This generic implementation simply restores parameters to their param server values
 	 * 			   which are nominally the same as the config file values that were loaded at start-up time.
-	 * 			   
+	 *
 	 * 			   Subclasses do not typically need to override this method
 	 */
 	virtual void userReset();
 
 	/**
 	 * @brief      Exectue a factory reset, restoring configuration to it's factory default
-	 * 
+	 *
 	 * 			   Subclasses do not typically need to override this method
 	 */
 	virtual void factoryReset();
 
 	/**
 	 * @brief      Execute a software reset, terminating the node and allowing the ROS launch system to restart it.
-	 * 
+	 *
 	 * 			   Subclasses do not typically need  to override this method.
 	 */
 	virtual void softwareReset();
 
 	/**
 	 * @brief      Execute a hardware reset.
-	 * 
+	 *
 	 * 			   This implementation of this reset mode is typically dependent on the underlying
 	 * 			   hardware proxied by the node, so subclasses will typically override this method.
-	 * 			   
+	 *
 	 * 			   The generic implementation included here simply calls softwareReset()
-	 */		
+	 */
 	virtual void hardwareReset();
 
 	/**
 	 * @brief      Save the node's configuration file
-	 * 
+	 *
 	 * 			   This method serves to coordinate a save operation with the parameter server by
-	 * 			   informing the param server that it will be saving, updating all parameters (via updateParams), then 
+	 * 			   informing the param server that it will be saving, updating all parameters (via updateParams), then
 	 * 			   informing the param server that it is done. This allows the param server to determine that a
 	 * 			   set of nodes is attempting to save, then delay the actual file saving until they have finished updates.
 	 */
@@ -351,8 +353,6 @@ protected:
 private:
 	ros::Publisher _store_params_pub;
 	bool _save_cfg_rt = false;
-	bool _initialized = false;
-		
 };
 
 } // namespace Numurus
