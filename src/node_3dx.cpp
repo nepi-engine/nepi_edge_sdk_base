@@ -96,7 +96,7 @@ void Node3DX::retrieveParams()
 	_max_range.retrieve();
 	_angle_offset.retrieve();
 	_total_angle.retrieve();
-	_manual_resolution.retrieve();
+	_manual_resolution_enabled.retrieve();
 	_manual_resolution.retrieve();
 	_gain_enabled.retrieve();
 	_gain.retrieve();

@@ -16,7 +16,7 @@ static std::vector<std::string> splitNamespace()
 
 	// Use a lambda function to provide the delimiter identifier
 	boost::split(tokens, ns_string, [](char c){return c == '/';});
-	
+
 	return tokens;
 }
 
@@ -28,7 +28,7 @@ static const std::string extractDeviceNamespace(const std::vector<std::string> &
 		return "";
 	}
 	// Trial and error determined these token indices
-	const std::string device_ns = "/" + ns_tokens[1] + "/" + ns_tokens[2] + "/" + ns_tokens[3];	
+	const std::string device_ns = "/" + ns_tokens[1] + "/" + ns_tokens[2] + "/" + ns_tokens[3];
 	return device_ns;
 }
 
@@ -38,6 +38,7 @@ SDKNode::SDKNode() :
   current_rate_hz{0},
 	n{extractDeviceNamespace(ns_tokens)},
 	n_priv{"~"}, // Create a private namespace for this node - just use the fully qualified node name
+	_param_list{}, // Call default constructor explicityly here -- must come before any parameters are initialized
 	_display_name{"display_name", ns_tokens[NODE_NAME_INDEX], this} // Default to the fixed node name
 {
 	if (false == validateNamespace())
@@ -56,7 +57,9 @@ void SDKNode::init()
 {
 	// initPublishers() first to ensure that any messages published by the other inits() are valid
 	initPublishers();
+
 	retrieveParams();
+
 	initSubscribers();
 	initServices();
 	initServiceClients();
@@ -70,6 +73,10 @@ void SDKNode::init()
 		interface->initServices();
 		interface->initServiceClients();
 	}
+
+	// Now that all retrieveParams() have been called, check that all defined parameters were
+	// actually retrieved
+	warnUnretrievedParams();
 
   current_rate_hz = max_rate_hz;
 
@@ -101,6 +108,9 @@ void SDKNode::initPublishers()
 
 void SDKNode::retrieveParams()
 {
+	// Clear parameter retrieval flags to make subsequent calls to warnUnretrievedParams() work properly
+	for (NodeParamBase *p : _param_list) p->clearRetrievalFlag();
+
 	// To appease the rosparam API, all nodes should have at least one parameter (to ensure a non-empty namespace
 	// when dumping the param server contents to various config files). We use the displayName for that purpose,
 	// though it is not modifiable at this generic SDKNode level
@@ -131,6 +141,17 @@ void SDKNode::initServices()
 void SDKNode::initServiceClients()
 {
 	// No clients - just a placeholder for subclasses
+}
+
+void SDKNode::warnUnretrievedParams()
+{
+	for (NodeParamBase *p : _param_list)
+	{
+		if (false == p->getRetrievalFlag())
+		{
+			ROS_WARN("%s: did not retrieve %s in retrieveParams()", getUnqualifiedName().c_str(), p->getName().c_str());
+		}
+	}
 }
 
 void SDKNode::saveCfgHandler(const std_msgs::Empty::ConstPtr &msg)
@@ -227,8 +248,8 @@ void SDKNode::softwareReset()
 {
 	// First, ensure the config file is reloaded on param server before restarting... userReset
 	// is the most natural way.
-	userReset(); 
-	
+	userReset();
+
 	// Simply shutdown the node... it will be automatically restarted per launch file specification
 	ros::shutdown();
 }

@@ -2,6 +2,7 @@
 #define _SDK_NODE_H
 
 #include <string>
+#include <vector>
 
 #include <ros/ros.h>
 
@@ -28,25 +29,49 @@ public:
 	// Make the SDKInterface constructor a friend so that it can push itself onto the sdk_interfaces vector.
 	friend SDKInterface::SDKInterface(SDKNode *parent, ros::NodeHandle *parent_pub_nh, ros::NodeHandle *parent_priv_nh);
 
+class NodeParamBase
+{
+public:
+	NodeParamBase(std::string param_name, SDKNode *parent):
+		_param_name{param_name},
+		_parent{parent}
+	{
+		_parent->_param_list.push_back(this);
+	}
+
+	const std::string getName() const {return _param_name;}
+	void clearRetrievalFlag(){_retrieval_flag = false;}
+	bool getRetrievalFlag() const {return _retrieval_flag;}
+
+protected:
+	const std::string _param_name;
+	SDKNode *_parent; // non-const to allow for _param_list.insert()
+	bool _retrieval_flag = false;
+};
+
 /**
  * @brief      Class to represent node parameters
  *
  *			   This class is useful primarily to provide a smart assignment operator that will respect the config_rt setting.
  *			   It also provides some utility in its encapsulation of the param name, helping to avoid a lot of strings peppered
  *			   through the code.
+ *
+ *				 It would be helpful if this class's non-templated based class defined pure virtual functions like retrieve() so
+ *				 SDKNode::retrieveParams() could automatically iterate over this list, but seems problematic with templatization
+ *				 in the concrete instances... perhaps an experiment for another day!
+ *
  * @tparam     T     Parameter type. Must be a valid ROS param type.
  */
 template <class T>
-class NodeParam
+class NodeParam : public NodeParamBase
 {
 public:
 	NodeParam(std::string param_name, T default_val, SDKNode *parent):
-		_param_name{param_name},
-		_param_data{default_val},
-		_parent{parent}
+		NodeParamBase(param_name, parent),
+		_param_data{default_val}
 	{
 		// Retrieve automatically to establish parameter in the param server
-		retrieve();
+		//retrieve(); // Don't do this anymore as it will interfere with the warnUnretrievedParams() system for SDKInterfaces
 	}
 
 	/**
@@ -63,6 +88,8 @@ public:
 	 */
 	bool retrieve()
 	{
+		// Always set the retrieval flag so that parent node can tell which params have been retrieved (since last retrieval flag clear)
+		_retrieval_flag = true;
 		if (true == _parent->n_priv.getParam(_param_name, _param_data))
 		{
 			ROS_INFO("%s: Updating %s from param server", _parent->getUnqualifiedName().c_str(), _param_name.c_str());
@@ -108,9 +135,7 @@ public:
 	}
 
 private:
-	const std::string _param_name;
 	T _param_data;
-	const SDKNode *_parent;
 }; // class NodeParam
 	/**
 	 * @brief      Constructs the object.
@@ -200,6 +225,11 @@ protected:
 	ros::NodeHandle n_priv;
 
 	/**
+	 * The list of parameters for retrieval checking, etc. Must come BEFORE any params below to ensure it is constructed first
+	 */
+	std::vector<NodeParamBase *> _param_list;
+
+	/**
 	 * Display name of the node. Could be modified by users (though no interface to do so for this generic base class)
 	 */
 	NodeParam<std::string> _display_name;
@@ -268,6 +298,8 @@ protected:
 	virtual void initServices();
 
 	virtual void initServiceClients();
+
+	void warnUnretrievedParams();
 
 	/**
 	 * @brief      Handle a request to save the current ROS configuration
