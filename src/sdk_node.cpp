@@ -215,7 +215,7 @@ void SDKNode::userReset()
 {
 	ros::ServiceClient client = n.serviceClient<num_sdk_msgs::FileReset>("user_reset");
 	num_sdk_msgs::FileReset srv;
-	srv.request.node_name = getUnqualifiedName();
+	srv.request.node_name = getQualifiedName();
 
 	if (false == client.call(srv) || false == srv.response.success)
 	{
@@ -232,7 +232,7 @@ void SDKNode::factoryReset()
 {
 	ros::ServiceClient client = n.serviceClient<num_sdk_msgs::FileReset>("factory_reset");
 	num_sdk_msgs::FileReset srv;
-	srv.request.node_name = getUnqualifiedName();
+	srv.request.node_name = getQualifiedName();
 	if (false == client.call(srv) || false == srv.response.success)
 	{
 		ROS_ERROR("%s: Factory reset request failed", getUnqualifiedName().c_str());
