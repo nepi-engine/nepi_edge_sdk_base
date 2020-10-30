@@ -20,6 +20,10 @@ if [ "$DEVICE_SN" = "TBD" ]; then
 	exit 1
 fi
 
+if [ -z "$DEVICE_ID" ]; then
+	export DEVICE_ID=$DEVICE_SN
+fi
+
 if [ "$SDK_PROJECT" = "TBD" ]; then
 	echo "ERROR! SDK_PROJECT must be set in /opt/numurus/ros/sys_env.bash"
 	exit 1

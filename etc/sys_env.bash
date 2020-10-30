@@ -9,8 +9,11 @@ export ROOTNAME=numurus
 # The DEVICE_TYPE represents the "name" of the device
 export DEVICE_TYPE=TBD
 
-# The DEVICE_SN must be set and should be a unique serial number/identifier for each build.
+# The DEVICE_SN must be set and should be a unique serial number/identifier for each system.
 export DEVICE_SN=TBD
+
+# The DEVICE_ID is included in the device ROS namespace. If left unset, it will be assigned to the S/N
+export DEVICE_ID=
 
 # The SDK_PROJECT must be set as the project that contains <DEVICE_TYPE>.launch
 export SDK_PROJECT=TBD
