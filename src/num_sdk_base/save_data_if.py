@@ -109,4 +109,4 @@ class SaveDataIF(object):
 
         rospy.Service('~query_data_products', DataProductQuery, self.query_data_products_callback)
 
-        self.save_data_status_pub = rospy.Publisher('save_data_status', SaveDataStatus, queue_size = 5)
+        self.save_data_status_pub = rospy.Publisher('~save_data_status', SaveDataStatus, queue_size = 5)
