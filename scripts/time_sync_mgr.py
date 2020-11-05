@@ -161,9 +161,9 @@ def handle_time_status_query(req):
             rospy.logwarn_throttle(300, "Unable to parse /sys/class/pps/pps0/assert");
     else: # Failed to find the assert file - just return no PPS
         time_status.last_pps = rospy.Time(0)
-        rospy.logwarn_throttle(300, "Unable to parse /sys/class/pps/pps0/assert");
+        rospy.logwarn_once("Unable to find /sys/class/pps/pps0/assert... PPS unavailable");
 
-        
+
     # Gather NTP info from chronyc application
     chronyc_sources = subprocess.check_output(["chronyc", "sources"]).splitlines()
     for line in chronyc_sources[1:]:
@@ -182,7 +182,7 @@ def set_time(msg):
     # TODO: Bounds checking?
     # Use the Linux 'date -s' command-line utility.
     rospy.loginfo("Setting time from set_time topic to %ds, %dns", msg.data.secs, msg.data.nsecs)
-    timestring = '@' + str(float(msg.data.secs) + (float(msg.data.nsecs) / float(1e9))) 
+    timestring = '@' + str(float(msg.data.secs) + (float(msg.data.nsecs) / float(1e9)))
     subprocess.call(["date", "-s", timestring])
     global g_last_set_time
     g_last_set_time = msg.data
