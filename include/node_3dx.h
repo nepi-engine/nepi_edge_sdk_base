@@ -90,10 +90,6 @@ protected:
 	SDKNode::NodeParam<std::string> _img_1_name;
 	SDKNode::NodeParam<std::string> _alt_img_name;
 
-	SDKNode::NodeParam<std::string> _img_0_frame_id;
-	SDKNode::NodeParam<std::string> _img_1_frame_id;
-	SDKNode::NodeParam<std::string> _alt_img_frame_id;
-
 	// Inherited from SDKNode
 	virtual inline bool validateNamespace() override {return ns_tokens.size() > 4;}
 	virtual void initPublishers() override;

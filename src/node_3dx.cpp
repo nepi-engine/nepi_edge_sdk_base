@@ -27,10 +27,7 @@ Node3DX::Node3DX():
 	_filter_control{"filter_control", 0.0f, this},
 	_img_0_name{"img_0_name", "img_0", this},
 	_img_1_name{"img_1_name", "img_1", this},
-	_alt_img_name{"alt_img_name", "alt", this},
-	_img_0_frame_id{"img_0_frame_id", "img_0_frame", this},
-	_img_1_frame_id{"img_1_frame_id", "img_1_frame", this},
-	_alt_img_frame_id{"alt_img_frame_id", "alt_img_frame", this}
+	_alt_img_name{"alt_img_name", "alt", this}
 {
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
 	_save_data_if->registerDataProduct("img_0");
@@ -105,9 +102,6 @@ void Node3DX::retrieveParams()
 	_img_0_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
 	_img_1_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
 	_alt_img_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
-	_img_0_frame_id.retrieve();
-	_img_1_frame_id.retrieve();
-	_alt_img_frame_id.retrieve();
 
 	// Image transport parameters are ROS "dynamic_params", so don't need to be retrieved manually
 
