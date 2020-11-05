@@ -33,4 +33,13 @@ if [ "$LAUNCH_FILE" = "TBD" ]; then
 	echo "ERROR! LAUNCH_FILE must be set in /opt/numurus/ros/sys_env.bash"
 fi
 
+# This is a good place to monitor and purge large log sets
+ROS_LOG_SIZE=($(rosclean check))
+echo ROS Log Size: $ROS_LOG_SIZE
+# A "G" in the size indicates logs are over 1GB, so we purge
+if grep -q "G" <<< "$ROS_LOG_SIZE"; then
+	echo "Purging ROS logs because they exceed 1GB"
+	yes | rosclean purge
+fi
+
 roslaunch ${SDK_PROJECT} ${LAUNCH_FILE}
