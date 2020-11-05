@@ -23,7 +23,7 @@ CFG_PATH = '/opt/numurus/ros/etc/'
 
 pending_nodes = {}
 
-# Moving symlinks is typically faster and more robust than copying files, so to reduce the 
+# Moving symlinks is typically faster and more robust than copying files, so to reduce the
 # chance of filesystem corruption in the event of e.g., power failure, we use a symlink-based config
 # file scheme.
 def symlink_force(target, link_name):
@@ -54,7 +54,7 @@ def update_from_file(file_pathname, namespace):
 
 def get_cfg_pathname(qualified_node_name):
     node_name = separate_node_name_in_msg(qualified_node_name)
-    cfg_pathname = CFG_PATH + '/' + node_name  + '/' + node_name + CFG_SUFFIX
+    cfg_pathname = CFG_PATH + node_name  + '/' + node_name + CFG_SUFFIX
     return cfg_pathname
 
 def user_reset(req):
