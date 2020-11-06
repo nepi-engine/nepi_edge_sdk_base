@@ -52,7 +52,7 @@ public:
 	void registerDataProduct(const std::string product_name, float save_rate_hz = 1.0f);
 	bool dataProductShouldSave(const std::string product_name, ros::Time data_time = ros::Time::now());
 
-	static std::string getTimestampString(const ros::Time &tstamp);
+	static std::string getTimestampString();
 
 	/**
 	 * Non-user-configurable base path

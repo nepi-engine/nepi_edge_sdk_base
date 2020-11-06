@@ -76,9 +76,8 @@ class SaveDataIF(object):
 
         return False
 
-    def get_timestamp_string(self, tstamp_ros):
-        tstamp_py = datetime.datetime.fromtimestamp(tstamp_ros.to_sec())
-        return tstamp_py.strftime('%Y-%m-%dT%H%M%S.%f')[:-3]
+    def get_timestamp_string(self):
+        return datetime.datetime.now().strftime('%Y-%m-%dT%H%M%S.%f')[:-3]
 
     def get_filename_path_and_prefix(self):
         return self.SAVE_DATA_ROOT_DIRECTORY + '/' + self.save_data_prefix

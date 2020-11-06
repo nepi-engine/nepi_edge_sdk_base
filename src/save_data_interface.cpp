@@ -85,15 +85,32 @@ bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ro
 	return false;
 }
 
-std::string SaveDataInterface::getTimestampString(const ros::Time &tstamp_ros)
+std::string SaveDataInterface::getTimestampString()
 {
-	boost::posix_time::ptime posix_time = tstamp_ros.toBoost();
-	tm stamp_tm = boost::posix_time::to_tm(posix_time);
-	char tstamp_str[128];
-	const size_t offset = strftime(tstamp_str, 128, "%FT%H%M%S.", &stamp_tm);
-	const int32_t fractional_secs = (int32_t)(tstamp_ros.nsec / 1000000.0); // nsecs to milliseconds
-	snprintf(tstamp_str + offset, 128 - offset, "%03d", fractional_secs);
-	return tstamp_str;
+	boost::posix_time::ptime posix_time = boost::posix_time::microsec_clock::local_time();
+	std::string iso_string_tstamp = boost::posix_time::to_iso_extended_string(posix_time);
+	// Now improve the format of this string.
+	// First, delete all ':' chars -- Windows (Samba) doesn't accept them in filenames
+	size_t colon_pos = iso_string_tstamp.find(":");
+	while (colon_pos != std::string::npos)
+	{
+		iso_string_tstamp.erase(colon_pos, 1);
+		colon_pos = iso_string_tstamp.find(":");
+	}
+
+	// Now, replace a comma subsecond delimiter with a period
+	/* Actually, boost documentation is wrong -- there is no comma, just a period for the subsecond delim
+	const size_t comma_pos = iso_string_tstamp.find(",");
+	if (comma_pos == std::string::npos) // no comma ==> no subseconds
+	{
+		return (iso_string_tstamp + ".000");
+	}
+	iso_string_tstamp.replace(comma_pos, 1, ".");
+	*/
+
+	// Now truncate the string to have at most 3 characters after the period (subseconds)
+	// E.g, 2018-01-28T201408.749
+	return iso_string_tstamp.substr(0, 21);
 }
 
 void SaveDataInterface::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg)

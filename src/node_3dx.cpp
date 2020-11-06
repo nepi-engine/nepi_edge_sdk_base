@@ -400,7 +400,7 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 
   // Capture the timestamp in a good format for filenames
   const std::string display_name = _display_name;
-	const std::string tstamp_str = _save_data_if->getTimestampString(img->header.stamp);
+	const std::string tstamp_str = _save_data_if->getTimestampString();
 	// To change the permissions - opencv API doesn't seem to give us that control at creation
 	static const mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; // 664
 
