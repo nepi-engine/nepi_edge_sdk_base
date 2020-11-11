@@ -25,6 +25,8 @@ Node3DX::Node3DX():
 	_gain{"gain", 1.0f, this},
 	_filter_enabled{"filter_enabled", false, this},
 	_filter_control{"filter_control", 0.0f, this},
+	_intensity_enabled{"intensity_enabled", false, this},
+	_intensity_control{"intensity_control", 0.0f, this},
 	_img_0_name{"img_0_name", "img_0", this},
 	_img_1_name{"img_1_name", "img_1", this},
 	_alt_img_name{"alt_img_name", "alt", this}
@@ -99,6 +101,8 @@ void Node3DX::retrieveParams()
 	_gain.retrieve();
 	_filter_enabled.retrieve();
 	_filter_control.retrieve();
+	_intensity_enabled.retrieve();
+	_intensity_control.retrieve();
 	_img_0_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
 	_img_1_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
 	_alt_img_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
@@ -139,6 +143,7 @@ void Node3DX::initSubscribers()
 	subscribers.push_back(n_priv.subscribe("set_resolution", 3, &Node3DX::setResolutionHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_gain", 3, &Node3DX::setGainHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_filter", 3, &Node3DX::setFilterHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_intensity", 3, &Node3DX::setIntensityHandler, this));
 }
 
 void Node3DX::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
@@ -272,6 +277,26 @@ void Node3DX::setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::Const
 		ROS_DEBUG("%s updated filter settings to %s:%.3f", getUnqualifiedName().c_str(),
 			(_filter_enabled)? "enabled":"disabled",
 			(_filter_enabled)? _filter_control : 0.0f);
+		publishStatus();
+	}
+}
+
+void Node3DX::setIntensityHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
+{
+	if (false == autoManualMsgIsValid(msg))
+	{
+		ROS_ERROR("%s received invalid intensity settings (adjustment = %.3f)", getUnqualifiedName().c_str(), msg->adjustment);
+		return;
+	}
+
+	const bool updated_intensity = (msg->enabled != _intensity_enabled) || (msg->adjustment != _intensity_control);
+	if (true == updated_intensity)
+	{
+		_intensity_enabled = msg->enabled;
+		_intensity_control = msg->adjustment;
+		ROS_DEBUG("%s updated intensity settings to %s:%.3f", getUnqualifiedName().c_str(),
+			(_intensity_enabled)? "enabled":"disabled",
+			(_intensity_enabled)? _intensity_control : 0.0f);
 		publishStatus();
 	}
 }
@@ -441,6 +466,9 @@ void Node3DX::publishStatus()
 
 	msg.filter_settings.enabled = _filter_enabled;
 	msg.filter_settings.adjustment = _filter_control;
+
+	msg.intensity_settings.enabled = _intensity_enabled;
+	msg.intensity_settings.adjustment = _intensity_control;
 
 	_status_pub.publish(msg);
 }
