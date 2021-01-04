@@ -382,8 +382,15 @@ protected:
    */
   void setThrottleRatio(float throttle_ratio);
 
+	/**
+   * @brief    Submit an error message for inclusion in next sys_status
+   *
+   */
+	void submitSysErrorMsg(const std::string &error_msg);
+
 private:
 	ros::Publisher _store_params_pub;
+	ros::Publisher _submit_sys_err_msg_pub;
 	bool _save_cfg_rt = false;
 };
 

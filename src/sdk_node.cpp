@@ -104,6 +104,7 @@ void SDKNode::initPublishers()
 {
 	// Advertise the save_cfg coordination topics
 	_store_params_pub = n.advertise<std_msgs::String>("store_params", 5);
+	_submit_sys_err_msg_pub = n.advertise<std_msgs::String>("submit_system_error_msg", 5);
 }
 
 void SDKNode::retrieveParams()
@@ -209,6 +210,11 @@ void SDKNode::resetHandler(const num_sdk_msgs::Reset::ConstPtr &msg)
 void SDKNode::applyThrottleHandler(const std_msgs::Float32::ConstPtr &msg)
 {
   setThrottleRatio(msg->data);
+}
+
+void SDKNode::submitSysErrorMsg(const std::string &error_msg)
+{
+	_submit_sys_err_msg_pub.publish(error_msg);
 }
 
 void SDKNode::userReset()
