@@ -214,7 +214,9 @@ void SDKNode::applyThrottleHandler(const std_msgs::Float32::ConstPtr &msg)
 
 void SDKNode::submitSysErrorMsg(const std::string &error_msg)
 {
-	_submit_sys_err_msg_pub.publish(error_msg);
+	std_msgs::String error_msg_ros;
+	error_msg_ros.data = error_msg;
+	_submit_sys_err_msg_pub.publish(error_msg_ros);
 }
 
 void SDKNode::userReset()
