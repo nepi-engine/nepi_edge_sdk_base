@@ -1,0 +1,12 @@
+[Unit]
+Description=Numurus NEPI Edge ROS Bridge Launch
+After=roslaunch.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/numurus/ros/etc/start_nepi_edge_ros_bridge.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
