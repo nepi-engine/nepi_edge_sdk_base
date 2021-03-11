@@ -1,2 +1,2 @@
 configured_ip_addrs: []    # List of CIDR-formatted IP address aliases for this system. Default IP addr does not appear here and is not editable
-dhcp_enabled: false        # Specifies whether this device acts as a DHCP client or not. Does not affect default static IP
+dhcp_enabled: true         # Specifies whether this device acts as a DHCP client or not. Does not affect default static IP
