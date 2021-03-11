@@ -99,17 +99,29 @@ class NetworkMgr:
                 try:
                     subprocess.check_call(['dhclient', '-nw', self.NET_IFACE])
                     self.dhcp_enabled = True
-                except:
-                    rospy.logerr("Unable to enable DHCP")
+                except Exception as e:
+                    rospy.logerr("Unable to enable DHCP: " + str(e))
             else:
                 rospy.loginfo("DHCP already enabled")
         else:
             if self.dhcp_enabled is True:
                 try:
+                    # The dhclient -r call below causes all IP addresses on the interface to be dropped, so
+                    # we reinitialize them here... this will not work for IP addresses that were
+                    # added in this session but not saved to config (i.e., not known to param server)
+
                     subprocess.check_call(['dhclient', '-r', self.NET_IFACE])
                     self.dhcp_enabled = False
-                except:
-                    rospy.logerr("Unable to disable DHCP")
+                    rospy.sleep(1)
+
+                    # Restart the interface -- this picks the original static IP back up
+                    subprocess.call(['ifdown', self.NET_IFACE])
+                    rospy.sleep(1)
+                    subprocess.call(['ifup', self.NET_IFACE])
+
+                    self.set_ips_from_params()
+                except Exception as e:
+                    rospy.logerr("Unable to disable DHCP: " + str(e))
             else:
                 rospy.loginfo("DHCP already disabled")
 
@@ -157,7 +169,7 @@ class NetworkMgr:
             rospy.loginfo("{}: Executing hardware reset by request".format(self.NODE_NAME))
             # Reset the interface
             subprocess.call(['ifdown', self.NET_IFACE])
-            sleep(1)
+            rospy.sleep(1)
             subprocess.call(['ifup', self.NET_IFACE])
         else:
             rospy.logerr("{}: invalid reset value (%u)", msg.reset_type)
