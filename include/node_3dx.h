@@ -54,6 +54,67 @@ public:
 	static void loadSimData(std::string filename, cv::Mat *out_mat);
 
 protected:
+
+
+
+
+
+
+template <class T>
+class Node3DXParam
+{
+public:
+	Node3DXParam(std::string param_name, T default_val, Node3DX *parent) : 
+		param{param_name, default_val, parent}
+		{
+			_parent = parent;
+		}
+
+	operator T() {return (T) param;}
+
+	bool retrieve()
+	{
+		return param.retrieve();
+	}
+
+	/**
+	 * @brief      Assignment operator to allow assignment from an instance of the template type
+	 *
+	 * @param[in]  rhs   The right hand side
+	 *
+	 * @return     Reference to this NodeParam instance
+	 */
+	SDKNode::NodeParam<T>& operator=(const T& rhs)
+	{
+		_parent->publishStatus();
+		return param=rhs;
+	}
+
+	bool operator!=(const T& rhs)
+	{
+		return param!=rhs;
+	}
+
+	bool operator==(const T& rhs)
+	{
+		return param==rhs;
+	}
+
+	SDKNode::NodeParam<T> getParam()
+	{
+		return param;
+	}
+
+private:
+	SDKNode::NodeParam<T> param;
+	Node3DX *_parent;
+};
+
+
+
+
+
+
 	static constexpr auto SENSOR_TYPE_INDEX = 4;
 	TriggerInterface *_trig_if = nullptr;
 	SaveDataInterface *_save_data_if = nullptr;
@@ -69,29 +130,29 @@ protected:
 
 	std::string ros_cam_color_encoding_name;
 
-	SDKNode::NodeParam<bool> _simulated_data;
+	Node3DXParam<bool> _simulated_data;
 
-	SDKNode::NodeParam<float> _min_range;
-	SDKNode::NodeParam<float> _max_range;
+	Node3DXParam<float> _min_range;
+	Node3DXParam<float> _max_range;
 
-	SDKNode::NodeParam<float> _angle_offset;
-	SDKNode::NodeParam<float> _total_angle;
+	Node3DXParam<float> _angle_offset;
+	Node3DXParam<float> _total_angle;
 
-	SDKNode::NodeParam<bool> _manual_resolution_enabled;
-	SDKNode::NodeParam<float> _manual_resolution;
+	Node3DXParam<bool> _manual_resolution_enabled;
+	Node3DXParam<float> _manual_resolution;
 
-	SDKNode::NodeParam<bool> _gain_enabled;
-	SDKNode::NodeParam<float> _gain;
+	Node3DXParam<bool> _gain_enabled;
+	Node3DXParam<float> _gain;
 
-	SDKNode::NodeParam<bool> _filter_enabled;
-	SDKNode::NodeParam<float> _filter_control;
+	Node3DXParam<bool> _filter_enabled;
+	Node3DXParam<float> _filter_control;
 
-	SDKNode::NodeParam<bool> _intensity_enabled;
-	SDKNode::NodeParam<float> _intensity_control;
+	Node3DXParam<bool> _intensity_enabled;
+	Node3DXParam<float> _intensity_control;
 
-	SDKNode::NodeParam<std::string> _img_0_name;
-	SDKNode::NodeParam<std::string> _img_1_name;
-	SDKNode::NodeParam<std::string> _alt_img_name;
+	Node3DXParam<std::string> _img_0_name;
+	Node3DXParam<std::string> _img_1_name;
+	Node3DXParam<std::string> _alt_img_name;
 
 	// Inherited from SDKNode
 	virtual inline bool validateNamespace() override {return ns_tokens.size() > 4;}
@@ -110,7 +171,7 @@ protected:
 	{
 		return (msg->adjustment >= 0.0f && msg->adjustment <= 1.0f);
 	}
-
+	
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
 	// though we provide a very basic private member setter implementation in this baseclass
 	virtual void setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg);

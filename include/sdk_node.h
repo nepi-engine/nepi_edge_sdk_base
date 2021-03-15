@@ -62,9 +62,11 @@ protected:
  *
  * @tparam     T     Parameter type. Must be a valid ROS param type.
  */
+
 template <class T>
 class NodeParam : public NodeParamBase
 {
+//friend class Node3DXParam;
 public:
 	NodeParam(std::string param_name, T default_val, SDKNode *parent):
 		NodeParamBase(param_name, parent),
@@ -137,6 +139,9 @@ public:
 private:
 	T _param_data;
 }; // class NodeParam
+
+
+
 	/**
 	 * @brief      Constructs the object.
 	 *
