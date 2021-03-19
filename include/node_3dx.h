@@ -56,10 +56,11 @@ public:
 protected:
 
 
-
-
-
-
+	/**
+	 * @brief      Wrapper class for SDKNode::NodeParam 
+	 *             that calls publishStatus on modification to param
+	 *
+	 */
 template <class T>
 class Node3DXParam
 {
@@ -109,11 +110,6 @@ private:
 	SDKNode::NodeParam<T> param;
 	Node3DX *_parent;
 };
-
-
-
-
-
 
 	static constexpr auto SENSOR_TYPE_INDEX = 4;
 	TriggerInterface *_trig_if = nullptr;
