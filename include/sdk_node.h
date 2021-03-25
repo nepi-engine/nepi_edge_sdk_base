@@ -66,7 +66,6 @@ protected:
 template <class T>
 class NodeParam : public NodeParamBase
 {
-//friend class Node3DXParam;
 public:
 	NodeParam(std::string param_name, T default_val, SDKNode *parent):
 		NodeParamBase(param_name, parent),
@@ -75,7 +74,7 @@ public:
 		// Retrieve automatically to establish parameter in the param server
 		//retrieve(); // Don't do this anymore as it will interfere with the warnUnretrievedParams() system for SDKInterfaces
 	}
-
+	
 	/**
 	 * @brief      Conversion operator to allow a NodeParam to be implicitly converted to its template type
 	 */

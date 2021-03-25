@@ -34,6 +34,37 @@ class SaveDataInterface;
  */
 class Node3DX : public SDKNode
 {
+	/**
+	 * @brief      Wrapper class for SDKNode::NodeParam 
+	 *             that calls publishStatus on modification to param
+	 *
+	 */
+	template <class T>
+	class Node3DXParam : public SDKNode::NodeParam<T>
+	{
+	public:
+		Node3DXParam(std::string param_name, T default_val, SDKNode *parent):
+			NodeParam<T>(param_name, default_val, parent)
+		{
+			//Retrieve automatically to establish parameter in the param server
+			//retrieve(); // Don't do this anymore as it will interfere with the warnUnretrievedParams() system for SDKInterfaces
+		}
+		/**
+		 * @brief      Assignment operator to allow assignment from an instance of the template type
+		 *
+		 * @param[in]  rhs   The right hand side
+		 *
+		 * @return     Reference to this NodeParam instance
+		 */
+		NodeParam<T>& operator=(const T& rhs)
+		{
+			_parent->publishStatus();
+			return NodeParam<T>::operator=(rhs);
+		}
+
+	protected:
+		Node3DX *_parent;
+	};
 public:
 	/**
 	 * @brief      Constructor
@@ -54,62 +85,6 @@ public:
 	static void loadSimData(std::string filename, cv::Mat *out_mat);
 
 protected:
-
-
-	/**
-	 * @brief      Wrapper class for SDKNode::NodeParam 
-	 *             that calls publishStatus on modification to param
-	 *
-	 */
-template <class T>
-class Node3DXParam
-{
-public:
-	Node3DXParam(std::string param_name, T default_val, Node3DX *parent) : 
-		param{param_name, default_val, parent}
-		{
-			_parent = parent;
-		}
-
-	operator T() {return (T) param;}
-
-	bool retrieve()
-	{
-		return param.retrieve();
-	}
-
-	/**
-	 * @brief      Assignment operator to allow assignment from an instance of the template type
-	 *
-	 * @param[in]  rhs   The right hand side
-	 *
-	 * @return     Reference to this NodeParam instance
-	 */
-	SDKNode::NodeParam<T>& operator=(const T& rhs)
-	{
-		_parent->publishStatus();
-		return param=rhs;
-	}
-
-	bool operator!=(const T& rhs)
-	{
-		return param!=rhs;
-	}
-
-	bool operator==(const T& rhs)
-	{
-		return param==rhs;
-	}
-
-	SDKNode::NodeParam<T> getParam()
-	{
-		return param;
-	}
-
-private:
-	SDKNode::NodeParam<T> param;
-	Node3DX *_parent;
-};
 
 	static constexpr auto SENSOR_TYPE_INDEX = 4;
 	TriggerInterface *_trig_if = nullptr;

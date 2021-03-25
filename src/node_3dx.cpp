@@ -450,25 +450,25 @@ void Node3DX::publishStatus()
 
 	msg.pause_enable = _paused;
 
-	msg.simulate_data = _simulated_data.getParam();
+	msg.simulate_data = _simulated_data;
 
-	msg.range.min_range = _min_range.getParam();
-	msg.range.max_range = _max_range.getParam();
+	msg.range.min_range = _min_range;
+	msg.range.max_range = _max_range;
 
-	msg.angle.angle_offset = _angle_offset.getParam();
-	msg.angle.total_angle = _total_angle.getParam();
+	msg.angle.angle_offset = _angle_offset;
+	msg.angle.total_angle = _total_angle;
 
-	msg.resolution_settings.enabled = _manual_resolution_enabled.getParam();
-	msg.resolution_settings.adjustment = _manual_resolution.getParam();
+	msg.resolution_settings.enabled = _manual_resolution_enabled;
+	msg.resolution_settings.adjustment = _manual_resolution;
 
-	msg.gain_settings.enabled = _gain_enabled.getParam();
-	msg.gain_settings.adjustment = _gain.getParam();
+	msg.gain_settings.enabled = _gain_enabled;
+	msg.gain_settings.adjustment = _gain;
 
-	msg.filter_settings.enabled = _filter_enabled.getParam();
-	msg.filter_settings.adjustment = _filter_control.getParam();
+	msg.filter_settings.enabled = _filter_enabled;
+	msg.filter_settings.adjustment = _filter_control;
 
-	msg.intensity_settings.enabled = _intensity_enabled.getParam();
-	msg.intensity_settings.adjustment = _intensity_control.getParam();
+	msg.intensity_settings.enabled = _intensity_enabled;
+	msg.intensity_settings.adjustment = _intensity_control;
 
 	_status_pub.publish(msg);
 }
