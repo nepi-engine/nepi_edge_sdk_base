@@ -112,7 +112,7 @@ public:
 	 *
 	 * @return     Reference to this NodeParam instance
 	 */
-	NodeParam& operator=(const T& rhs)
+	virtual NodeParam& operator=(const T& rhs)
 	{
 		_param_data = rhs;
 		_parent->n_priv.setParam(_param_name, _param_data);

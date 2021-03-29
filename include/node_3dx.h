@@ -43,8 +43,9 @@ class Node3DX : public SDKNode
 	class Node3DXParam : public SDKNode::NodeParam<T>
 	{
 	public:
-		Node3DXParam(std::string param_name, T default_val, SDKNode *parent):
-			NodeParam<T>(param_name, default_val, parent)
+		Node3DXParam(std::string param_name, T default_val, Node3DX *parent):
+			NodeParam<T>(param_name, default_val, parent),
+			_parent_3dx{parent}
 		{
 			//Retrieve automatically to establish parameter in the param server
 			//retrieve(); // Don't do this anymore as it will interfere with the warnUnretrievedParams() system for SDKInterfaces
@@ -56,14 +57,13 @@ class Node3DX : public SDKNode
 		 *
 		 * @return     Reference to this NodeParam instance
 		 */
-		NodeParam<T>& operator=(const T& rhs)
+		NodeParam<T>& operator=(const T& rhs) override
 		{
-			_parent->publishStatus();
+			_parent_3dx->publishStatus();
 			return NodeParam<T>::operator=(rhs);
 		}
-
 	protected:
-		Node3DX *_parent;
+		Node3DX *_parent_3dx;
 	};
 public:
 	/**
