@@ -152,6 +152,8 @@ add_library(${PROJECT_NAME}
    src/net_trigger_interface.cpp
    src/save_data_interface.cpp
    src/trigger_mgr_base.cpp
+   src/drivers/i2c.cpp
+   src/drivers/ltc1669_dac.cpp
 )
 
 ## Add cmake target dependencies of the library
