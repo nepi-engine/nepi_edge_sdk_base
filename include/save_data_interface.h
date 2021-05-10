@@ -51,6 +51,7 @@ public:
 
 	void registerDataProduct(const std::string product_name, float save_rate_hz = 1.0f);
 	bool dataProductShouldSave(const std::string product_name, ros::Time data_time = ros::Time::now());
+	bool calibrationShouldSave();
 
 	static std::string getTimestampString();
 
@@ -83,6 +84,9 @@ protected:
 	// Form for the pair is <rate_hz, next_save_time_s>
 	typedef std::pair<float, double> data_product_registry_entry_t;
 	std::unordered_map<std::string, data_product_registry_entry_t> data_product_registry;
+
+	bool _needs_save_calibration = false;
+
 	/**
 	 * @brief      Callback for save_data topic subscriptiion
 	 *

@@ -22,6 +22,7 @@ void SaveDataInterface::retrieveParams()
 {
 	_save_continuous.retrieve();
 	_save_raw.retrieve();
+	_needs_save_calibration = _save_continuous;
 }
 
 void SaveDataInterface::initPublishers()
@@ -85,6 +86,17 @@ bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ro
 	return false;
 }
 
+bool SaveDataInterface::calibrationShouldSave()
+{
+	bool should_save = false;
+	if (_needs_save_calibration == true)
+	{
+		_needs_save_calibration = false;
+		should_save = true;
+	}
+	return should_save;
+};
+
 std::string SaveDataInterface::getTimestampString()
 {
 	boost::posix_time::ptime posix_time = boost::posix_time::microsec_clock::local_time();
@@ -119,6 +131,11 @@ void SaveDataInterface::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &
 								   (msg->save_raw != _save_raw);
 	if (true == save_data_updated)
 	{
+		if ((msg->save_continuous == true) && (_save_continuous == false)) // Must be enabling data saving
+		{
+			_needs_save_calibration = true;
+		}
+
 		_save_continuous = msg->save_continuous;
 		_save_raw = msg->save_raw;
 

@@ -159,6 +159,7 @@ protected:
 	void publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_msgs::CameraInfoConstPtr cinfo, bool save_if_necessary = true);
 
 	virtual void saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img);
+	inline virtual void saveSensorCalibration(){} // Default behavior is to do nothing, subclasses should override as necessary
 
 private:
 	bool _paused = false;

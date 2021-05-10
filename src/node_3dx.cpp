@@ -411,6 +411,11 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 		return;
 	}
 
+	if (true == _save_data_if->calibrationShouldSave())
+	{
+		saveSensorCalibration();
+	}
+
 	cv_bridge::CvImageConstPtr cv_ptr;
   try
   {

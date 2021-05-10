@@ -14,8 +14,13 @@ class SaveDataIF(object):
     SAVE_DATA_ROOT_DIRECTORY = '/home/numurus_user/data'
 
     def save_data_callback(self, msg):
+        # Policy is to save calibration whenever data saving is enabled
+        if (self.save_continuous is False) and (msg.save_continuous is True):
+            self.needs_save_calibration = True
+
         self.save_continuous = msg.save_continuous
         self.save_raw = msg.save_raw
+
         rospy.set_param('~save_data_continuous', self.save_continuous)
         rospy.set_param('~save_data_raw', self.save_raw)
 
@@ -76,6 +81,13 @@ class SaveDataIF(object):
 
         return False
 
+    def calibration_should_save(self):
+        needs_cal = False
+        if self.needs_save_calibration is True:
+            self.needs_save_calibration = False
+            needs_cal = True
+        return needs_cal
+
     def get_timestamp_string(self):
         return datetime.datetime.now().strftime('%Y-%m-%dT%H%M%S.%f')[:-3]
 
@@ -96,6 +108,8 @@ class SaveDataIF(object):
         self.save_data_rate = 1.0
         self.save_data_prefix = ''
         self.save_data_dir = self.SAVE_DATA_ROOT_DIRECTORY
+
+        self.needs_save_calibration = self.save_continuous
 
         # Setup subscribers -- public and private versions
         rospy.Subscriber('save_data', SaveData, self.save_data_callback)
