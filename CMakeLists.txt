@@ -244,8 +244,10 @@ install(DIRECTORY include/
 )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-install(DIRECTORY launch/
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+install(DIRECTORY
+  launch
+  urdf
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
 # Developer convenience to create a backup sys_env file before overwriting with the non-functional one in the repo.
