@@ -35,6 +35,8 @@ class SaveDataIF(object):
         parent_path = os.path.dirname(full_path)
         if not os.path.exists(os.path.dirname(parent_path)):
             os.makedirs(parent_path)
+            # Mark that we should save calibration to the new folder
+            self.needs_save_calibration = True
 
         self.publish_save_status()
 

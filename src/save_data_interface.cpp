@@ -159,6 +159,8 @@ void SaveDataInterface::saveDataPrefixHandler(const std_msgs::String::ConstPtr &
 	{
 		// Using boost because the equivalent std::filesystem::create_directories only exists since C++17
 		boost::filesystem::create_directories(parent_p);
+		// Mark that we should save calibration to the new folder
+		_needs_save_calibration = true;
 	}
 
 	publishSaveStatus();
