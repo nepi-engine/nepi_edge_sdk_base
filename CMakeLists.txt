@@ -34,6 +34,8 @@ find_package(
     cv_bridge
     rospy
     std_msgs
+    pcl_ros
+    tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
