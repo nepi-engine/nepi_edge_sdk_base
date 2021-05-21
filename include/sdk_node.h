@@ -125,6 +125,11 @@ public:
 		return *this;
 	}
 
+	virtual NodeParam& operator=(const NodeParam& rhs)
+	{
+		return (*this = rhs._param_data); // Use the other assignment operator
+	}
+
 	bool operator!=(const T& rhs)
 	{
 		return (_param_data != rhs);
