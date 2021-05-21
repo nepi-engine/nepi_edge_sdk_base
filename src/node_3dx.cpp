@@ -3,6 +3,12 @@
 #include "opencv2/highgui.hpp"
 #include "cv_bridge/cv_bridge.h"
 
+#include <sensor_msgs/PointCloud2.h>
+
+#include <pcl/point_cloud.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
+
 #include "node_3dx.h"
 #include "trigger_interface.h"
 #include "save_data_interface.h"
@@ -29,7 +35,8 @@ Node3DX::Node3DX():
 	_intensity_control{"intensity_control", 0.0f, this},
 	_img_0_name{"img_0_name", "img_0", this},
 	_img_1_name{"img_1_name", "img_1", this},
-	_alt_img_name{"alt_img_name", "alt", this}
+	_alt_img_name{"alt_img_name", "alt", this},
+	_3d_data_target_frame{"data_3d_target_frame", "3dx_center_frame", this}
 {
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
 	_save_data_if->registerDataProduct("img_0");
@@ -82,6 +89,7 @@ void Node3DX::initPublishers()
 	// Advertise the status_3dx topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
 	_status_pub = n_priv.advertise<num_sdk_msgs::Status3DX>("status_3dx", 3, boost::bind(&Node3DX::publishStatus, this));
+	_transformed_pointcloud_pub = n_priv.advertise<sensor_msgs::PointCloud2>("pointcloud_3dx", 3);
 }
 
 void Node3DX::retrieveParams()
@@ -106,6 +114,7 @@ void Node3DX::retrieveParams()
 	_img_0_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
 	_img_1_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
 	_alt_img_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
+	_3d_data_target_frame.retrieve();
 
 	// Image transport parameters are ROS "dynamic_params", so don't need to be retrieved manually
 
@@ -378,6 +387,35 @@ void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_ms
 		ROS_ERROR("%s: Request to publish unknown image id (%d)", getUnqualifiedName().c_str(), img_id);
 		return;
 	}
+}
+
+bool Node3DX::transformCloudAndRepublish(const sensor_msgs::PointCloud2 &input, sensor_msgs::PointCloud2 &transformed_cloud)
+{
+	const std::string target_frame = _3d_data_target_frame;
+	//ros::Time start_time = ros::Time::now(); // Testing only
+	if (false == pcl_ros::transformPointCloud(target_frame, input, transformed_cloud, _transform_listener))
+	{
+		ROS_ERROR("Failed to transform point cloud from frame_id %s to frame_id: %s", input.header.frame_id.c_str(), target_frame.c_str());
+		return false;
+	}
+	//ros::Time stop_time = ros::Time::now(); // Testing only
+	//ROS_WARN("Debug: pointcloud conversion took %f secs", (stop_time - start_time).toSec()); // Testing only
+
+	_transformed_pointcloud_pub.publish(transformed_cloud);
+
+	// TODO: Use the transformed point cloud to generate a transformed depth image
+	// Take inspiration from here:
+	// https://answers.ros.org/question/304857/converting-a-xyz-point-cloud-to-a-depth-image/
+	// or here:
+	// https://github.com/tu-darmstadt-ros-pkg/hector_cloud_image_proc/blob/master/pcl_to_cv_proc/include/pcl_to_cv_proc/to_cv_depth_img.h
+
+	return true;
+}
+
+void Node3DX::set3dDataTargetFrameHandler(const std_msgs::String::ConstPtr &msg)
+{
+	// TODO: Check that this is a valid frame?
+	_3d_data_target_frame = msg->data;
 }
 
 void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)

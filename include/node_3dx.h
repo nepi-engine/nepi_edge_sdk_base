@@ -5,8 +5,10 @@
 
 #include "std_msgs/Bool.h"
 #include "std_msgs/Empty.h"
+#include "std_msgs/String.h"
 #include "image_transport/image_transport.h"
 #include "opencv2/core/mat.hpp"
+#include "tf/transform_listener.h"
 
 #include "sdk_node.h"
 
@@ -125,6 +127,10 @@ protected:
 	Node3DXParam<std::string> _img_1_name;
 	Node3DXParam<std::string> _alt_img_name;
 
+	Node3DXParam<std::string> _3d_data_target_frame;
+
+	ros::Publisher _transformed_pointcloud_pub;
+
 	// Inherited from SDKNode
 	virtual inline bool validateNamespace() override {return ns_tokens.size() > 4;}
 	virtual void initPublishers() override;
@@ -158,12 +164,16 @@ protected:
 	void publishImage(int img_id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo, bool save_if_necessary = true);
 	void publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_msgs::CameraInfoConstPtr cinfo, bool save_if_necessary = true);
 
+	bool transformCloudAndRepublish(const sensor_msgs::PointCloud2 &input, sensor_msgs::PointCloud2 &output);
+	void set3dDataTargetFrameHandler(const std_msgs::String::ConstPtr &msg);
+
 	virtual void saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img);
 	inline virtual void saveSensorCalibration(){} // Default behavior is to do nothing, subclasses should override as necessary
 
 private:
 	bool _paused = false;
 	ros::Publisher _status_pub;
+	tf::TransformListener _transform_listener;
 };
 
 }
