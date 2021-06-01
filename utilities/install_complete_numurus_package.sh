@@ -7,13 +7,13 @@
 
 # The following environment variables can be set ahead of time outside this script for
 # faster running:
-# SSH_KEY_PATH ==> full path to the private key for the remote system. Defaults to $HOME/.ssh/numurus/3dsc_prototype
+# SSH_KEY_PATH ==> full path to the private key for the remote system. Defaults to $HOME/.ssh/numurus/numurus_3dx_jetson_sshkey
 # REMOTE_HOST ==> IP address or resolvable hostname for the remote system. Defaults to 192.168.179.102
 # SRC_PATH ==> Path to the "ros" folder to be written to /opt/numurus/ros on the remote system. Defaults to ../../
 # SERIAL_NUM ==> Device serial number. Defaults to 0000
 
 if [ -z "$SSH_KEY_PATH" ]; then
-	SSH_KEY_PATH=$HOME/.ssh/3dsc_prototype
+	SSH_KEY_PATH=$HOME/.ssh/numurus_3dx_jetson_sshkey
 fi
 
 if [ ! -f "$SSH_KEY_PATH" ]; then

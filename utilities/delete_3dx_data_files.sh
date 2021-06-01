@@ -17,12 +17,12 @@ then
       exit 1
     fi
   fi
-  scp -i 3dsc_prototype numurus@192.168.179.102:/home/numurus_user/data/* ./3dx_download
-  ssh -i 3dsc_prototype numurus@192.168.179.102 'rm -rf /home/numurus_user/data/*'
-elif [ $option == "d" ] 
+  scp -i numurus_3dx_jetson_sshkey numurus@192.168.179.102:/home/numurus_user/data/* ./3dx_download
+  ssh -i numurus_3dx_jetson_sshkey numurus@192.168.179.102 'rm -rf /home/numurus_user/data/*'
+elif [ $option == "d" ]
 then
   echo "Deleting files... "
-  ssh -i 3dsc_prototype numurus@192.168.179.102 'rm -rf /home/numurus_user/data/*'
+  ssh -i numurus_3dx_jetson_sshkey numurus@192.168.179.102 'rm -rf /home/numurus_user/data/*'
 else
   echo "Exiting script by request... goodbye"
   exit 0
