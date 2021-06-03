@@ -29,11 +29,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <xacro:arg name="camera_name"   default="stereo_cam" />
     <xacro:arg name="camera_model"  default="zedm" />
     <xacro:arg name="base_frame"    default="base_link" />
-    <xacro:arg name="cam_pos_x"     default="-0.0015" />
-    <xacro:arg name="cam_pos_y"     default="0.0" />
-    <xacro:arg name="cam_pos_z"     default="-0.02458" />
-    <xacro:arg name="cam_roll"      default="1.57079632679" />
-    <xacro:arg name="cam_pitch"     default="-1.57079632679" />
+    <xacro:arg name="cam_pos_x"     default="-0.02458" />
+    <xacro:arg name="cam_pos_y"     default="-0.0015" />
+    <xacro:arg name="cam_pos_z"     default="0.0" />
+    <xacro:arg name="cam_roll"      default="3.14159265359" />
+    <xacro:arg name="cam_pitch"     default="0.0" />
     <xacro:arg name="cam_yaw"       default="0.0" />
 
     <!-- Properties -->
