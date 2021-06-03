@@ -30,7 +30,7 @@ grep -q "export ROS_MASTER_URI=" ${SYS_ENV_FILE} &&
 
 if [ $1 = "3DX" ]
 then
-  sed -i 's/roslaunch ${SDK_PROJECT} ${DEVICE_TYPE}.launch --wait/roslaunch ${SDK_PROJECT} ${DEVICE_TYPE}.launch/' ${LAUNCHFILE}
+  sed -i 's/roslaunch ${SDK_PROJECT} ${LAUNCH_FILE} --wait/roslaunch ${SDK_PROJECT} ${LAUNCH_FILE}/' ${LAUNCHFILE}
 else
-  sed -i 's/roslaunch ${SDK_PROJECT} ${DEVICE_TYPE}.launch/roslaunch ${SDK_PROJECT} ${DEVICE_TYPE}.launch --wait/' ${LAUNCHFILE}
+  sed -i 's/roslaunch ${SDK_PROJECT} ${LAUNCH_FILE}/roslaunch ${SDK_PROJECT} ${LAUNCH_FILE} --wait/' ${LAUNCHFILE}
 fi
