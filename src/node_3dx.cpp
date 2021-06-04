@@ -153,6 +153,8 @@ void Node3DX::initSubscribers()
 	subscribers.push_back(n_priv.subscribe("set_gain", 3, &Node3DX::setGainHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_filter", 3, &Node3DX::setFilterHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_intensity", 3, &Node3DX::setIntensityHandler, this));
+
+	subscribers.push_back(n_priv.subscribe("set_pointcloud_target_frame", 3, &Node3DX::set3dDataTargetFrameHandler, this));
 }
 
 void Node3DX::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
