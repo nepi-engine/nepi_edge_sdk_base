@@ -13,7 +13,7 @@ export DEVICE_TYPE=TBD
 export DEVICE_SN=TBD
 
 # The DEVICE_ID is included in the device ROS namespace. If left unset, it will be assigned to the S/N
-export DEVICE_ID=
+export DEVICE_ID=device_0
 
 # The SDK_PROJECT must be set as the project that contains <DEVICE_TYPE>.launch
 export SDK_PROJECT=TBD
