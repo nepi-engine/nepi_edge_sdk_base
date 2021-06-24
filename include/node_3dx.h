@@ -146,7 +146,8 @@ protected:
 
 	static inline bool autoManualMsgIsValid(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
 	{
-		return (msg->adjustment >= 0.0f && msg->adjustment <= 1.0f);
+		if (true == msg->enabled) return (msg->adjustment >= 0.0f && msg->adjustment <= 1.0f);
+		return true;
 	}
 	
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
