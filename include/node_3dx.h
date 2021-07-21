@@ -6,6 +6,7 @@
 #include "std_msgs/Bool.h"
 #include "std_msgs/Empty.h"
 #include "std_msgs/String.h"
+#include "sensor_msgs/PointCloud2.h"
 #include "image_transport/image_transport.h"
 #include "opencv2/core/mat.hpp"
 #include "tf/transform_listener.h"
@@ -76,6 +77,8 @@ public:
 
 	virtual ~Node3DX();
 
+	virtual void run() override;
+
 	enum IMG_ID
 	{
 		IMG_0,
@@ -136,7 +139,6 @@ protected:
 	virtual void initPublishers() override;
 	virtual void retrieveParams() override;
 	virtual void initSubscribers() override;
-	virtual void run() override;
 
 	// Generic subscription callbacks. In many cases, the default implementation in this base class will
 	// be sufficient, but subclasses can override as necessary (ensuring that they call back to the base

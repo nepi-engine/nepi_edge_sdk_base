@@ -130,12 +130,12 @@ public:
 		return (*this = rhs._param_data); // Use the other assignment operator
 	}
 
-	bool operator!=(const T& rhs)
+	bool operator!=(const T& rhs) const
 	{
 		return (_param_data != rhs);
 	}
 
-	bool operator==(const T& rhs)
+	bool operator==(const T& rhs) const
 	{
 		return (_param_data == rhs);
 	}
