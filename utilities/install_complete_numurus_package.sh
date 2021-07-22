@@ -61,7 +61,7 @@ read CONTINUE
 
 #cp ros/etc/sys_env_base.bash ros/etc/sys_env.bash
 #sed -i 's/DEVICE_TYPE=TBD/DEVICE_TYPE=3dsc/' ros/etc/sys_env.bash
-sed -i 's/DEVICE_SN=TBD/DEVICE_SN='$SERIAL_NUM'/' ros/etc/sys_env.bash
+sed -i 's/DEVICE_SN=.*/DEVICE_SN='$SERIAL_NUM'/' ros/etc/sys_env.bash
 #sed -i 's/SDK_PROJECT=TBD/SDK_PROJECT=num_sdk_jetson/' ros/etc/sys_env.bash
 
 # Stop the running SDK
