@@ -12,6 +12,8 @@ Basic interface for the global and private save_data topics.
 '''
 class SaveDataIF(object):
     SAVE_DATA_ROOT_DIRECTORY = '/home/numurus_user/data'
+    DATA_UID = 1001 # numurus_user
+    DAGA_GID = 1001 # numurus_user
 
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
@@ -35,6 +37,7 @@ class SaveDataIF(object):
         parent_path = os.path.dirname(full_path)
         if not os.path.exists(os.path.dirname(parent_path)):
             os.makedirs(parent_path)
+            os.chown(parent_path, self.DATA_UID, self.DATA_GID)
             # Mark that we should save calibration to the new folder
             self.needs_save_calibration = True
 
@@ -125,3 +128,8 @@ class SaveDataIF(object):
         rospy.Service('~query_data_products', DataProductQuery, self.query_data_products_callback)
 
         self.save_data_status_pub = rospy.Publisher('~save_data_status', SaveDataStatus, queue_size = 5)
+
+        # Ensure the data folder exists with proper ownership
+        if not os.path.exists(self.SAVE_DATA_ROOT_DIRECTORY):
+            os.makedirs(self.SAVE_DATA_ROOT_DIRECTORY)
+            os.chown(self.SAVE_DATA_ROOT_DIRECTORY, self.DATA_UID, self.DATA_GID)

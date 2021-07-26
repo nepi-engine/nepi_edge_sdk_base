@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <unistd.h>
 
 #include <ros/ros.h>
 
@@ -59,6 +60,8 @@ public:
 	 * Non-user-configurable base path
 	 */
 	const std::string _save_data_dir = "/home/numurus_user/data";
+	const uid_t _data_uid = 1001; // numurus_user
+	const gid_t _data_gid = 1001; // numurus_user
 
 protected:
 	/**

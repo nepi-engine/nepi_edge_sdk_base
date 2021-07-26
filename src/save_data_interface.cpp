@@ -14,6 +14,20 @@ SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pu
 	_save_continuous{"save_data_continuous", false, parent},
 	_save_raw{"save_data_raw", false, parent}
 {
+	// Check that the data directory exists, and if not create it
+	boost::filesystem::path p(_save_data_dir);
+	if (false == boost::filesystem::exists(p))
+	{
+		// Using boost because the equivalent std::filesystem::create_directories only exists since C++17
+		boost::filesystem::create_directories(p);
+		// Mark that we should save calibration to the new folder
+		_needs_save_calibration = true;
+	}
+	// Ensure proper ownership
+	if (0 != chown(_save_data_dir.c_str(), _data_uid, _data_gid))
+	{
+		ROS_ERROR("Unable to set ownership of the Data folder (%s)", strerror(errno));
+	}
 }
 
 SaveDataInterface::~SaveDataInterface(){}
@@ -161,6 +175,11 @@ void SaveDataInterface::saveDataPrefixHandler(const std_msgs::String::ConstPtr &
 		boost::filesystem::create_directories(parent_p);
 		// Mark that we should save calibration to the new folder
 		_needs_save_calibration = true;
+
+		if (0 != chown(parent_p.string().c_str(), _data_uid, _data_gid))
+		{
+			ROS_ERROR("Unable to set ownership of the new %s folder (%s)", parent_p.string().c_str(), strerror(errno));
+		}
 	}
 
 	publishSaveStatus();
