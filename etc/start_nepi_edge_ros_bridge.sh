@@ -39,4 +39,4 @@ fi
 export NEPI_EDGE_ROS_BRIDGE_NS=/numurus/$DEVICE_TYPE/$DEVICE_ID
 export NEPI_EDGE_ROS_BRIDGE_PARAM_FILE=/opt/numurus/ros/etc/nepi_edge_ros_bridge/nepi_edge_ros_bridge.yaml
 
-roslaunch nepi_edge_ros_bridge nepi_edge_ros_bridge.launch
+roslaunch nepi_edge_ros_bridge nepi_edge_ros_bridge.launch --wait # Wait for main ROS master to come up
