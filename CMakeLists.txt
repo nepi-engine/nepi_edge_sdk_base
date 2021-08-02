@@ -162,6 +162,7 @@ add_library(${PROJECT_NAME}
    src/trigger_mgr_base.cpp
    src/drivers/i2c.cpp
    src/drivers/ltc1669_dac.cpp
+   src/drivers/vca8617.cpp
 )
 
 ## Add cmake target dependencies of the library
