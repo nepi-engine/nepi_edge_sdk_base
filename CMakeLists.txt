@@ -163,6 +163,7 @@ add_library(${PROJECT_NAME}
    src/drivers/i2c.cpp
    src/drivers/ltc1669_dac.cpp
    src/drivers/vca8617.cpp
+   src/drivers/ad9249_adc.cpp
 )
 
 ## Add cmake target dependencies of the library
