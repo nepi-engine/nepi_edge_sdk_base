@@ -38,6 +38,14 @@ Node3DX::Node3DX():
 	_alt_img_name{"alt_img_name", "alt", this},
 	_3d_data_target_frame{"data_3d_target_frame", "3dx_center_frame", this}
 {
+	#ifndef NDEBUG // CMake-supplied indicator of Debug build
+	  /* Debug */
+	  #warning "Compiling with DEBUG verbosity enabled for node_3dx"
+	  #include <ros/console.h>
+	  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
+	     ros::console::notifyLoggerLevelsChanged();
+	  }
+	#endif
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
 	_save_data_if->registerDataProduct("img_0");
 	_save_data_if->registerDataProduct("img_1");
@@ -88,7 +96,8 @@ void Node3DX::initPublishers()
 
 	// Advertise the status_3dx topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
-	_status_pub = n_priv.advertise<num_sdk_msgs::Status3DX>("status_3dx", 3, boost::bind(&Node3DX::publishStatus, this));
+	//_status_pub = n_priv.advertise<num_sdk_msgs::Status3DX>("status_3dx", 3, boost::bind(&Node3DX::publishStatus, this));
+	_status_pub = n_priv.advertise<num_sdk_msgs::Status3DX>("status_3dx", 3, true);
 	_transformed_pointcloud_pub = n_priv.advertise<sensor_msgs::PointCloud2>("pointcloud_3dx", 3);
 }
 
@@ -527,12 +536,13 @@ void Node3DX::run()
 	}
 
 	// Set up periodic publishing of the 3DX status
-	const ros::Duration status_pub_period(2.0);
-	ros::Time next_status_pub = ros::Time::now() + status_pub_period;
+	//const ros::Duration status_pub_period(2.0);
+	//ros::Time next_status_pub = ros::Time::now() + status_pub_period;
 	//ROS_ERROR_STREAM("Debugging: now = " << ros::Time::now() << ", first status pub = " << next_status_pub);
   // Spin at the current rate
 	while (ros::ok())
   {
+		/*
     ros::Rate r(current_rate_hz);
 		const ros::Time now = ros::Time::now();
 		if (now >= next_status_pub)
@@ -543,6 +553,8 @@ void Node3DX::run()
 		}
 	  ros::spinOnce();
     r.sleep();
+		*/
+		ros::spin();
   }
 }
 

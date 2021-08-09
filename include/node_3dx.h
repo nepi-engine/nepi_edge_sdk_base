@@ -62,8 +62,10 @@ class Node3DX : public SDKNode
 		 */
 		NodeParam<T>& operator=(const T& rhs) override
 		{
+			NodeParam<T>& retVal = NodeParam<T>::operator=(rhs);
+			ROS_DEBUG_STREAM("Assignment of " << NodeParam<T>::_param_name << " to " << rhs << ": requesting parent to publish status");
 			_parent_3dx->publishStatus();
-			return NodeParam<T>::operator=(rhs);
+			return retVal;
 		}
 	protected:
 		Node3DX *_parent_3dx;
