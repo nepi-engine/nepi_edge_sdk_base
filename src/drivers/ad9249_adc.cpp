@@ -212,6 +212,8 @@ bool Ad9249_Adc::getSyncMode(bool &sync_enabled)
 
 bool Ad9249_Adc::setSyncMode(bool enable_sync)
 {
+  // This sets sync such that EVERY sync signal after this call will resync. It is also possible to set bits in
+  // this register such that only the next sync signal has any impact, but for now we don't expose that functionality
   const uint8_t sync_mode_val = (enable_sync)? AD9249_SYNC_ENABLED_MASK : AD9249_SYNC_DISABLED_MASK;
   PRINTF_TEST_APP("Writing Sync Mode to %s\n", enable_sync? "Enabled" : "Disabled\n");
   return write(AD9249_REGISTER_ADDR_SYNC, sync_mode_val);
