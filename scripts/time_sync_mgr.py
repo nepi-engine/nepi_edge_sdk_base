@@ -21,7 +21,8 @@ from num_sdk_msgs.srv import TimeStatusQuery, TimeStatusQueryResponse
 FACTORY_CFG_SUFFIX = '.num_factory'
 USER_CFG_SUFFIX = '.user'
 
-CHRONY_CFG_BASENAME = '/etc/chrony/chrony.conf'
+CHRONY_CFG_LINKNAME = '/etc/chrony/chrony.conf'
+CHRONY_CFG_BASENAME = '/opt/numurus/ros/etc/time_sync_mgr/chrony.conf'
 CHRONY_SYSTEMD_SERVICE_NAME = 'chrony.service'
 
 g_last_set_time = rospy.Time(0.0)
@@ -37,27 +38,27 @@ def symlink_force(target, link_name):
             rospy.logerr("Unable to create symlink %s for %s", link_name, target)
             return False
 
-def ensure_user_conf(basename_path):
-    userconf_path = basename_path + USER_CFG_SUFFIX
+def ensure_user_conf():
+    userconf_path = CHRONY_CFG_BASENAME + USER_CFG_SUFFIX
     if (False == os.path.isfile(userconf_path)):
         # Need to create it from a copy of the factory config
-        factoryconf_path = basename_path + FACTORY_CFG_SUFFIX
+        factoryconf_path = CHRONY_CFG_BASENAME + FACTORY_CFG_SUFFIX
         try:
             copyfile(factoryconf_path, userconf_path)
         except:
             rospy.logerr("Unable to copy %s to %s", factoryconf_path, userconf_path)
             return False
 
-    return symlink_force(userconf_path, basename_path)
+    return symlink_force(userconf_path, CHRONY_CFG_LINKNAME)
 
 def restart_systemd_service(service_name):
     subprocess.call(["systemctl", "restart", service_name])
 
-def reset_to_factory_conf(basename_path):
-    userconf_path = basename_path + USER_CFG_SUFFIX
-    factoryconf_path = basename_path + FACTORY_CFG_SUFFIX
+def reset_to_factory_conf():
+    userconf_path = CHRONY_CFG_BASENAME + USER_CFG_SUFFIX
+    factoryconf_path = CHRONY_CFG_BASENAME + FACTORY_CFG_SUFFIX
 
-    symlink_force(factoryconf_path, basename_path)
+    symlink_force(factoryconf_path, CHRONY_CFG_LINKNAME)
     if (True == os.path.isfile(userconf_path)):
         os.remove(userconf_path)
         rospy.loginfo("Removed user config %s", userconf_path)
@@ -66,7 +67,7 @@ def reset_to_factory_conf(basename_path):
     restart_systemd_service(CHRONY_SYSTEMD_SERVICE_NAME)
 
 def add_server(server_host):
-    if (False == ensure_user_conf(CHRONY_CFG_BASENAME)):
+    if (False == ensure_user_conf()):
         return
 
     userconf_path = CHRONY_CFG_BASENAME + USER_CFG_SUFFIX
@@ -74,7 +75,9 @@ def add_server(server_host):
     #ensure just a simple hostname is being added
     host = server_host.data.split()[0]
 
-    new_server_cfg_line = 'server ' + host
+    new_server_cfg_line = 'server ' + host + ' iburst minpoll 2'
+    # TODO: May one day want to user chrony option initstepslew for even earlier synchronization
+    #init_slew_cfg_line = 'initstepslew 1 ' + host
     match_line = '^' + new_server_cfg_line
     file = open(userconf_path, 'r+')
     found_match = False
@@ -98,14 +101,13 @@ def remove_server(server_host):
         return
 
     # Make sure the symlink points to the user config  we've already established that user cfg exists
-    if (False == ensure_user_conf(CHRONY_CFG_BASENAME)):
+    if (False == ensure_user_conf()):
         return
 
     #ensure just a simple hostname is being added
     host = server_host.data.split()[0]
 
-    server_cfg_line = 'server ' + host
-    match_line = '^server ' + host
+    match_line = '^server ' + host + ' iburst minpoll 2'
     # Must copy the file linebyline to a tmp, then overwrite the original
     orig_file = open(userconf_path, 'r')
     tmpfile_path = userconf_path + ".tmp"
@@ -134,7 +136,7 @@ def reset(msg):
         rospy.loginfo("Ignoring NTP user-reset NO-OP")
     elif Reset.FACTORY_RESET == msg.reset_type:
         rospy.loginfo("Restoring NTP to factory config")
-        reset_to_factory_conf(CHRONY_CFG_BASENAME)
+        reset_to_factory_conf()
     elif Reset.SOFTWARE_RESET == msg.reset_type:
         rospy.loginfo("Executing soft reset for NTP")
         restart_systemd_service(CHRONY_SYSTEMD_SERVICE_NAME)

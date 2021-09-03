@@ -1,6 +1,6 @@
 [Unit]
 Description=Numurus ROS Launch
-After=network.target
+After=network.target chrony.service
 
 [Service]
 Type=simple
