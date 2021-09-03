@@ -479,21 +479,18 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 
   // Capture the timestamp in a good format for filenames
   const std::string display_name = _display_name;
-	const std::string tstamp_str = _save_data_if->getTimestampString();
 	// To change the permissions - opencv API doesn't seem to give us that control at creation
 	static const mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; // 664
 
   // Create the filename - defer the extension so that we can adjust as necessary for save_raw
-	std::stringstream qualified_filename;
-  qualified_filename << _save_data_if->_save_data_dir << "/" << _save_data_if->getFilenamePrefix() <<
-    									display_name << "_" << image_identifier << "_" << tstamp_str << ".png";
-  //const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
-	bool success = cv::imwrite( qualified_filename.str(),  cv_ptr->image ); // OpenCV uses extensions intelligently
+	const std::string qualified_filename = _save_data_if->getFullPathFilename(_save_data_if->getTimestampString(), display_name + "_" + image_identifier, "png");
+	//const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
+	bool success = cv::imwrite( qualified_filename,  cv_ptr->image ); // OpenCV uses extensions intelligently
 	if (false == success)
 	{
-		ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename.str());
+		ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename);
 	}
-	chmod(qualified_filename.str().c_str(), mode);
+	chmod(qualified_filename.c_str(), mode);
 }
 
 void Node3DX::publishStatus()

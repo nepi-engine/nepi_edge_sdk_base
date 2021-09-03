@@ -99,6 +99,9 @@ class SaveDataIF(object):
     def get_filename_path_and_prefix(self):
         return self.SAVE_DATA_ROOT_DIRECTORY + '/' + self.save_data_prefix
 
+    def get_full_path_filename(self, timestamp_string, identifier, extension):
+        return self.SAVE_DATA_ROOT_DIRECTORY + '/' + self.save_data_prefix + timestamp_string + "_" + identifier + "." + extension
+
     def __init__(self, data_product_names=None):
         self.data_rate_dict = {}
         for d in data_product_names:

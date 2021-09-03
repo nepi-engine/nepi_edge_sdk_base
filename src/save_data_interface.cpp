@@ -139,6 +139,11 @@ std::string SaveDataInterface::getTimestampString()
 	return iso_string_tstamp.substr(0, 21);
 }
 
+const std::string SaveDataInterface::getFullPathFilename(const std::string &timestamp_string, const std::string &identifier, const std::string &extension)
+{
+	return (_save_data_dir + "/" + _filename_prefix + timestamp_string + "_" + identifier + "." + extension);
+}
+
 void SaveDataInterface::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg)
 {
 	const bool save_data_updated = (msg->save_continuous != _save_continuous) ||

@@ -56,6 +56,8 @@ public:
 
 	static std::string getTimestampString();
 
+	const std::string getFullPathFilename(const std::string &timestamp_string, const std::string &identifier, const std::string &extension);
+
 	/**
 	 * Non-user-configurable base path
 	 */
