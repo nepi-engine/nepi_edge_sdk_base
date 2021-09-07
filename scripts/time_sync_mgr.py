@@ -10,8 +10,7 @@ import sys
 
 import rospy
 
-from std_msgs.msg import String
-from std_msgs.msg import Time
+from std_msgs.msg import String, Empty, Time
 
 from num_sdk_msgs.msg import Reset
 from num_sdk_msgs.msg import TimeStatus
@@ -26,6 +25,7 @@ CHRONY_CFG_BASENAME = '/opt/numurus/ros/etc/time_sync_mgr/chrony.conf'
 CHRONY_SYSTEMD_SERVICE_NAME = 'chrony.service'
 
 g_last_set_time = rospy.Time(0.0)
+g_sys_time_updated_pub = None
 
 def symlink_force(target, link_name):
     try:
@@ -191,6 +191,10 @@ def set_time(msg):
     new_date = subprocess.check_output(["date"])
     rospy.loginfo("Updated date: %s", new_date)
 
+    # And tell the rest of the system
+    global g_sys_time_updated_pub
+    g_sys_time_updated_pub.publish(Empty())
+
     # TODO: Should we use this CTypes call into librt instead?
 #    import ctypes
 #    import ctypes.util
@@ -242,6 +246,9 @@ def time_sync_mgr():
     rospy.Subscriber('~reset', Reset, reset)
 
     rospy.Service('time_status_query', TimeStatusQuery, handle_time_status_query)
+
+    global g_sys_time_updated_pub
+    g_sys_time_updated_pub = rospy.Publisher('sys_time_updated', Empty, queue_size=3)
 
     rospy.spin()
 
