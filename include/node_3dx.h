@@ -2,6 +2,10 @@
 #define _NODE_3DX_H
 
 #include <string>
+#include <boost/circular_buffer.hpp>
+#include <thread>
+#include <mutex>
+#include <atomic>
 
 #include "std_msgs/Bool.h"
 #include "std_msgs/Empty.h"
@@ -136,6 +140,48 @@ protected:
 
 	ros::Publisher _transformed_pointcloud_pub;
 
+	struct SaveImageStruct
+	{
+	public:
+		SaveImageStruct(sensor_msgs::ImageConstPtr img_in, std::string qualified_filename_in, std::string output_img_encoding_in):
+			img_ptr{img_in},
+			raw_mat{}, // Empty because unused
+			data_type{IMG_DATA_TYPE_IMG_PTR},
+			qualified_filename{qualified_filename_in},
+			output_img_encoding{output_img_encoding_in}
+		{}
+
+		SaveImageStruct(cv::Mat mat_in, std::string qualified_filename_in, std::string output_img_encoding_in):
+			img_ptr{}, // Empty because unused
+			raw_mat{mat_in},
+			data_type{IMG_DATA_TYPE_RAW_MAT},
+			qualified_filename{qualified_filename_in},
+			output_img_encoding{output_img_encoding_in}
+		{}
+
+		SaveImageStruct():
+			data_type{IMG_DATA_TYPE_NONE}
+		{}
+
+		enum ImgDataType
+		{
+			IMG_DATA_TYPE_NONE,
+			IMG_DATA_TYPE_IMG_PTR,
+			IMG_DATA_TYPE_RAW_MAT
+		};
+
+		sensor_msgs::ImageConstPtr img_ptr;
+		cv::Mat raw_mat;
+		ImgDataType data_type;
+		std::string qualified_filename;
+		std::string output_img_encoding;
+	};
+
+	boost::circular_buffer<SaveImageStruct> save_imgs;
+	std::atomic<bool> terminate_save_img_threads;
+	std::mutex save_imgs_mutex;
+	std::vector<std::thread*> img_save_threads;
+
 	// Inherited from SDKNode
 	virtual inline bool validateNamespace() override {return ns_tokens.size() > 4;}
 	virtual void initPublishers() override;
@@ -174,6 +220,8 @@ protected:
 
 	virtual void saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img);
 	inline virtual void saveSensorCalibration(){} // Default behavior is to do nothing, subclasses should override as necessary
+
+	void saveImgRun();
 
 private:
 	bool _paused = false;

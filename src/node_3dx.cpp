@@ -15,6 +15,9 @@
 
 #define BOOL_TO_ENABLED(x)	((x)==true)? "enabled" : "disabled"
 
+#define SAVE_IMG_BUFFER_SIZE	10
+#define SAVE_IMG_THREAD_COUNT	2
+
 namespace Numurus
 {
 
@@ -36,7 +39,8 @@ Node3DX::Node3DX():
 	_img_0_name{"img_0_name", "img_0", this},
 	_img_1_name{"img_1_name", "img_1", this},
 	_alt_img_name{"alt_img_name", "alt", this},
-	_3d_data_target_frame{"data_3d_target_frame", "3dx_center_frame", this}
+	_3d_data_target_frame{"data_3d_target_frame", "3dx_center_frame", this},
+	save_imgs{SAVE_IMG_BUFFER_SIZE}
 {
 	#ifndef NDEBUG // CMake-supplied indicator of Debug build
 	  /* Debug */
@@ -70,6 +74,13 @@ Node3DX::~Node3DX()
 {
 	delete _save_data_if;
 	_save_data_if = nullptr;
+
+	terminate_save_img_threads = true;
+	for (std::thread *t : img_save_threads)
+	{
+		t->join();
+		delete t;
+	}
 }
 
 void Node3DX::loadSimData(std::string filename, cv::Mat *out_mat)
@@ -139,6 +150,13 @@ void Node3DX::retrieveParams()
 
 	// Send a status update whenever we init params
 	publishStatus();
+
+	// This is as good a place as any to start the image saver threads
+	terminate_save_img_threads = false;
+	for (size_t i = 0; i < SAVE_IMG_THREAD_COUNT; ++i)
+	{
+		img_save_threads.push_back(new std::thread(&Node3DX::saveImgRun, this));
+	}
 }
 
 void Node3DX::initSubscribers()
@@ -465,32 +483,19 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 		saveSensorCalibration();
 	}
 
-	cv_bridge::CvImageConstPtr cv_ptr;
-  try
-  {
-    //cv_ptr = cv_bridge::toCvShare(img, img->encoding);
-    cv_ptr = cv_bridge::toCvShare(img, output_img_encoding);
-  }
-  catch (cv_bridge::Exception& e)
-  {
-    ROS_ERROR("cv_bridge exception: %s", e.what());
-    return;
-  }
-
-  // Capture the timestamp in a good format for filenames
+	 // Capture the timestamp in a good format for filenames
   const std::string display_name = _display_name;
 	// To change the permissions - opencv API doesn't seem to give us that control at creation
-	static const mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; // 664
 
   // Create the filename - defer the extension so that we can adjust as necessary for save_raw
 	const std::string qualified_filename = _save_data_if->getFullPathFilename(_save_data_if->getTimestampString(), display_name + "_" + image_identifier, "png");
 	//const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
-	bool success = cv::imwrite( qualified_filename,  cv_ptr->image ); // OpenCV uses extensions intelligently
-	if (false == success)
+	SaveImageStruct save_img(img, qualified_filename, output_img_encoding);
+	// Critical section
 	{
-		ROS_ERROR_STREAM_THROTTLE(1, "Could not save " << qualified_filename);
+		std::lock_guard<std::mutex> l(save_imgs_mutex);
+		save_imgs.push_back(save_img);
 	}
-	chmod(qualified_filename.c_str(), mode);
 }
 
 void Node3DX::publishStatus()
@@ -522,6 +527,74 @@ void Node3DX::publishStatus()
 	msg.intensity_settings.adjustment = _intensity_control;
 
 	_status_pub.publish(msg);
+}
+
+void Node3DX::saveImgRun()
+{
+	while (false == terminate_save_img_threads)
+	{
+		// Don't let this thread starve everything else
+		ros::Duration(0.005).sleep();
+
+		SaveImageStruct save_img;
+		// Critical section
+		bool buffer_full;
+		{
+			std::lock_guard<std::mutex> l(save_imgs_mutex);
+			if (false == save_imgs.empty())
+			{
+				save_img = save_imgs[0];
+				save_imgs.pop_front();
+				buffer_full = (save_imgs.size() == SAVE_IMG_BUFFER_SIZE);
+			}
+			else
+			{
+				continue;
+			}
+		}
+
+		if (true == buffer_full)
+		{
+			ROS_WARN_THROTTLE(1, "Image saving is not keeping up -- oldest images will be discarded");
+		}
+
+		bool success = false;
+		if (save_img.data_type == SaveImageStruct::IMG_DATA_TYPE_IMG_PTR)
+		{
+			// Now construct the CV image
+			cv_bridge::CvImageConstPtr cv_ptr;
+			try
+		  {
+		    //cv_ptr = cv_bridge::toCvShare(img, img->encoding);
+		    cv_ptr = cv_bridge::toCvShare(save_img.img_ptr, save_img.output_img_encoding);
+		  }
+		  catch (cv_bridge::Exception& e)
+		  {
+		    ROS_ERROR("cv_bridge exception: %s", e.what());
+		    continue;
+		  }
+
+			success = cv::imwrite( save_img.qualified_filename,  cv_ptr->image ); // OpenCV uses extensions intelligently
+		}
+		else if (save_img.data_type == SaveImageStruct::IMG_DATA_TYPE_RAW_MAT)
+		{
+			success = cv::imwrite( save_img.qualified_filename,  save_img.raw_mat ); // OpenCV uses extensions intelligently
+		}
+		else
+		{
+			ROS_ERROR("Unexpected data type for an image to save");
+		}
+
+		if (false == success)
+		{
+			ROS_ERROR("Unable to save %s", save_img.qualified_filename.c_str());
+			continue;
+		}
+
+		// And make sure it has proper permissions
+		static const mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; // 664
+		chmod(save_img.qualified_filename.c_str(), mode);
+	}
 }
 
 void Node3DX::run()
