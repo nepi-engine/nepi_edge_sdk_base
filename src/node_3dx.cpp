@@ -15,8 +15,8 @@
 
 #define BOOL_TO_ENABLED(x)	((x)==true)? "enabled" : "disabled"
 
-#define SAVE_IMG_BUFFER_SIZE	10
-#define SAVE_IMG_THREAD_COUNT	2
+#define SAVE_DATA_BUFFER_SIZE	25 // 25 data entries max before some start getting dropped
+#define SAVE_DATA_THREAD_COUNT	2
 
 namespace Numurus
 {
@@ -40,7 +40,7 @@ Node3DX::Node3DX():
 	_img_1_name{"img_1_name", "img_1", this},
 	_alt_img_name{"alt_img_name", "alt", this},
 	_3d_data_target_frame{"data_3d_target_frame", "3dx_center_frame", this},
-	save_imgs{SAVE_IMG_BUFFER_SIZE}
+	save_data_buffer{SAVE_DATA_BUFFER_SIZE}
 {
 	#ifndef NDEBUG // CMake-supplied indicator of Debug build
 	  /* Debug */
@@ -75,8 +75,8 @@ Node3DX::~Node3DX()
 	delete _save_data_if;
 	_save_data_if = nullptr;
 
-	terminate_save_img_threads = true;
-	for (std::thread *t : img_save_threads)
+	terminate_save_data_threads = true;
+	for (std::thread *t : save_data_threads)
 	{
 		t->join();
 		delete t;
@@ -152,10 +152,10 @@ void Node3DX::retrieveParams()
 	publishStatus();
 
 	// This is as good a place as any to start the image saver threads
-	terminate_save_img_threads = false;
-	for (size_t i = 0; i < SAVE_IMG_THREAD_COUNT; ++i)
+	terminate_save_data_threads = false;
+	for (size_t i = 0; i < SAVE_DATA_THREAD_COUNT; ++i)
 	{
-		img_save_threads.push_back(new std::thread(&Node3DX::saveImgRun, this));
+		save_data_threads.push_back(new std::thread(&Node3DX::saveDataRun, this));
 	}
 }
 
@@ -418,13 +418,13 @@ void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_ms
 	}
 }
 
-bool Node3DX::transformCloudAndRepublish(const sensor_msgs::PointCloud2 &input, sensor_msgs::PointCloud2 &transformed_cloud)
+bool Node3DX::transformCloudAndRepublish(const sensor_msgs::PointCloud2::ConstPtr &input, sensor_msgs::PointCloud2Ptr &transformed_cloud)
 {
 	const std::string target_frame = _3d_data_target_frame;
 	//ros::Time start_time = ros::Time::now(); // Testing only
-	if (false == pcl_ros::transformPointCloud(target_frame, input, transformed_cloud, _transform_listener))
+	if (false == pcl_ros::transformPointCloud(target_frame, *input, *transformed_cloud, _transform_listener))
 	{
-		ROS_ERROR("Failed to transform point cloud from frame_id %s to frame_id: %s", input.header.frame_id.c_str(), target_frame.c_str());
+		ROS_ERROR("Failed to transform point cloud from frame_id %s to frame_id: %s", input->header.frame_id.c_str(), target_frame.c_str());
 		return false;
 	}
 	//ros::Time stop_time = ros::Time::now(); // Testing only
@@ -490,11 +490,11 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
   // Create the filename - defer the extension so that we can adjust as necessary for save_raw
 	const std::string qualified_filename = _save_data_if->getFullPathFilename(_save_data_if->getTimestampString(), display_name + "_" + image_identifier, "png");
 	//const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
-	SaveImageStruct save_img(img, qualified_filename, output_img_encoding);
+	SaveDataStruct save_data(img, qualified_filename, output_img_encoding);
 	// Critical section
 	{
-		std::lock_guard<std::mutex> l(save_imgs_mutex);
-		save_imgs.push_back(save_img);
+		std::lock_guard<std::mutex> l(save_data_buffer_mutex);
+		save_data_buffer.push_back(save_data);
 	}
 }
 
@@ -529,23 +529,21 @@ void Node3DX::publishStatus()
 	_status_pub.publish(msg);
 }
 
-void Node3DX::saveImgRun()
+void Node3DX::saveDataRun()
 {
-	while (false == terminate_save_img_threads)
+	while (false == terminate_save_data_threads)
 	{
-		// Don't let this thread starve everything else
-		ros::Duration(0.005).sleep();
-
-		SaveImageStruct save_img;
+		ros::Duration(0.01).sleep(); // Don't let this thread starve everything else
+		SaveDataStruct save_data;
 		// Critical section
 		bool buffer_full;
 		{
-			std::lock_guard<std::mutex> l(save_imgs_mutex);
-			if (false == save_imgs.empty())
+			std::lock_guard<std::mutex> l(save_data_buffer_mutex);
+			if (false == save_data_buffer.empty())
 			{
-				save_img = save_imgs[0];
-				save_imgs.pop_front();
-				buffer_full = (save_imgs.size() == SAVE_IMG_BUFFER_SIZE);
+				buffer_full = (save_data_buffer.size() == SAVE_DATA_BUFFER_SIZE);
+				save_data = save_data_buffer[0];
+				save_data_buffer.pop_front();
 			}
 			else
 			{
@@ -555,18 +553,18 @@ void Node3DX::saveImgRun()
 
 		if (true == buffer_full)
 		{
-			ROS_WARN_THROTTLE(1, "Image saving is not keeping up -- oldest images will be discarded");
+			ROS_WARN_THROTTLE(1, "Data saving is not keeping up -- oldest data will be discarded");
 		}
 
 		bool success = false;
-		if (save_img.data_type == SaveImageStruct::IMG_DATA_TYPE_IMG_PTR)
+		if (save_data.data_type == SaveDataStruct::SAVE_DATA_TYPE_IMG_PTR)
 		{
 			// Now construct the CV image
 			cv_bridge::CvImageConstPtr cv_ptr;
 			try
 		  {
 		    //cv_ptr = cv_bridge::toCvShare(img, img->encoding);
-		    cv_ptr = cv_bridge::toCvShare(save_img.img_ptr, save_img.output_img_encoding);
+		    cv_ptr = cv_bridge::toCvShare(save_data.img_ptr, save_data.output_img_encoding);
 		  }
 		  catch (cv_bridge::Exception& e)
 		  {
@@ -574,26 +572,52 @@ void Node3DX::saveImgRun()
 		    continue;
 		  }
 
-			success = cv::imwrite( save_img.qualified_filename,  cv_ptr->image ); // OpenCV uses extensions intelligently
+			success = cv::imwrite( save_data.qualified_filename,  cv_ptr->image ); // OpenCV uses extensions intelligently
 		}
-		else if (save_img.data_type == SaveImageStruct::IMG_DATA_TYPE_RAW_MAT)
+		else if (save_data.data_type == SaveDataStruct::SAVE_DATA_TYPE_RAW_MAT)
 		{
-			success = cv::imwrite( save_img.qualified_filename,  save_img.raw_mat ); // OpenCV uses extensions intelligently
+			success = cv::imwrite( save_data.qualified_filename,  save_data.raw_mat ); // OpenCV uses extensions intelligently
+		}
+		else if (save_data.data_type == SaveDataStruct::SAVE_DATA_TYPE_CLOUD_PTR)
+		{
+			pcl::PointCloud<pcl::PointXYZRGB> cloud;
+			pcl::fromROSMsg(*(save_data.cloud_ptr), cloud);
+
+			if (0 == pcl::io::savePCDFileBinaryCompressed(save_data.qualified_filename, cloud))
+			{
+				//pcl::io::savePCDFile(qualified_filename, cloud); // ASCII Version
+				success = true;
+			}
 		}
 		else
 		{
-			ROS_ERROR("Unexpected data type for an image to save");
+			ROS_ERROR("Unexpected data type for data to save");
 		}
 
 		if (false == success)
 		{
-			ROS_ERROR("Unable to save %s", save_img.qualified_filename.c_str());
+			ROS_ERROR("Unable to save %s", save_data.qualified_filename.c_str());
 			continue;
 		}
 
 		// And make sure it has proper permissions
 		static const mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; // 664
-		chmod(save_img.qualified_filename.c_str(), mode);
+		chmod(save_data.qualified_filename.c_str(), mode);
+
+		// Finally, sync all filesystems before returning
+		int fd = open(save_data.qualified_filename.c_str(), O_RDONLY);
+		if (-1 == fd)
+		{
+			ROS_ERROR_THROTTLE(1, "Not able to open the new data file for fsync()");
+		}
+		else
+		{
+			if (-1 ==fsync(fd))
+			{
+				ROS_ERROR_THROTTLE(1, "Not able to fsync() the new data file (errno = %d)", errno);
+			}
+			close(fd);
+		}
 	}
 }
 

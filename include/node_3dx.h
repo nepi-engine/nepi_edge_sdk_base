@@ -42,7 +42,7 @@ class SaveDataInterface;
 class Node3DX : public SDKNode
 {
 	/**
-	 * @brief      Wrapper class for SDKNode::NodeParam 
+	 * @brief      Wrapper class for SDKNode::NodeParam
 	 *             that calls publishStatus on modification to param
 	 *
 	 */
@@ -140,47 +140,114 @@ protected:
 
 	ros::Publisher _transformed_pointcloud_pub;
 
-	struct SaveImageStruct
+	struct SaveDataStruct
 	{
 	public:
-		SaveImageStruct(sensor_msgs::ImageConstPtr img_in, std::string qualified_filename_in, std::string output_img_encoding_in):
+		SaveDataStruct(sensor_msgs::ImageConstPtr img_in, std::string qualified_filename_in, std::string output_img_encoding_in):
 			img_ptr{img_in},
 			raw_mat{}, // Empty because unused
-			data_type{IMG_DATA_TYPE_IMG_PTR},
+			cloud_ptr{}, // Empty because unused
+			data_type{SAVE_DATA_TYPE_IMG_PTR},
 			qualified_filename{qualified_filename_in},
 			output_img_encoding{output_img_encoding_in}
 		{}
 
-		SaveImageStruct(cv::Mat mat_in, std::string qualified_filename_in, std::string output_img_encoding_in):
+		SaveDataStruct(cv::Mat mat_in, std::string qualified_filename_in, std::string output_img_encoding_in):
 			img_ptr{}, // Empty because unused
 			raw_mat{mat_in},
-			data_type{IMG_DATA_TYPE_RAW_MAT},
+			cloud_ptr{}, // Empty because unused
+			data_type{SAVE_DATA_TYPE_RAW_MAT},
 			qualified_filename{qualified_filename_in},
 			output_img_encoding{output_img_encoding_in}
 		{}
 
-		SaveImageStruct():
-			data_type{IMG_DATA_TYPE_NONE}
+		SaveDataStruct(sensor_msgs::PointCloud2ConstPtr cloud_in, std::string qualified_filename_in):
+			img_ptr{}, // Empty because unused
+			raw_mat{}, // Empty because unused
+			cloud_ptr{cloud_in},
+			data_type{SAVE_DATA_TYPE_CLOUD_PTR},
+			qualified_filename{qualified_filename_in},
+			output_img_encoding{} // Unused
 		{}
 
-		enum ImgDataType
+		SaveDataStruct():
+			data_type{SAVE_DATA_TYPE_NONE}
+		{}
+
+		/*
+		~SaveDataStruct()
 		{
-			IMG_DATA_TYPE_NONE,
-			IMG_DATA_TYPE_IMG_PTR,
-			IMG_DATA_TYPE_RAW_MAT
+			if (data_type == SAVE_DATA_TYPE_IMG_PTR)
+			{
+				ROS_WARN("Debug: SaveDataStruct destructor. img_ptr = %p (ref count = %d)", img_ptr.get(), img_ptr.use_count());
+			}
+		}
+		*/
+
+		SaveDataStruct(const SaveDataStruct &other)
+		{
+			data_type = other.data_type;
+			qualified_filename = other.qualified_filename;
+			output_img_encoding = other.output_img_encoding;
+
+			if (data_type == SAVE_DATA_TYPE_IMG_PTR)
+			{
+				img_ptr = other.img_ptr;
+			}
+			else if (data_type == SAVE_DATA_TYPE_RAW_MAT)
+			{
+				raw_mat = other.raw_mat;
+			}
+			else if (data_type == SAVE_DATA_TYPE_CLOUD_PTR)
+			{
+				cloud_ptr = other.cloud_ptr;
+			}
+		}
+
+		SaveDataStruct& operator=(const SaveDataStruct &other)
+		{
+			data_type = other.data_type;
+			qualified_filename = other.qualified_filename;
+			output_img_encoding = other.output_img_encoding;
+
+			if (data_type == SAVE_DATA_TYPE_IMG_PTR)
+			{
+				img_ptr = other.img_ptr;
+			}
+			else if (data_type == SAVE_DATA_TYPE_RAW_MAT)
+			{
+				raw_mat = other.raw_mat;
+			}
+			else if (data_type == SAVE_DATA_TYPE_CLOUD_PTR)
+			{
+				cloud_ptr = other.cloud_ptr;
+			}
+			return *this;
+		}
+
+		enum SaveDataType
+		{
+			SAVE_DATA_TYPE_NONE,
+			SAVE_DATA_TYPE_IMG_PTR,
+			SAVE_DATA_TYPE_RAW_MAT,
+			SAVE_DATA_TYPE_CLOUD_PTR
 		};
 
+		// Would be nice to make these data containers elements of a union, but when I tried it
+		// caused lots of compiler complaints
 		sensor_msgs::ImageConstPtr img_ptr;
 		cv::Mat raw_mat;
-		ImgDataType data_type;
+		sensor_msgs::PointCloud2ConstPtr cloud_ptr;
+
+		SaveDataType data_type;
 		std::string qualified_filename;
 		std::string output_img_encoding;
 	};
 
-	boost::circular_buffer<SaveImageStruct> save_imgs;
-	std::atomic<bool> terminate_save_img_threads;
-	std::mutex save_imgs_mutex;
-	std::vector<std::thread*> img_save_threads;
+	boost::circular_buffer<SaveDataStruct> save_data_buffer;
+	std::atomic<bool> terminate_save_data_threads;
+	std::mutex save_data_buffer_mutex;
+	std::vector<std::thread*> save_data_threads;
 
 	// Inherited from SDKNode
 	virtual inline bool validateNamespace() override {return ns_tokens.size() > 4;}
@@ -199,7 +266,7 @@ protected:
 		if (true == msg->enabled) return (msg->adjustment >= 0.0f && msg->adjustment <= 1.0f);
 		return true;
 	}
-	
+
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
 	// though we provide a very basic private member setter implementation in this baseclass
 	virtual void setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg);
@@ -215,13 +282,13 @@ protected:
 	void publishImage(int img_id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo, bool save_if_necessary = true);
 	void publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_msgs::CameraInfoConstPtr cinfo, bool save_if_necessary = true);
 
-	bool transformCloudAndRepublish(const sensor_msgs::PointCloud2 &input, sensor_msgs::PointCloud2 &output);
+	bool transformCloudAndRepublish(const sensor_msgs::PointCloud2::ConstPtr &input, sensor_msgs::PointCloud2Ptr &output);
 	void set3dDataTargetFrameHandler(const std_msgs::String::ConstPtr &msg);
 
 	virtual void saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img);
 	inline virtual void saveSensorCalibration(){} // Default behavior is to do nothing, subclasses should override as necessary
 
-	void saveImgRun();
+	void saveDataRun();
 
 private:
 	bool _paused = false;
