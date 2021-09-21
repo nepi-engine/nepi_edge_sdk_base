@@ -4,10 +4,11 @@
 import rospy
 import socket
 import subprocess
+import collections
 
-from std_msgs.msg import String, Bool, Empty
+from std_msgs.msg import String, Bool, Empty, Int32
 from num_sdk_msgs.msg import Reset
-from num_sdk_msgs.srv import IPAddrQuery, FileReset
+from num_sdk_msgs.srv import IPAddrQuery, FileReset, BandwidthUsageQuery
 
 class NetworkMgr:
     """The Network Manager Node of the Numurus core SDK.
@@ -18,6 +19,8 @@ class NetworkMgr:
 
     NODE_NAME = "network_mgr"
     NET_IFACE = "eth0"
+    WONDERSHAPER_CALL = "/opt/numurus/ros/share/wondershaper/wondershaper"
+    BANDWIDTH_MONITOR_PERIOD_S = 2.0
 
     store_params_publisher = None
 
@@ -188,9 +191,70 @@ class NetworkMgr:
         # Now tell config_mgr to save the file
         self.store_params_publisher.publish(rospy.get_name())
 
+    def set_upload_bwlimit(self, msg):
+        if msg.data >= 0 and msg.data < 1:
+            rospy.logerr('Cannot set bandwidth limit below 1Mbps')
+            return
+
+        # First, update param server
+        rospy.set_param('~tx_bw_limit_mbps', msg.data)
+
+        # Now set from value from param server
+        self.set_upload_bw_limit_from_params()
+
+    def set_upload_bw_limit_from_params(self):
+        bw_limit_mbps = -1
+        if (rospy.has_param('~tx_bw_limit_mbps')):
+            bw_limit_mbps = rospy.get_param('~tx_bw_limit_mbps')
+        else:
+            rospy.logwarn("No tx_bw_limit_mbps param set... will clear all bandwidth limits")
+
+        # Always clear the current settings
+        try:
+            subprocess.call([self.WONDERSHAPER_CALL, '-a', self.NET_IFACE, '-c'])
+        except Exception as e:
+            rospy.logerr("Unable to clear current bandwidth limits: " + str(e))
+            return
+
+        if bw_limit_mbps < 0: #Sentinel values to clear limits
+            rospy.loginfo("Cleared bandwidth limits")
+            return
+
+        # Now acquire the param from param server and update
+        bw_limit_kbps = bw_limit_mbps * 1000
+        try:
+            subprocess.call([self.WONDERSHAPER_CALL, '-a', self.NET_IFACE, '-u', str(bw_limit_kbps)])
+            rospy.loginfo("Updated TX bandwidth limit to " + str(bw_limit_mbps) + " Mbps")
+            #self.tx_byte_cnt_deque.clear()
+        except Exception as e:
+            rospy.logerr("Unable to set uploade bandwidth limit: " + str(e))
+
+    def monitor_bandwidth_usage(self, event):
+        with open('/sys/class/net/' + self.NET_IFACE + '/statistics/tx_bytes', 'r') as f:
+            tx_bytes = int(f.read())
+            self.tx_byte_cnt_deque.append(tx_bytes)
+        with open('/sys/class/net/' + self.NET_IFACE + '/statistics/rx_bytes', 'r') as f:
+            rx_bytes = int(f.read())
+            self.rx_byte_cnt_deque.append(rx_bytes)
+
     def handle_ip_addr_query(self, req):
         ips = self.get_current_ip_addrs()
         return {'ip_addrs':ips, 'dhcp_enabled': self.dhcp_enabled}
+
+    def handle_bandwidth_usage_query(self, req):
+        tx_rate_mbps = 0
+        if len(self.tx_byte_cnt_deque) > 1:
+            tx_rate_mbps =  8 * (self.tx_byte_cnt_deque[1] - self.tx_byte_cnt_deque[0]) / (self.BANDWIDTH_MONITOR_PERIOD_S * 1000000)
+
+        rx_rate_mbps = 0
+        if len(self.rx_byte_cnt_deque) > 1:
+            rx_rate_mbps = 8 * (self.rx_byte_cnt_deque[1] - self.rx_byte_cnt_deque[0]) / (self.BANDWIDTH_MONITOR_PERIOD_S * 1000000)
+
+        tx_rate_limit_mbps = -1.0
+        if (rospy.has_param('~tx_bw_limit_mbps')):
+            tx_rate_limit_mbps = rospy.get_param('~tx_bw_limit_mbps')
+
+        return {'tx_rate_mbps':tx_rate_mbps, 'rx_rate_mbps':rx_rate_mbps, 'tx_limit_mbps': tx_rate_limit_mbps}
 
     def __init__(self):
         rospy.init_node(self.NODE_NAME)
@@ -198,9 +262,13 @@ class NetworkMgr:
         rospy.loginfo("Starting the {} node".format(self.NODE_NAME))
 
         self.dhcp_enabled = False # initialize to false -- will be updated in set_ips_from_params
+        self.tx_byte_cnt_deque = collections.deque(maxlen=2)
+        self.rx_byte_cnt_deque = collections.deque(maxlen=2)
 
         # Initialize from the config file (which should be loaded ahead of this call)
         self.set_ips_from_params()
+
+        self.set_upload_bw_limit_from_params()
 
         # Public namespace stuff
         rospy.Subscriber('add_ip_addr', String, self.add_ip)
@@ -208,12 +276,16 @@ class NetworkMgr:
         rospy.Subscriber('enable_dhcp', Bool, self.enable_dhcp)
         rospy.Subscriber('reset', Reset, self.reset)
         rospy.Subscriber('save_config', Empty, self.save_config)
+        rospy.Subscriber('set_tx_bw_limit_mbps', Int32, self.set_upload_bwlimit)
 
         # Private namespace stuff
         rospy.Subscriber('~reset', Reset, self.reset)
         rospy.Subscriber('~save_config', Empty, self.save_config)
 
         rospy.Service('ip_addr_query', IPAddrQuery, self.handle_ip_addr_query)
+        rospy.Service('bandwidth_usage_query', BandwidthUsageQuery, self.handle_bandwidth_usage_query)
+
+        rospy.Timer(rospy.Duration(self.BANDWIDTH_MONITOR_PERIOD_S), self.monitor_bandwidth_usage)
 
         self.store_params_publisher = rospy.Publisher('store_params', String, queue_size=1)
 
