@@ -10,7 +10,7 @@
 #include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
 
-#include <ahrs_driver.h>
+#include "ahrs_driver.h"
 
 namespace Numurus
 {

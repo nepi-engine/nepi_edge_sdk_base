@@ -133,7 +133,7 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS include include/drivers/generic_ahrs
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS image_transport num_sdk_msgs
 
@@ -179,9 +179,8 @@ add_dependencies(lord_ahrs_ros_wrapper
   ${PROJECT_NAME})
 
 target_link_libraries(lord_ahrs_ros_wrapper
-  ${catkin_LIBRARIES}
-  ${PROJECT_NAME}
-)
+  ${PROJECT_NAME}  
+  ${catkin_LIBRARIES})
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

@@ -7,7 +7,7 @@
 #include <chrono>
 //#include <queue>
 
-#include <ahrs_driver.h>
+#include "ahrs_driver.h"
 
 namespace Numurus
 {
