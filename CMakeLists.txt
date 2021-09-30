@@ -148,6 +148,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
    include
+   include/drivers/generic_ahrs
    ${catkin_INCLUDE_DIRS}
 )
 
@@ -164,6 +165,22 @@ add_library(${PROJECT_NAME}
    src/drivers/ltc1669_dac.cpp
    src/drivers/vca8617.cpp
    src/drivers/ad9249_adc.cpp
+   src/drivers/generic_ahrs/ahrs_driver.cpp
+   src/drivers/generic_ahrs/lord_ahrs_driver.cpp
+   src/drivers/generic_ahrs/ros_ahrs_driver.cpp
+)
+
+## Lord AHRS ROS Wrapper Node
+add_executable(lord_ahrs_ros_wrapper
+  src/lord_ahrs_ros_wrapper)
+
+add_dependencies(lord_ahrs_ros_wrapper
+  ${catkin_EXPORTED_TARGETS}
+  ${PROJECT_NAME})
+
+target_link_libraries(lord_ahrs_ros_wrapper
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
 )
 
 ## Add cmake target dependencies of the library
@@ -213,18 +230,18 @@ catkin_install_python(PROGRAMS
   scripts/time_sync_mgr.py
   scripts/network_mgr.py
   scripts/nepi_core_mgr.py
-  scripts/pipeline_mgr.py
+#  scripts/pipeline_mgr.py
   scripts/image_color_converter.py
-  pipeline/scripts/acl.py
-  pipeline/scripts/gyr.py
-  pipeline/scripts/mag.py
-  pipeline/scripts/bat.py
-  pipeline/scripts/thr.py
-  pipeline/scripts/gps.py
-  pipeline/scripts/hmt.py
-  pipeline/scripts/tdt.py
-  pipeline/scripts/sbt.py
-  pipeline/scripts/lpd.py
+#  pipeline/scripts/acl.py
+#  pipeline/scripts/gyr.py
+#  pipeline/scripts/mag.py
+#  pipeline/scripts/bat.py
+#  pipeline/scripts/thr.py
+#  pipeline/scripts/gps.py
+#  pipeline/scripts/hmt.py
+#  pipeline/scripts/tdt.py
+#  pipeline/scripts/sbt.py
+#  pipeline/scripts/lpd.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
