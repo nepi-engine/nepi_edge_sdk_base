@@ -10,7 +10,7 @@ import cv2
 Color Encoding Transformer
 
 Example Usage:
-ROS_NAMESPACE=/numurus/3dx/device_0/3dx_device/stereo_cam_driver/left_raw python image_color_converter.py left_color_converter image_raw_color bgr8
+ROS_NAMESPACE=/numurus/dev_3dx/device_0/sensor_3dx/stereo_cam_driver/left_raw python image_color_converter.py left_color_converter image_raw_color bgr8
 """
 
 class ColorSwapper(object):
