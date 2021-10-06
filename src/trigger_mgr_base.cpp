@@ -8,7 +8,7 @@
 
 #define MAX_TRIG_IDX				31 // Largest bit offset possible for uint32 register
 #define HW_TRIG_OUT_IDX 			MAX_TRIG_IDX
-#define HW_TRIG_OUT_FIXED_MASK 		(1 << MAX_TRIG_IDX) // Highest bit set. 
+#define HW_TRIG_OUT_FIXED_MASK 		(1 << MAX_TRIG_IDX) // Highest bit set.
 
 #define DEFAULT_TRIG_MASK_VAL		0x40000000			// Everything but the output trigger -- can be changed easily in the config file
 #define DEFAULT_TRIG_RATE_VAL		2.0f				// 2 Hz
@@ -18,7 +18,7 @@ namespace Numurus
 
 TriggerMgrBase::TriggerMgrBase() :
 	default_periodic_trig_mask_{"default_periodic_trig_mask", DEFAULT_TRIG_MASK_VAL, this},
-	default_periodic_trig_rate_{"default_periodic_trig_rate", DEFAULT_TRIG_RATE_VAL, this}  
+	default_periodic_trig_rate_{"default_periodic_trig_rate", DEFAULT_TRIG_RATE_VAL, this}
 {
 	trig_indices[HW_TRIG_OUT_IDX] = "H/W Out";
 }
@@ -28,8 +28,8 @@ TriggerMgrBase::~TriggerMgrBase()
 	// Clear the periodic_trigger_map to signal to all (detached) worker threads that they should exit
 	periodic_trig_map.clear();
 	ros::Duration(1.0).sleep();
-	// TODO: Consider keeping references to the worker threads and join() them here 
-	// instead of sleeping.	
+	// TODO: Consider keeping references to the worker threads and join() them here
+	// instead of sleeping.
 }
 
 void TriggerMgrBase::initSubscribers()
@@ -42,11 +42,11 @@ void TriggerMgrBase::initSubscribers()
 	subscribers.push_back(n.subscribe("hw_trigger_in_enab", 5, &Numurus::TriggerMgrBase::setHwTrigInEnab, this));
 	subscribers.push_back(n.subscribe("hw_trigger_in_cfg", 1, &Numurus::TriggerMgrBase::configureHwTrigIn, this));
 	subscribers.push_back(n.subscribe("hw_trigger_out_enab", 5, &Numurus::TriggerMgrBase::setHwTrigOutEnab, this));
-	subscribers.push_back(n.subscribe("hw_trigger_out_cfg", 1, &Numurus::TriggerMgrBase::configureHwTrigOut, this)); 
+	subscribers.push_back(n.subscribe("hw_trigger_out_cfg", 1, &Numurus::TriggerMgrBase::configureHwTrigOut, this));
 	subscribers.push_back(n.subscribe("hw_trigger_out_dly", 1, &Numurus::TriggerMgrBase::setHwTrigOutDly, this));
 	subscribers.push_back(n.subscribe("set_periodic_sw_trig", 5, &Numurus::TriggerMgrBase::setPeriodicSwTrig, this));
 	// Provide a big queue for trigger_index_settings as all of these might be coming in at once
-	subscribers.push_back(n.subscribe("trigger_index_settings", 31, &Numurus::TriggerMgrBase::updateTriggerIndexSet, this)); 
+	subscribers.push_back(n.subscribe("trigger_index_settings", 31, &Numurus::TriggerMgrBase::updateTriggerIndexSet, this));
 }
 
 void TriggerMgrBase::initPublishers()
@@ -54,7 +54,7 @@ void TriggerMgrBase::initPublishers()
 	// Call the base method
 	SDKNode::initPublishers();
 
-	_sw_trig_pub = n.advertise<std_msgs::UInt32>("sw_trigger", 3);	
+	_sw_trig_pub = n.advertise<std_msgs::UInt32>("sw_trigger", 3);
 }
 
 void TriggerMgrBase::initServices()
@@ -125,7 +125,7 @@ void TriggerMgrBase::setPeriodicSwTrigImpl(bool enabled, uint32_t sw_trig_mask, 
 		const bool periodic_trig_exists = (periodic_trig_map.find(sw_trig_mask) != periodic_trig_map.end());
 		periodic_trig_map[sw_trig_mask] = rate_hz;
 		trig_map_mutex.unlock();
-		
+
 		if (false == periodic_trig_exists)
 		{
 			ROS_INFO("Starting periodic sw trigger (mask=0x%x, rate=%f)", sw_trig_mask, rate_hz);
@@ -139,7 +139,7 @@ void TriggerMgrBase::runPeriodicTrig(uint32_t trig_mask)
 {
 	const uint32_t my_trig_mask = trig_mask;
 	double elapsed_sleep = 0.0;
-	
+
 	while (true)
 	{
 		float my_rate = -1.0f;
@@ -163,7 +163,7 @@ void TriggerMgrBase::runPeriodicTrig(uint32_t trig_mask)
 		// This complicates things a bit
 		static constexpr double MAX_SLEEP_DURATION = 1.0; // Guaranteed response within 1 second.
 		const double rate_based_sleep_duration = 1.0 / my_rate;
-		
+
 		const double remaining_rate_based_sleep = rate_based_sleep_duration - elapsed_sleep;
 		const double sleep_duration = std::min(remaining_rate_based_sleep, MAX_SLEEP_DURATION);
 
@@ -178,7 +178,7 @@ void TriggerMgrBase::runPeriodicTrig(uint32_t trig_mask)
 			std_msgs::UInt32 trig_msg;
 			trig_msg.data = my_trig_mask;
 			_sw_trig_pub.publish(trig_msg);
-			
+
 			elapsed_sleep = 0.0; // Reset for next period
 		}
 	}
@@ -238,17 +238,17 @@ bool TriggerMgrBase::provideTriggerStatus(num_sdk_msgs::TriggerStatusQuery::Requ
 
 	// TODO: No good way for s/w to determine the achieved_rate yet. Trigger manager FPGA module should
 	// implement a trigger success signal routed back from each sensor node to the trigger manager,
-	// and trigger manager can keep count of all of these, providing them in per-output-trigger 
+	// and trigger manager can keep count of all of these, providing them in per-output-trigger
 	// registers so s/w can derive the achieved rates. Then we probably want to report the lowest
 	// rate for any output s/w trigger covered by this req.trig_val???
 	// For now, spoof it:
 	resp.status.achieved_rate = resp.status.auto_rate;
 
 	// No H/W In Trig Here
-	resp.status.hw_in_trig_val = 0.0f; 
+	resp.status.hw_in_trig_val = 0.0f;
 
 	// TODO: Need a way to get the h/w input trigger rate from FPGA
-	resp.status.hw_in_trig_rate = 0.0f;	
+	resp.status.hw_in_trig_rate = 0.0f;
 
 	// Determine the most recent time for this trigger value
 	static ros::Time never(0,0);
@@ -266,8 +266,7 @@ bool TriggerMgrBase::provideTriggerStatus(num_sdk_msgs::TriggerStatusQuery::Requ
 
 bool TriggerMgrBase::provideTriggerDefs(num_sdk_msgs::TriggerDefs::Request &req, num_sdk_msgs::TriggerDefs::Response &resp)
 {
-	const size_t name_array_size = resp.trig_names.size();
-	for (size_t i = 0; i < name_array_size; ++i)
+	for (size_t i = 0; i <= MAX_TRIG_IDX; ++i)
 	{
 		const auto &entry = trig_indices.find(i);
 		resp.trig_names[i] = (trig_indices.end() == entry)? resp.NO_TRIGGER : entry->second;
@@ -276,4 +275,3 @@ bool TriggerMgrBase::provideTriggerDefs(num_sdk_msgs::TriggerDefs::Request &req,
 }
 
 } // namespace Numurus
-
