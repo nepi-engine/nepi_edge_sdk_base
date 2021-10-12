@@ -50,7 +50,7 @@ do
   fi
 done
 echo "... done"
-/opt/numurus/ros/etc/stereo_cam_mgr/stereo_cam_mgr.yaml.user
+
 echo "Clearing out NEPI temporary files"
 rm -rf $NEPI_LOG_CONTENTS $NEPI_DB_CONTENTS $NEPI_HB_CONTENTS $NEPI_LB_CONTENTS
 echo "... done"
