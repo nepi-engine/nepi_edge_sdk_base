@@ -2,8 +2,8 @@
 # Run this script locally on 3DX or remotely using
 # ssh -i ssh_priv_key numurus@<3dx_ip_addr> 'bash -s' < ./switch_rosmaster.sh <new_master_ip>
 
-SYS_ENV_FILE="/opt/numurus/ros/etc/sys_env.bash"
-LAUNCHFILE="/opt/numurus/ros/etc/roslaunch.sh"
+SYS_ENV_FILE="/opt/numurus/sys_env.bash"
+ROS1_LAUNCH_SCRIPT="/opt/numurus/ros/etc/roslaunch.sh"
 MASTER_HOST_IP="localhost"
 
 if [ -z $1 ]
@@ -30,7 +30,7 @@ grep -q "export ROS_MASTER_URI=" ${SYS_ENV_FILE} &&
 
 if [ $1 = "3DX" ]
 then
-  sed -i 's/roslaunch ${SDK_PROJECT} ${LAUNCH_FILE} --wait/roslaunch ${SDK_PROJECT} ${LAUNCH_FILE}/' ${LAUNCHFILE}
+  sed -i 's/roslaunch ${ROS1_PACKAGE} ${ROS1_LAUNCH_FILE} --wait/roslaunch ${ROS1_PACKAGE} ${ROS1_LAUNCH_FILE}/' ${ROS1_LAUNCH_SCRIPT}
 else
-  sed -i 's/roslaunch ${SDK_PROJECT} ${LAUNCH_FILE}/roslaunch ${SDK_PROJECT} ${LAUNCH_FILE} --wait/' ${LAUNCHFILE}
+  sed -i 's/roslaunch ${ROS1_PACKAGE} ${ROS1_LAUNCH_FILE}/roslaunch ${ROS1_PACKAGE} ${ROS1_LAUNCH_FILE} --wait/' ${ROS1_LAUNCH_SCRIPT}
 fi
