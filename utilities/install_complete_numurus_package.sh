@@ -12,6 +12,10 @@
 # SRC_PATH ==> Path to the "ros" folder to be written to /opt/numurus/ros on the remote system. Defaults to ../../
 # SERIAL_NUM ==> Device serial number. Defaults to 0000
 
+echo "THIS SCRIPT NEEDS REWORK TO INSTALL ENTIRE /opt/numurus FOLDER"
+echo "ALSO SHOULD RETHINK THE /opt/numurus/etc STRATEGY A BIT... MAYBE INTERACTIVELY GENERATE THAT FILE?"
+exit 1
+
 if [ -z "$SSH_KEY_PATH" ]; then
 	SSH_KEY_PATH=$HOME/.ssh/numurus_3dx_jetson_sshkey
 fi

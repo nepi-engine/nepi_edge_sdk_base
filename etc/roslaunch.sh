@@ -2,21 +2,23 @@
 
 source /opt/numurus/ros/setup.sh
 
+SYS_ENV_FILE=/opt/numurus/sys_env.bash
+
 # The sys_env script must exist and be valid. The committed base file is
 # (intentionally) not valid because TBD fields are not populated
-if [ ! -f /opt/numurus/ros/etc/sys_env.bash ]; then
-	echo "ERROR! Could not find /opt/numurus/ros/etc/sys_env.bash"
+if [ ! -f ${SYS_ENV_FILE} ]; then
+	echo "ERROR! Could not find ${SYS_ENV_FILE}"
 	exit 1
 fi
 
-source /opt/numurus/ros/etc/sys_env.bash
+source ${SYS_ENV_FILE}
 if [ "$DEVICE_TYPE" = "TBD" ]; then
-	echo "ERROR! DEVICE_TYPE must be set in /opt/numurus/ros/sys_env.bash"
+	echo "ERROR! DEVICE_TYPE must be set in ${SYS_ENV_FILE}"
 	exit 1
 fi
 
 if [ "$DEVICE_SN" = "TBD" ]; then
-	echo "ERROR! DEVICE_SN must be set in /opt/numurus/ros/sys_env.bash"
+	echo "ERROR! DEVICE_SN must be set in ${SYS_ENV_FILE}"
 	exit 1
 fi
 
@@ -24,13 +26,9 @@ if [ -z "$DEVICE_ID" ]; then
 	export DEVICE_ID=$DEVICE_SN
 fi
 
-if [ "$SDK_PROJECT" = "TBD" ]; then
-	echo "ERROR! SDK_PROJECT must be set in /opt/numurus/ros/sys_env.bash"
-	exit 1
-fi
-
-if [ "$LAUNCH_FILE" = "TBD" ]; then
-	echo "ERROR! LAUNCH_FILE must be set in /opt/numurus/ros/sys_env.bash"
+if [ "$ROS1_PACKAGE" = "TBD" ] || [ "$ROS1_LAUNCH_FILE" = "TBD" ]; then
+	echo "No ROS1 defs in ${SYS_ENV_FILE}... nothing to launch"
+	exit 0
 fi
 
 # This is a good place to monitor and purge large log sets
@@ -42,4 +40,4 @@ if grep -q "G" <<< "$ROS_LOG_SIZE"; then
 	yes | rosclean purge
 fi
 
-roslaunch ${SDK_PROJECT} ${LAUNCH_FILE}
+roslaunch ${ROS1_PACKAGE} ${ROS1_LAUNCH_FILE}
