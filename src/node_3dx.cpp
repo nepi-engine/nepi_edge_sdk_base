@@ -339,31 +339,33 @@ void Node3DX::setIntensityHandler(const num_sdk_msgs::AutoManualSelection3DX::Co
 	}
 }
 
-void Node3DX::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp, bool save_if_necessary)
+void Node3DX::publishImage(int id, cv::Mat *img, sensor_msgs::CameraInfoPtr cinfo, ros::Time *tstamp, bool save_if_necessary, bool override_simulated_data)
 {
 	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, *img).toImageMsg();
 
-	publishImage(id, msg, cinfo, save_if_necessary);
+	publishImage(id, msg, cinfo, save_if_necessary, override_simulated_data);
 }
 
-void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo, bool save_if_necessary)
+void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::CameraInfoPtr cinfo, bool save_if_necessary, bool override_simulated_data)
 {
 	// TODO: This method is not threadsafe, but called by multiple threads in e.g., gs_multicam
 	image_transport::CameraPublisher *publisher = nullptr;
 	sensor_msgs::ImagePtr img_out = nullptr;
+
+	const bool simulate_data = (true == override_simulated_data)? false : _simulated_data;
 	switch (id)
 	{
 	case IMG_0:
 		publisher = &img_0_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_0_sim_data).toImageMsg() : img;
+		img_out = (true == simulate_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_0_sim_data).toImageMsg() : img;
 		break;
 	case IMG_1:
 		publisher = &img_1_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_1_sim_data).toImageMsg() : img;
+		img_out = (true == simulate_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_1_sim_data).toImageMsg() : img;
 		break;
 	case IMG_ALT:
 		publisher = &img_alt_pub;
-		img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_alt_sim_data).toImageMsg() : img;
+		img_out = (true == simulate_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_alt_sim_data).toImageMsg() : img;
 		break;
 	default:
 		ROS_ERROR("%s: Request to publish unknown image id (%d)", getUnqualifiedName().c_str(), id);
@@ -378,13 +380,14 @@ void Node3DX::publishImage(int id, sensor_msgs::ImagePtr img, sensor_msgs::Camer
 	}
 }
 
-void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_msgs::CameraInfoConstPtr cinfo, bool save_if_necessary)
+void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_msgs::CameraInfoConstPtr cinfo, bool save_if_necessary, bool override_simulated_data)
 {
+	const bool simulate_data = (true == override_simulated_data)? false : _simulated_data;
 	switch (img_id)
 	{
 	case IMG_0:
 		{
-			sensor_msgs::ImageConstPtr img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_0_sim_data).toImageMsg() : img;
+			sensor_msgs::ImageConstPtr img_out = (true == simulate_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_0_sim_data).toImageMsg() : img;
 			img_0_pub.publish(img_out, cinfo);
 			if (true == save_if_necessary)
 			{
@@ -394,7 +397,7 @@ void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_ms
 		break;
 	case IMG_1:
 		{
-			sensor_msgs::ImageConstPtr img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_1_sim_data).toImageMsg() : img;
+			sensor_msgs::ImageConstPtr img_out = (true == simulate_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_1_sim_data).toImageMsg() : img;
 			img_1_pub.publish(img_out, cinfo);
 			if (true == save_if_necessary)
 			{
@@ -404,7 +407,7 @@ void Node3DX::publishImage(int img_id, sensor_msgs::ImageConstPtr img, sensor_ms
 		break;
 	case IMG_ALT:
 		{
-			sensor_msgs::ImageConstPtr img_out = (true == _simulated_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_alt_sim_data).toImageMsg() : img;
+			sensor_msgs::ImageConstPtr img_out = (true == simulate_data)? cv_bridge::CvImage(cinfo->header, ros_cam_color_encoding_name, img_alt_sim_data).toImageMsg() : img;
 			img_alt_pub.publish(img_out, cinfo);
 			if (true == save_if_necessary)
 			{
