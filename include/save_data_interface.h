@@ -54,7 +54,7 @@ public:
 	bool dataProductShouldSave(const std::string product_name, ros::Time data_time = ros::Time::now());
 	bool calibrationShouldSave();
 
-	static std::string getTimestampString();
+	static std::string getTimestampString(const ros::Time &time = ros::Time::now());
 
 	const std::string getFullPathFilename(const std::string &timestamp_string, const std::string &identifier, const std::string &extension);
 
