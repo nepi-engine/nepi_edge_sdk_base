@@ -21,7 +21,6 @@ export ROS_LOG_DIR=/home/numurus_user/data/ros_log
 export ROS1_PACKAGE=TBD
 # The launch file must be installed in the namespace of the ROS1_PACKAGE
 export ROS1_LAUNCH_FILE=TBD
-#export LAUNCH_FILE=3dx_cw.launch
 # ROS_MASTER_URI may be modified for systems with a remote rosmaster
 # Note, though, that there are other system file modifications required, so you
 # should use the switch_rosmaster script instead of editing ROS_MASTER_URI directly.

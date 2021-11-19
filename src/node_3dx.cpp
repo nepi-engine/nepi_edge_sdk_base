@@ -491,7 +491,7 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 	// To change the permissions - opencv API doesn't seem to give us that control at creation
 
   // Create the filename - defer the extension so that we can adjust as necessary for save_raw
-	const std::string qualified_filename = _save_data_if->getFullPathFilename(_save_data_if->getTimestampString(), display_name + "_" + image_identifier, "png");
+	const std::string qualified_filename = _save_data_if->getFullPathFilename(_save_data_if->getTimestampString(img->header.stamp), display_name + "_" + image_identifier, "png");
 	//const std::string jpg_filename = qualified_filename_no_extension.str() + ".jpg";
 	SaveDataStruct save_data(img, qualified_filename, output_img_encoding);
 	// Critical section

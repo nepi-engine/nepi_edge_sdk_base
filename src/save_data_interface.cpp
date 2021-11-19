@@ -111,9 +111,10 @@ bool SaveDataInterface::calibrationShouldSave()
 	return should_save;
 };
 
-std::string SaveDataInterface::getTimestampString()
+std::string SaveDataInterface::getTimestampString(const ros::Time &timestamp)
 {
-	boost::posix_time::ptime posix_time = boost::posix_time::microsec_clock::local_time();
+	boost::posix_time::ptime posix_time = timestamp.toBoost();
+
 	std::string iso_string_tstamp = boost::posix_time::to_iso_extended_string(posix_time);
 	// Now improve the format of this string.
 	// First, delete all ':' chars -- Windows (Samba) doesn't accept them in filenames
