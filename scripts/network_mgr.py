@@ -122,7 +122,8 @@ class NetworkMgr:
                     rospy.sleep(1)
                     subprocess.call(['ifup', self.NET_IFACE])
 
-                    self.set_ips_from_params()
+                    # Reset IPs from param server, but make sure to avoid the DHCP part because that param hasn't been updated at this point
+                    self.set_ips_from_params(skip_dhcp = True)
                 except Exception as e:
                     rospy.logerr("Unable to disable DHCP: " + str(e))
             else:
@@ -131,7 +132,7 @@ class NetworkMgr:
     def enable_dhcp(self, enabled_msg):
         self.enable_dhcp_impl(enabled_msg.data)
 
-    def set_ips_from_params(self):
+    def set_ips_from_params(self, skip_dhcp = False):
         curr_ips = self.get_current_ip_addrs()
         for ip in curr_ips[1:]: # Skip the first one -- that is the factory default
             rospy.loginfo("Purging IP address %s to produce a clean slate", ip)
@@ -143,10 +144,11 @@ class NetworkMgr:
                 rospy.loginfo("Adding configured IP address %s", ip)
                 self.add_ip_impl(ip)
 
-        if (rospy.has_param('~dhcp_enabled')):
-            enabled = rospy.get_param('~dhcp_enabled')
-            if self.dhcp_enabled != enabled:
-                self.enable_dhcp_impl(enabled)
+        if (skip_dhcp is False):
+            if (rospy.has_param('~dhcp_enabled')):
+                enabled = rospy.get_param('~dhcp_enabled')
+                if self.dhcp_enabled != enabled:
+                    self.enable_dhcp_impl(enabled)
 
     def reset(self, msg):
         if Reset.USER_RESET == msg.reset_type:
