@@ -35,6 +35,8 @@ enum VCA8617_GAIN
   VCA8617_GAIN_40dB     = 0x3 << 0
 };
 
+constexpr uint32_t VCA8617_PWR_UP_DELAY_US = 100;
+
 // TODO: CW Coding enums and values in the struct if ever necessary
 
 struct VCA8617_Setup

@@ -76,8 +76,10 @@ constexpr uint8_t AD9249_TEST_MODE_RESET_PN_SHORT_GEN   = 0x1 << 4;
 
 constexpr uint8_t AD9249_TEST_MODE_USER_MODE_ALTERNATE  = 0x1 << 6;
 
-constexpr uint8_t AD9249_SYNC_ENABLED_MASK = 0x1;
-constexpr uint8_t AD9249_SYNC_DISABLED_MASK = 0x1;
+constexpr uint8_t AD9249_SYNC_ENABLED = 0x1;
+constexpr uint8_t AD9249_SYNC_DISABLED = 0x0;
+
+constexpr uint32_t AD9249_FULL_PWR_UP_DELAY_US = 375;
 
 class Ad9249_Adc
 {

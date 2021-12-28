@@ -138,7 +138,7 @@ bool Ad9249_Adc::getTestMode(AD9249_TEST_MODE &mode_out, uint16_t channel_mask)
     return false;
   }
 
-  mode_out = static_cast<AD9249_TEST_MODE>(mode_val & 0x3);
+  mode_out = static_cast<AD9249_TEST_MODE>(mode_val & 0xF);
   PRINTF_TEST_APP("Test Mode: %s\n", TEST_MODE_AS_STRING(mode_out));
   return true;
 }
@@ -205,7 +205,7 @@ bool Ad9249_Adc::getSyncMode(bool &sync_enabled)
     return false;
   }
 
-  sync_enabled = (sync_mode_val & AD9249_SYNC_ENABLED_MASK);
+  sync_enabled = (sync_mode_val & AD9249_SYNC_ENABLED);
   PRINTF_TEST_APP("Sync: %s\n", sync_enabled? "Enabled" : "Disabled");
   return true;
 }
@@ -214,8 +214,8 @@ bool Ad9249_Adc::setSyncMode(bool enable_sync)
 {
   // This sets sync such that EVERY sync signal after this call will resync. It is also possible to set bits in
   // this register such that only the next sync signal has any impact, but for now we don't expose that functionality
-  const uint8_t sync_mode_val = (enable_sync)? AD9249_SYNC_ENABLED_MASK : AD9249_SYNC_DISABLED_MASK;
-  PRINTF_TEST_APP("Writing Sync Mode to %s\n", enable_sync? "Enabled" : "Disabled\n");
+  const uint8_t sync_mode_val = (enable_sync)? AD9249_SYNC_ENABLED : AD9249_SYNC_DISABLED;
+  PRINTF_TEST_APP("Writing Sync Mode to %s\n", enable_sync? "Enabled" : "Disabled");
   return write(AD9249_REGISTER_ADDR_SYNC, sync_mode_val);
 }
 
