@@ -23,6 +23,10 @@ namespace Numurus
   void PRINTF_TEST_APP(const char* fmt...){} // Do nothing
 #endif
 
+// Enable the following to readback after every write to make sure the setting took -- as of 12/31/21 the ADC SPI is
+// not very reliable when coming up from a cold boot.
+#define VERIFY_ALL_WRITES
+
 static const char* EXTERNAL_POWER_MODE_AS_STRING(uint8_t mode)
 {
   if (mode == AD9249_POWER_DOWN_MODE_EXTERNAL_FULL) return "Full Power Down";
@@ -285,6 +289,15 @@ bool Ad9249_Adc::write(AD9249_REGISTER_ADDR addr, uint8_t data, uint16_t device_
   {
     return false;
   }
+
+#ifdef VERIFY_ALL_WRITES
+  uint8_t data_readback;
+  if ((false == read(addr, data_readback, device_bitmask)) || (data_readback != data))
+  {
+    return false;
+  }
+#endif
+
   return true;
 }
 
