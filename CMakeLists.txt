@@ -156,6 +156,7 @@ include_directories(
 add_library(${PROJECT_NAME}
    src/sdk_node.cpp
    src/sdk_interface.cpp
+   src/sdk_utils.cpp
    src/node_3dx.cpp
    src/trigger_interface.cpp
    src/net_trigger_interface.cpp
