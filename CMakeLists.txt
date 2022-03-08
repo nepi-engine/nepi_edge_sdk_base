@@ -31,6 +31,7 @@ find_package(
     cv_bridge
     OpenCV
     sensor_msgs
+    vision_msgs
     cv_bridge
     rospy
     std_msgs
