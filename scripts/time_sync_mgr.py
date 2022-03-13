@@ -26,6 +26,8 @@ CHRONY_SYSTEMD_SERVICE_NAME = 'chrony.service'
 
 g_last_set_time = rospy.Time(0.0)
 g_sys_time_updated_pub = None
+g_ntp_first_sync_time = None
+g_ntp_status_check_timer = None
 
 def symlink_force(target, link_name):
     try:
@@ -147,12 +149,43 @@ def reset(msg):
         restart_systemd_service(CHRONY_SYSTEMD_SERVICE_NAME)
         rospy.signal_shutdown('Shutdown by request')
 
+def gather_ntp_status_timer_cb(event):
+    # Just call the implementation method. We don't care about the event payload
+    gather_ntp_status()
+
+def gather_ntp_status():
+    global g_ntp_first_sync_time
+    global g_sys_time_updated_pub
+    global g_ntp_status_check_timer
+
+    chronyc_sources = subprocess.check_output(["chronyc", "sources"]).splitlines()
+    ntp_status = [] # List of lists
+    for line in chronyc_sources[1:]:
+        if re.search('^\^|#', line): # Find sources lines by their leading "Mode" indicator
+            tokens = line.split()
+            source = tokens[1]
+            last_sync = tokens[5]
+            current_offset = tokens[6].split('[')[0] # The string has two parts
+            ntp_status.append((source, last_sync, current_offset))
+            if (g_ntp_first_sync_time is None) and (last_sync != "10y"):
+                rospy.loginfo("NTP sync first detected... publishing on sys_time_update")
+                g_ntp_first_sync_time = rospy.get_rostime()
+                g_sys_time_updated_pub.publish(Empty())
+                # No longer need to run the timer
+                # TODO: Should we continue to run timer to monitor for big changes, additional syncs, etc. to
+                # inform the rest of the system about the time update?
+                g_ntp_status_check_timer.shutdown()
+
+
+    return ntp_status
+
 def handle_time_status_query(req):
     time_status = TimeStatus()
     time_status.current_time = rospy.get_rostime()
 
     # Get Last PPS time from the sysfs node
-    pps_exists = os.path.isfile('/sys/class/pps/pps0/assert')
+    #pps_exists = os.path.isfile('/sys/class/pps/pps0/assert')
+    pps_exists = False # Hard code if for now, since Jetson isn't defining /sys/class/pps -- we may never actually use PPS
     if pps_exists:
         pps_string = subprocess.check_output(["cat", "/sys/class/pps/pps0/assert"])
         pps_tokens = pps_string.split('#')
@@ -165,15 +198,11 @@ def handle_time_status_query(req):
         time_status.last_pps = rospy.Time(0)
         rospy.logwarn_once("Unable to find /sys/class/pps/pps0/assert... PPS unavailable");
 
-
-    # Gather NTP info from chronyc application
-    chronyc_sources = subprocess.check_output(["chronyc", "sources"]).splitlines()
-    for line in chronyc_sources[1:]:
-        if re.search('^\^|#', line): # Find sources lines by their leading "Mode" indicator
-            tokens = line.split()
-            time_status.ntp_sources.append(tokens[1]) # The source name is right after the first space
-            time_status.last_ntp_sync.append(tokens[5])
-            time_status.current_offset.append(tokens[6].split('[')[0]) # The string has two parts
+    ntp_status = gather_ntp_status()
+    for status_entry in ntp_status:
+        time_status.ntp_sources.append(status_entry[0])
+        time_status.last_ntp_sync.append(status_entry[1])
+        time_status.current_offset.append(status_entry[2]) # The string has two parts
 
     # Last set time (cheater clock sync method)
     time_status.last_set_time = g_last_set_time
@@ -249,6 +278,10 @@ def time_sync_mgr():
 
     global g_sys_time_updated_pub
     g_sys_time_updated_pub = rospy.Publisher('sys_time_updated', Empty, queue_size=3)
+
+    # Set up a periodic timer to check for NTP sync so we can inform the rest of the system when first sync detected
+    global g_ntp_status_check_timer
+    g_ntp_status_check_timer = rospy.Timer(5.0, gather_ntp_status)
 
     rospy.spin()
 
