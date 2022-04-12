@@ -12,9 +12,9 @@
 # SRC_PATH ==> Path to the "ros" folder to be written to /opt/numurus/ros on the remote system. Defaults to ../../
 # SERIAL_NUM ==> Device serial number. Defaults to 0000
 
-echo "THIS SCRIPT NEEDS REWORK TO INSTALL ENTIRE /opt/numurus FOLDER"
-echo "ALSO SHOULD RETHINK THE /opt/numurus/etc STRATEGY A BIT... MAYBE INTERACTIVELY GENERATE THAT FILE?"
-exit 1
+#echo "THIS SCRIPT NEEDS REWORK TO INSTALL ENTIRE /opt/numurus FOLDER"
+#exit 1
+echo "Warning -- this script will overwrite existing settings on the device."
 
 if [ -z "$SSH_KEY_PATH" ]; then
 	SSH_KEY_PATH=$HOME/.ssh/numurus_3dx_jetson_sshkey
@@ -63,9 +63,10 @@ echo "   Source Path   = `pwd`/ros"
 echo "   Serial Number = $SERIAL_NUM"
 read CONTINUE
 
+# This no longer works because serial number is at /opt/numurus/sys_env.bash on the remote system
 #cp ros/etc/sys_env_base.bash ros/etc/sys_env.bash
 #sed -i 's/DEVICE_TYPE=TBD/DEVICE_TYPE=3dsc/' ros/etc/sys_env.bash
-sed -i 's/DEVICE_SN=.*/DEVICE_SN='$SERIAL_NUM'/' ros/etc/sys_env.bash
+#sed -i 's/DEVICE_SN=.*/DEVICE_SN='$SERIAL_NUM'/' ros/etc/sys_env.bash
 #sed -i 's/SDK_PROJECT=TBD/SDK_PROJECT=num_sdk_jetson/' ros/etc/sys_env.bash
 
 # Stop the running SDK
