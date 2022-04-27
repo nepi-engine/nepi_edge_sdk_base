@@ -77,7 +77,7 @@ NOW=`date +"%F_%H%M%S"`
 ARCHIVE_FOLDER=`pwd`/pre_install_archive_$REMOTE_HOST_$NOW
 echo "Archiving the existing installation to $ARCHIVE_FOLDER.tar.gz... this may take a moment"
 sleep 3
-rsync -avzhe "ssh -i $SSH_KEY_PATH" numurus@192.168.179.102:/opt/numurus/ros $ARCHIVE_FOLDER
+rsync -avzhe "ssh -i $SSH_KEY_PATH" numurus@$REMOTE_HOST:/opt/numurus/ros $ARCHIVE_FOLDER
 tar -czf $ARCHIVE_FOLDER.tar.gz $ARCHIVE_FOLDER
 rm -rf $ARCHIVE_FOLDER
 
