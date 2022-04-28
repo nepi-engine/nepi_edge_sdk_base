@@ -108,6 +108,7 @@ class NetworkMgr:
                 rospy.loginfo("DHCP already enabled")
         else:
             if self.dhcp_enabled is True:
+                rospy.loginfo("Disabling DHCP Client")
                 try:
                     # The dhclient -r call below causes all IP addresses on the interface to be dropped, so
                     # we reinitialize them here... this will not work for IP addresses that were
