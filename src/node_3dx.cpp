@@ -50,6 +50,11 @@ Node3DX::Node3DX():
 	     ros::console::notifyLoggerLevelsChanged();
 	  }
 	#endif
+
+	num_sdk_msgs::Status3DX status_3dx;
+	status_flags.resize(status_3dx.flags.max_size(), false); // std::vector sized from boost::array
+	status_flags[num_sdk_msgs::Status3DX::DEVICE_STARTING] = true;
+
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
 	_save_data_if->registerDataProduct("img_0");
 	_save_data_if->registerDataProduct("img_1");
@@ -180,6 +185,7 @@ void Node3DX::initSubscribers()
 	subscribers.push_back(n_priv.subscribe("set_gain", 3, &Node3DX::setGainHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_filter", 3, &Node3DX::setFilterHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_intensity", 3, &Node3DX::setIntensityHandler, this));
+	subscribers.push_back(n_priv.subscribe("clear_status_flags", 3, &Node3DX::clearStatusFlagsHandler, this));
 
 	subscribers.push_back(n_priv.subscribe("set_pointcloud_target_frame", 3, &Node3DX::set3dDataTargetFrameHandler, this));
 }
@@ -336,6 +342,17 @@ void Node3DX::setIntensityHandler(const num_sdk_msgs::AutoManualSelection3DX::Co
 			(_intensity_enabled)? "enabled":"disabled",
 			(_intensity_enabled)? _intensity_control : 0.0f);
 		publishStatus();
+	}
+}
+
+void Node3DX::clearStatusFlagsHandler(const std_msgs::Empty::ConstPtr &msg)
+{
+	ROS_INFO("%s clearing status flags by request");
+
+	num_sdk_msgs::Status3DX status_3dx;
+	for (size_t i = 0; i < status_3dx.flags.max_size(); ++i)
+	{
+		status_flags[i] = false;
 	}
 }
 
@@ -529,6 +546,11 @@ void Node3DX::publishStatus()
 	msg.intensity_settings.enabled = _intensity_enabled;
 	msg.intensity_settings.adjustment = _intensity_control;
 
+	for (size_t i = 0; i < msg.flags.max_size(); ++i)
+	{
+		msg.flags[i] = status_flags[i]; // Must assign std::vector to boost::array element-by-element
+	}
+
 	_status_pub.publish(msg);
 }
 
@@ -631,6 +653,8 @@ void Node3DX::run()
 	{
 		init();
 	}
+
+	status_flags[num_sdk_msgs::Status3DX::DEVICE_STARTING] = false; // Clear the starting flag
 
 	// Set up periodic publishing of the 3DX status
 	//const ros::Duration status_pub_period(2.0);

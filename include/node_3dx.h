@@ -140,6 +140,8 @@ protected:
 
 	ros::Publisher _transformed_pointcloud_pub;
 
+	std::vector<bool> status_flags;
+
 	struct SaveDataStruct
 	{
 	public:
@@ -275,6 +277,7 @@ protected:
 	virtual void setGainHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
 	virtual void setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
 	virtual void setIntensityHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
+	virtual void clearStatusFlagsHandler(const std_msgs::Empty::ConstPtr &msg);
 
 	void publishStatus();
 
