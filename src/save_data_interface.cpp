@@ -62,9 +62,13 @@ void SaveDataInterface::initServices()
 	servicers.push_back(_parent_priv_nh->advertiseService("query_data_products", &SaveDataInterface::queryDataProductsHandler, this));
 }
 
-void SaveDataInterface::registerDataProduct(const std::string product_name, float save_rate_hz)
+void SaveDataInterface::registerDataProduct(const std::string product_name, double save_rate_hz, double max_save_rate_hz)
 {
-	data_product_registry[product_name] = {save_rate_hz, 0.0};
+	if (save_rate_hz > max_save_rate_hz)
+	{
+		save_rate_hz = max_save_rate_hz;
+	}
+	data_product_registry[product_name] = {save_rate_hz, 0.0, max_save_rate_hz};
 }
 
 bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ros::Time data_time)
@@ -81,19 +85,19 @@ bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ro
 		return false;
 	}
 
-	const float rate_hz = entry.first;
+	const float rate_hz = entry[0];
 	if (0 == rate_hz)
 	{
 		// Saving disabled for this data product
 		return false;
 	}
 
-	const double save_time = entry.second;
+	const double save_time = entry[1];
 	const double data_time_s = data_time.toSec();
 	if (data_time_s >= save_time)
 	{
 		// Update for the next save time
-		data_product_registry[product_name] = {rate_hz, data_time_s + (1.0/rate_hz)};
+		data_product_registry[product_name] = {rate_hz, data_time_s + (1.0/rate_hz), entry[2]};
 		return true;
 	}
 	// Otherwise, not time yet
@@ -193,13 +197,19 @@ void SaveDataInterface::saveDataPrefixHandler(const std_msgs::String::ConstPtr &
 
 void SaveDataInterface::saveDataRateHandler(const num_sdk_msgs::SaveDataRate::ConstPtr &msg)
 {
+	if (msg->save_rate_hz < 0.0)
+	{
+		ROS_ERROR("Can't set a negative save rate... aborting");
+		return;
+	}
+
 	// Handle the special ALL indicator
 	if (msg->data_product == num_sdk_msgs::SaveDataRate::ALL_DATA_PRODUCTS)
 	{
 		for (std::pair<std::string, data_product_registry_entry_t> entry : data_product_registry)
 		{
-			entry.second.first = msg->save_rate_hz;
-			entry.second.second = 0.0;
+			entry.second[0] = (msg->save_rate_hz <= entry.second[2])? msg->save_rate_hz : entry.second[2]; // Ensure max_save_rate is respected
+			entry.second[1] = 0.0;
 			ROS_WARN("Updating save rate for data product %s", entry.first.c_str());
 			data_product_registry[entry.first] = entry.second;
 		}
@@ -210,8 +220,8 @@ void SaveDataInterface::saveDataRateHandler(const num_sdk_msgs::SaveDataRate::Co
 	try
 	{
 		data_product_registry_entry_t entry = data_product_registry.at(msg->data_product);
-		entry.first = msg->save_rate_hz;
-		entry.second = 0.0;
+		entry[0] = (msg->save_rate_hz <= entry[2])? msg->save_rate_hz : entry[2]; // Ensure max_save_rate is respected
+		entry[1] = 0.0;
 		data_product_registry[msg->data_product] = entry;
 	}
 	catch (...)
@@ -231,7 +241,7 @@ bool SaveDataInterface::queryDataProductsHandler(num_sdk_msgs::DataProductQuery:
 	{
 		num_sdk_msgs::SaveDataRate d;
 		d.data_product = entry.first;
-		d.save_rate_hz = entry.second.first;
+		d.save_rate_hz = entry.second[0];
 		res.data_products.push_back(d);
 	}
 	return true;

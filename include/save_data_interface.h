@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <array>
 #include <unistd.h>
 
 #include <ros/ros.h>
@@ -50,7 +51,7 @@ public:
 	inline bool saveRawEnabled() {return (_save_continuous == true && _save_raw == true);}
 	inline const std::string getFilenamePrefix() {return _filename_prefix;}
 
-	void registerDataProduct(const std::string product_name, float save_rate_hz = 1.0f);
+	void registerDataProduct(const std::string product_name, double save_rate_hz = 1.0, double max_save_rate_hz = 100.0);
 	bool dataProductShouldSave(const std::string product_name, ros::Time data_time = ros::Time::now());
 	bool calibrationShouldSave();
 
@@ -86,8 +87,8 @@ protected:
 	 */
 	ros::Publisher _save_status_pub;
 
-	// Form for the pair is <rate_hz, next_save_time_s>
-	typedef std::pair<float, double> data_product_registry_entry_t;
+	// Form for the array is <rate_hz, next_save_time_s, max_rate_hz>
+	typedef std::array<double, 3> data_product_registry_entry_t;
 	std::unordered_map<std::string, data_product_registry_entry_t> data_product_registry;
 
 	bool _needs_save_calibration = false;

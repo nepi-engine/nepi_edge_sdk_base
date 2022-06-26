@@ -46,10 +46,11 @@ class SaveDataIF(object):
     def save_data_rate_callback(self, msg):
         if (msg.data_product == msg.ALL_DATA_PRODUCTS):
             for d in self.data_rate_dict:
-                self.data_rate_dict[d][0] = msg.save_rate_hz
+                # Respect the max save rate
+                self.data_rate_dict[d][0] = msg.save_rate_hz if msg.save_rate_hz <= self.data_rate_dict[d][2] else self.data_rate_dict[d][2]
 
         elif (msg.data_product in self.data_rate_dict):
-            self.data_rate_dict[msg.data_product][0] = msg.save_rate_hz
+            self.data_rate_dict[msg.data_product][0] = msg.save_rate_hz if msg.save_rate_hz <= self.data_rate_dict[msg.data_product][2] else self.data_rate_dict[msg.data_product][2]
         else:
             rospy.logerr("%s is not a known data product", msg.data_product)
 
@@ -105,7 +106,7 @@ class SaveDataIF(object):
     def __init__(self, data_product_names=None):
         self.data_rate_dict = {}
         for d in data_product_names:
-            self.data_rate_dict[d] = [1.0, 0.0] # Default to 1Hz
+            self.data_rate_dict[d] = [1.0, 0.0, 100.0] # Default to 1Hz save rate, max rate = 100.0Hz
 
         self.save_continuous = rospy.get_param('~save_data_continuous', False)
         self.save_raw = rospy.get_param('~save_data_raw', False)
@@ -113,7 +114,6 @@ class SaveDataIF(object):
         rospy.set_param('~save_data_continuous', self.save_continuous)
         rospy.set_param('~save_data_raw', self.save_raw)
 
-        self.save_data_rate = 1.0
         self.save_data_prefix = ''
         self.save_data_dir = self.SAVE_DATA_ROOT_DIRECTORY
 
