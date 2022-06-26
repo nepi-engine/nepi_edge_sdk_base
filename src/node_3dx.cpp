@@ -16,7 +16,7 @@
 #define BOOL_TO_ENABLED(x)	((x)==true)? "enabled" : "disabled"
 
 #define SAVE_DATA_BUFFER_SIZE	25 // 25 data entries max before some start getting dropped
-#define SAVE_DATA_THREAD_COUNT	2
+#define SAVE_DATA_THREAD_COUNT	4
 
 namespace Numurus
 {
@@ -560,10 +560,11 @@ void Node3DX::saveDataRun()
 {
 	while (false == terminate_save_data_threads)
 	{
-		ros::Duration(0.01).sleep(); // Don't let this thread starve everything else
+		ros::Duration(0.02).sleep(); // Don't let this thread starve everything else
 		SaveDataStruct save_data;
 		// Critical section
 		bool buffer_full;
+		bool skip_redundant_save = false;
 		{
 			std::lock_guard<std::mutex> l(save_data_buffer_mutex);
 			if (false == save_data_buffer.empty())
@@ -571,6 +572,19 @@ void Node3DX::saveDataRun()
 				buffer_full = (save_data_buffer.size() == SAVE_DATA_BUFFER_SIZE);
 				save_data = save_data_buffer[0];
 				save_data_buffer.pop_front();
+
+				// If full, check for redundant files (e.g., stitched pointclouds) to skip as an efficiency speedup
+				if (true == buffer_full)
+				{
+					for (auto &more_recent_saved_data : save_data_buffer)
+					{
+						if (more_recent_saved_data.qualified_filename == save_data.qualified_filename)
+						{
+							skip_redundant_save = true;
+							break;
+						}
+					}
+				}
 			}
 			else
 			{
@@ -578,9 +592,15 @@ void Node3DX::saveDataRun()
 			}
 		}
 
-		if (true == buffer_full)
+		if (true == buffer_full) // Do this warning outside mutex protection for better efficiency
 		{
-			ROS_WARN_THROTTLE(1, "Data saving is not keeping up -- oldest data will be discarded");
+			ROS_WARN_THROTTLE(3, "Data saving is not keeping up -- oldest data will be discarded");
+		}
+
+		if (true == skip_redundant_save)
+		{
+			ROS_WARN_THROTTLE(3, "Skipping redundant %s because there is a more recent version", save_data.qualified_filename.c_str());
+			continue;
 		}
 
 		bool success = false;
@@ -610,10 +630,17 @@ void Node3DX::saveDataRun()
 			pcl::PointCloud<pcl::PointXYZRGB> cloud;
 			pcl::fromROSMsg(*(save_data.cloud_ptr), cloud);
 
-			if (0 == pcl::io::savePCDFileBinaryCompressed(save_data.qualified_filename, cloud))
+			try
 			{
-				//pcl::io::savePCDFile(qualified_filename, cloud); // ASCII Version
-				success = true;
+				if (0 == pcl::io::savePCDFileBinaryCompressed(save_data.qualified_filename, cloud))
+				{
+					//pcl::io::savePCDFile(qualified_filename, cloud); // ASCII Version
+					success = true;
+				}
+			}
+			catch (...) // savePCD will throw an exception for an empty pointcloud (and probably other stuff, too)
+			{
+				ROS_ERROR("Failed to save pointcloud");
 			}
 		}
 		else
