@@ -158,6 +158,8 @@ def gather_ntp_status():
     global g_sys_time_updated_pub
     global g_ntp_status_check_timer
 
+    #rospy.logwarn("Debug: gather_ntp_status running (first time sync = " + str(g_ntp_first_sync_time) + ")")
+
     chronyc_sources = subprocess.check_output(["chronyc", "sources"]).splitlines()
     ntp_status = [] # List of lists
     for line in chronyc_sources[1:]:
@@ -281,7 +283,8 @@ def time_sync_mgr():
 
     # Set up a periodic timer to check for NTP sync so we can inform the rest of the system when first sync detected
     global g_ntp_status_check_timer
-    g_ntp_status_check_timer = rospy.Timer(5.0, gather_ntp_status)
+    g_ntp_status_check_timer = rospy.Timer(rospy.Duration(5.0), gather_ntp_status_timer_cb)
+    g_ntp_status_check_timer.run()
 
     rospy.spin()
 
