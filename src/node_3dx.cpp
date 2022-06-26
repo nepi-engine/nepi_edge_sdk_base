@@ -546,6 +546,8 @@ void Node3DX::publishStatus()
 	msg.intensity_settings.enabled = _intensity_enabled;
 	msg.intensity_settings.adjustment = _intensity_control;
 
+	msg.frame_3d = _3d_data_target_frame;
+
 	for (size_t i = 0; i < msg.flags.max_size(); ++i)
 	{
 		msg.flags[i] = status_flags[i]; // Must assign std::vector to boost::array element-by-element
