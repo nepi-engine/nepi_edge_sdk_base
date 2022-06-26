@@ -40,6 +40,13 @@ Node3DX::Node3DX():
 	_img_1_name{"img_1_name", "img_1", this},
 	_alt_img_name{"alt_img_name", "alt", this},
 	_3d_data_target_frame{"data_3d_target_frame", "3dx_center_frame", this},
+	stitched_cloud_enabled{"stitched_cloud/enabled", false, this},
+	stitched_cloud_resolution_m{"stitched_cloud/resolution_m", 0.01f, this},
+	stitched_cloud_pub_rate_hz{"stitched_cloud/pub_rate_hz", 5.0f, this},
+	stitched_cloud_auto_range_enabled{"stitched_cloud/auto_range_enabled", false, this},
+	stitched_cloud_max_manual_range_m{"stitched_cloud/max_manual_range_m", 4.0f, this},
+	stitched_cloud_size_lim_mb{"stitched_cloud/size_lim_mb", 512, this},
+	stitched_cloud_max_save_rate_hz{"stitched_cloud/max_save_rate_hz", 0.5f, this},
 	save_data_buffer{SAVE_DATA_BUFFER_SIZE}
 {
 	#ifndef NDEBUG // CMake-supplied indicator of Debug build
@@ -140,6 +147,13 @@ void Node3DX::retrieveParams()
 	_img_1_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
 	_alt_img_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
 	_3d_data_target_frame.retrieve();
+	stitched_cloud_enabled.retrieve();
+	stitched_cloud_resolution_m.retrieve();
+	stitched_cloud_pub_rate_hz.retrieve();
+	stitched_cloud_auto_range_enabled.retrieve();
+	stitched_cloud_max_manual_range_m.retrieve();
+	stitched_cloud_size_lim_mb.retrieve();
+	stitched_cloud_max_save_rate_hz.retrieve();
 
 	// Image transport parameters are ROS "dynamic_params", so don't need to be retrieved manually
 
@@ -188,6 +202,7 @@ void Node3DX::initSubscribers()
 	subscribers.push_back(n_priv.subscribe("clear_status_flags", 3, &Node3DX::clearStatusFlagsHandler, this));
 
 	subscribers.push_back(n_priv.subscribe("set_pointcloud_target_frame", 3, &Node3DX::set3dDataTargetFrameHandler, this));
+	subscribers.push_back(n_priv.subscribe("enable_stitched_cloud", 3, &Node3DX::enableStitchedCloudHandler, this));
 }
 
 void Node3DX::pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg)
@@ -347,7 +362,7 @@ void Node3DX::setIntensityHandler(const num_sdk_msgs::AutoManualSelection3DX::Co
 
 void Node3DX::clearStatusFlagsHandler(const std_msgs::Empty::ConstPtr &msg)
 {
-	ROS_INFO("%s clearing status flags by request");
+	ROS_INFO("%s clearing status flags by request", getUnqualifiedName().c_str());
 
 	num_sdk_msgs::Status3DX status_3dx;
 	for (size_t i = 0; i < status_3dx.flags.max_size(); ++i)
@@ -467,6 +482,11 @@ void Node3DX::set3dDataTargetFrameHandler(const std_msgs::String::ConstPtr &msg)
 	_3d_data_target_frame = msg->data;
 }
 
+void Node3DX::enableStitchedCloudHandler(const std_msgs::Bool::ConstPtr &msg)
+{
+	stitched_cloud_enabled = msg->data;
+}
+
 void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 {
 	if (false == _save_data_if->saveContinuousEnabled())
@@ -547,6 +567,8 @@ void Node3DX::publishStatus()
 	msg.intensity_settings.adjustment = _intensity_control;
 
 	msg.frame_3d = _3d_data_target_frame;
+
+	msg.stitched_cloud_enabled = stitched_cloud_enabled;
 
 	for (size_t i = 0; i < msg.flags.max_size(); ++i)
 	{

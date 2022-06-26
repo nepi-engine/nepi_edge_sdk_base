@@ -138,6 +138,14 @@ protected:
 
 	Node3DXParam<std::string> _3d_data_target_frame;
 
+	Node3DXParam<bool> stitched_cloud_enabled;
+	Node3DXParam<float> stitched_cloud_resolution_m;
+	Node3DXParam<float> stitched_cloud_pub_rate_hz;
+	Node3DXParam<bool> stitched_cloud_auto_range_enabled;
+	Node3DXParam<float> stitched_cloud_max_manual_range_m;
+	Node3DXParam<float> stitched_cloud_size_lim_mb;
+	Node3DXParam<float> stitched_cloud_max_save_rate_hz;
+
 	ros::Publisher _transformed_pointcloud_pub;
 
 	std::vector<bool> status_flags;
@@ -287,6 +295,7 @@ protected:
 
 	bool transformCloudAndRepublish(const sensor_msgs::PointCloud2::ConstPtr &input, sensor_msgs::PointCloud2Ptr &output);
 	void set3dDataTargetFrameHandler(const std_msgs::String::ConstPtr &msg);
+	virtual void enableStitchedCloudHandler(const std_msgs::Bool::ConstPtr &msg);
 
 	virtual void saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img);
 	inline virtual void saveSensorCalibration(){} // Default behavior is to do nothing, subclasses should override as necessary
