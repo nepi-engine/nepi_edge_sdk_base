@@ -1,0 +1,2 @@
+op_environment: air    # "air" or "water". Controls the ZED camera calibration selected at start-up.
+data_mountpoint: /home/numurus_user/data
