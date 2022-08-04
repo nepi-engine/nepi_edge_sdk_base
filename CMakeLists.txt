@@ -7,7 +7,7 @@ add_compile_options(-Wall)
 
 # Need the hostname because OpenCV_DIR location depends on which host -- num-tx2 uses Jetpack-installed opencv4
 cmake_host_system_information( RESULT BUILDHOST QUERY HOSTNAME )
-if( ${BUILDHOST} STREQUAL "num-tx2" )
+if( (${BUILDHOST} STREQUAL "num-tx2") OR (${BUILDHOST} STREQUAL "wesmar-xavier-nx") )
     set(OpenCV_DIR /usr/lib/aarch64-linux-gnu/cmake/opencv4)
 else()
     set(OpenCV_DIR /usr/share/OpenCV)
@@ -227,6 +227,7 @@ target_link_libraries(lord_ahrs_ros_wrapper
 # )
 
 catkin_install_python(PROGRAMS
+  scripts/system_mgr.py
   scripts/config_mgr.py
   scripts/time_sync_mgr.py
   scripts/network_mgr.py
