@@ -34,6 +34,8 @@ Node3DX::Node3DX():
 	_gain{"gain", 1.0f, this},
 	_filter_enabled{"filter_enabled", false, this},
 	_filter_control{"filter_control", 0.0f, this},
+	_enhancement_enabled{"enhancement_enabled", false, this},
+	_enhancement_control{"enhancement_control", 0.0f, this},
 	_intensity_enabled{"intensity_enabled", false, this},
 	_intensity_control{"intensity_control", 0.0f, this},
 	_img_0_name{"img_0_name", "img_0", this},
@@ -141,6 +143,8 @@ void Node3DX::retrieveParams()
 	_gain.retrieve();
 	_filter_enabled.retrieve();
 	_filter_control.retrieve();
+	_enhancement_enabled.retrieve();
+	_enhancement_control.retrieve();
 	_intensity_enabled.retrieve();
 	_intensity_control.retrieve();
 	_img_0_name.retrieve(); // already retrieved in initPublishers, but no harm in doing it again
@@ -198,6 +202,7 @@ void Node3DX::initSubscribers()
 	subscribers.push_back(n_priv.subscribe("set_resolution", 3, &Node3DX::setResolutionHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_gain", 3, &Node3DX::setGainHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_filter", 3, &Node3DX::setFilterHandler, this));
+	subscribers.push_back(n_priv.subscribe("set_enhancement", 3, &Node3DX::setEnhancementHandler, this));
 	subscribers.push_back(n_priv.subscribe("set_intensity", 3, &Node3DX::setIntensityHandler, this));
 	subscribers.push_back(n_priv.subscribe("clear_status_flags", 3, &Node3DX::clearStatusFlagsHandler, this));
 
@@ -336,6 +341,26 @@ void Node3DX::setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::Const
 		ROS_DEBUG("%s updated filter settings to %s:%.3f", getUnqualifiedName().c_str(),
 			(_filter_enabled)? "enabled":"disabled",
 			(_filter_enabled)? _filter_control : 0.0f);
+		publishStatus();
+	}
+}
+
+void Node3DX::setEnhancementHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
+{
+	if (false == autoManualMsgIsValid(msg))
+	{
+		ROS_ERROR("%s received invalid enhancement settings (adjustment = %.3f)", getUnqualifiedName().c_str(), msg->adjustment);
+		return;
+	}
+
+	const bool updated_enhancement = (msg->enabled != _enhancement_enabled) || (msg->adjustment != _enhancement_control);
+	if (true == updated_enhancement)
+	{
+		_enhancement_enabled = msg->enabled;
+		_enhancement_control = msg->adjustment;
+		ROS_DEBUG("%s updated enhancement settings to %s:%.3f", getUnqualifiedName().c_str(),
+			(_enhancement_enabled)? "enabled":"disabled",
+			(_enhancement_enabled)? _enhancement_control : 0.0f);
 		publishStatus();
 	}
 }
@@ -564,6 +589,9 @@ void Node3DX::publishStatus()
 
 	msg.filter_settings.enabled = _filter_enabled;
 	msg.filter_settings.adjustment = _filter_control;
+
+	msg.enhancement_settings.enabled = _enhancement_enabled;
+	msg.enhancement_settings.adjustment = _enhancement_control;
 
 	msg.intensity_settings.enabled = _intensity_enabled;
 	msg.intensity_settings.adjustment = _intensity_control;

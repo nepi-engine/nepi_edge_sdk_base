@@ -129,6 +129,9 @@ protected:
 	Node3DXParam<bool> _filter_enabled;
 	Node3DXParam<float> _filter_control;
 
+	Node3DXParam<bool> _enhancement_enabled;
+	Node3DXParam<float> _enhancement_control;
+
 	Node3DXParam<bool> _intensity_enabled;
 	Node3DXParam<float> _intensity_control;
 
@@ -284,6 +287,7 @@ protected:
 	virtual void setResolutionHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
 	virtual void setGainHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
 	virtual void setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
+	virtual void setEnhancementHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
 	virtual void setIntensityHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
 	virtual void clearStatusFlagsHandler(const std_msgs::Empty::ConstPtr &msg);
 

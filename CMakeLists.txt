@@ -170,6 +170,7 @@ add_library(${PROJECT_NAME}
    src/drivers/generic_ahrs/ahrs_driver.cpp
    src/drivers/generic_ahrs/lord_ahrs_driver.cpp
    src/drivers/generic_ahrs/ros_ahrs_driver.cpp
+   src/algorithms/underwater_img_enhancer.cpp
 )
 
 ## Lord AHRS ROS Wrapper Node
