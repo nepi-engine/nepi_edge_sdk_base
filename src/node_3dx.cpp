@@ -495,7 +495,9 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 	}
 
 	std::string image_identifier;
-	const std::string output_img_encoding = (img_id == IMG_ALT)? "mono8" : "bgr8";
+	// Use BGR8 unless this is the alt image, which can optionally be grayscale or color -- just use whatever is defined.
+	const std::string output_img_encoding = (img_id == IMG_ALT)?
+	 	img->encoding : "bgr8";
 	switch(img_id)
 	{
 	case IMG_0:
