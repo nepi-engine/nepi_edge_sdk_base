@@ -1,5 +1,7 @@
 #include <ros_ahrs_driver.h>
 
+#define MAX_SYNC_INTERVAL_DURATION      0.5
+
 namespace Numurus
 {
 const std::string ROSAHRSDriver::NO_TOPIC = "None";
@@ -12,6 +14,14 @@ ROSAHRSDriver::ROSAHRSDriver(ros::NodeHandle parent_pub_nh, const std::string &i
 
   approx_nav_pos_sync = new message_filters::Synchronizer<ApproxNavPosSyncPolicy>(ApproxNavPosSyncPolicy(NAV_POS_SYNC_QUEUE_SIZE),
                                                                                   imu_sub, odom_sub);
+
+  // Give a large max interval duration to reduce the chance that message sets are rejected due to timing issues
+  // TODO: Maybe this should be configurable
+  approx_nav_pos_sync->setMaxIntervalDuration(ros::Duration(MAX_SYNC_INTERVAL_DURATION));
+  // TODO: Maybe need to define this through a custom policy as illustrated in this helpful link:
+  // https://answers.ros.org/question/284758/roscpp-message_filters-approximatetime-api-questions/
+  // TODO: Maybe need to change the age penalty to get the algorithm to run faster via
+  // approx_nav_pos_sync->setAgePenalty(double age_penalty)
   approx_nav_pos_sync->registerCallback(boost::bind(&ROSAHRSDriver::callbackIMUAndOdom, this, _1, _2));
 }
 
@@ -73,7 +83,7 @@ void ROSAHRSDriver::callbackIMUAndOdom(const sensor_msgs::ImuConstPtr& imu_msg, 
   latest_ahrs.angular_velocity_z = imu_msg->angular_velocity.z;
   latest_ahrs.angular_velocity_valid = true;
 
-  // Orientation (quaterion) 
+  // Orientation (quaterion)
   /*
   latest_ahrs.orientation_q0 = odom_msg->pose.pose.orientation.w;
   latest_ahrs.orientation_q1_i = odom_msg->pose.pose.orientation.x;
