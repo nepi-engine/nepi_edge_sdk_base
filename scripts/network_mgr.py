@@ -22,6 +22,10 @@ class NetworkMgr:
     WONDERSHAPER_CALL = "/opt/numurus/ros/share/wondershaper/wondershaper"
     BANDWIDTH_MONITOR_PERIOD_S = 2.0
 
+    FACTORY_STATIC_IP_FILE = "/opt/numurus/ros/etc/linux_cfg/num_static_ipv4"
+    USER_STATIC_IP_FILE = "/opt/numurus/ros/etc/network_mgr/numurus_user_ip_aliases"
+    USER_STATIC_IP_FILE_PREFACE = "# This file includes all user-added IP address aliases. It is sourced by the top-level static IP addr file.\n\n"
+
     store_params_publisher = None
 
     def run(self):
@@ -30,13 +34,26 @@ class NetworkMgr:
     def cleanup(self):
         self.process.stop()
 
+    def get_primary_ip_addr(self):
+        key = "inet static"
+        with open(self.FACTORY_STATIC_IP_FILE, "r") as f:
+            lines = f.readlines()
+            for i,line in enumerate(lines):
+                if key in line:
+                    primary_ip = lines[i+1].split()[1]
+                    return primary_ip
+        return "Unknown Primary IP"
+
     def get_current_ip_addrs(self):
-        ip_addrs = []
+        primary_ip = self.get_primary_ip_addr()
+        ip_addrs = [primary_ip]
         addr_list_output = subprocess.check_output(['ip','addr','list','dev',self.NET_IFACE])
         tokens = addr_list_output.split()
         for i, t in enumerate(tokens):
             if (t == 'inet'):
-                ip_addrs.append(tokens[i+1])
+                # Ensure that aliases go at the back of the list and primary remains at the front -- we rely on that ordering throughout this module
+                if (tokens[i+1] != primary_ip):
+                    ip_addrs.append(tokens[i+1]) # Back of the line
         return ip_addrs
 
     def validate_cidr_ip(self, addr):
@@ -118,13 +135,11 @@ class NetworkMgr:
                     self.dhcp_enabled = False
                     rospy.sleep(1)
 
-                    # Restart the interface -- this picks the original static IP back up
+                    # Restart the interface -- this picks the original static IP back up and sources the user IP alias file
                     subprocess.call(['ifdown', self.NET_IFACE])
                     rospy.sleep(1)
                     subprocess.call(['ifup', self.NET_IFACE])
 
-                    # Reset IPs from param server, but make sure to avoid the DHCP part because that param hasn't been updated at this point
-                    self.set_ips_from_params(skip_dhcp = True)
                 except Exception as e:
                     rospy.logerr("Unable to disable DHCP: " + str(e))
             else:
@@ -133,23 +148,12 @@ class NetworkMgr:
     def enable_dhcp(self, enabled_msg):
         self.enable_dhcp_impl(enabled_msg.data)
 
-    def set_ips_from_params(self, skip_dhcp = False):
-        curr_ips = self.get_current_ip_addrs()
-        for ip in curr_ips[1:]: # Skip the first one -- that is the factory default
-            rospy.loginfo("Purging IP address %s to produce a clean slate", ip)
-            self.remove_ip_impl(ip)
+    def set_dhcp_from_params(self):
+        if (rospy.has_param('~dhcp_enabled')):
+            enabled = rospy.get_param('~dhcp_enabled')
+            if self.dhcp_enabled != enabled:
+                self.enable_dhcp_impl(enabled)
 
-        if (rospy.has_param('~configured_ip_addrs')):
-            configured_ips = rospy.get_param('~configured_ip_addrs')
-            for ip in configured_ips:
-                rospy.loginfo("Adding configured IP address %s", ip)
-                self.add_ip_impl(ip)
-
-        if (skip_dhcp is False):
-            if (rospy.has_param('~dhcp_enabled')):
-                enabled = rospy.get_param('~dhcp_enabled')
-                if self.dhcp_enabled != enabled:
-                    self.enable_dhcp_impl(enabled)
 
     def reset(self, msg):
         if Reset.USER_RESET == msg.reset_type:
@@ -159,8 +163,7 @@ class NetworkMgr:
             except rospy.ServiceException as exc:
                 rospy.logerr("{}: unable to execute user reset".format(self.NODE_NAME))
                 return
-            self.set_ips_from_params()
-            rospy.loginfo("{}: ignoring user reset because this node's config is always up-to-date".format(self.NODE_NAME))
+            self.set_dhcp_from_params()
         elif Reset.FACTORY_RESET == msg.reset_type:
             factory_reset_proxy = rospy.ServiceProxy('factory_reset', FileReset)
             try:
@@ -168,8 +171,13 @@ class NetworkMgr:
             except rospy.ServiceException as exc:
                 rospy.logerr("{}: unable to execute factory reset".format(self.NODE_NAME))
                 return
-            self.set_ips_from_params()
-        elif Reset.USER_RESET:
+
+            # Overwrite the user static IP file with the blank version
+            with open(self.USER_STATIC_IP_FILE, "w") as f:
+                f.write(self.USER_STATIC_IP_FILE_PREFACE)
+
+            self.set_dhcp_from_params()
+        elif Reset.SOFTWARE_RESET:
             rospy.signal_shutdown("{}: shutdown by request".format(self.NODE_NAME))
         elif Reset.HARDWARE_RESET:
             rospy.loginfo("{}: Executing hardware reset by request".format(self.NODE_NAME))
@@ -181,17 +189,23 @@ class NetworkMgr:
             rospy.logerr("{}: invalid reset value (%u)", msg.reset_type)
 
     def save_config(self, msg):
-        # First update param server - only set entries 1:end because 0 is
-        # the fixed IP
+        # First update user static IP file
+        # Note that this is outside the scope of ROS param server because we need these
+        # aliases to come up even before ROS (hence this node) comes up in case the remoted ROSMASTER
+        # is on a subnet only reachable via one of these aliases
         current_ips = self.get_current_ip_addrs()
+
         if (len(current_ips) > 1):
-            rospy.set_param('~configured_ip_addrs', current_ips[1:])
-        else:
-            rospy.set_param('~configured_ip_addrs', [])
+            with open(self.USER_STATIC_IP_FILE, "w") as f:
+                f.write(self.USER_STATIC_IP_FILE_PREFACE)
+                for i,ip_cidr in enumerate(current_ips[1:]): # Skip the first one -- that is the factory default
+                    alias_name = self.NET_IFACE + ":" + str(i+1)
+                    f.write("auto " + alias_name + "\n")
+                    f.write("iface " + alias_name + " inet static\n")
+                    f.write("    address " + ip_cidr + "\n\n")
 
+        # DHCP Settings are stored in the ROS config file
         rospy.set_param('~dhcp_enabled', self.dhcp_enabled)
-
-        # Now tell config_mgr to save the file
         self.store_params_publisher.publish(rospy.get_name())
 
     def set_upload_bwlimit(self, msg):
@@ -264,12 +278,12 @@ class NetworkMgr:
 
         rospy.loginfo("Starting the {} node".format(self.NODE_NAME))
 
-        self.dhcp_enabled = False # initialize to false -- will be updated in set_ips_from_params
+        self.dhcp_enabled = False # initialize to false -- will be updated in set_dhcp_from_params
         self.tx_byte_cnt_deque = collections.deque(maxlen=2)
         self.rx_byte_cnt_deque = collections.deque(maxlen=2)
 
         # Initialize from the config file (which should be loaded ahead of this call)
-        self.set_ips_from_params()
+        self.set_dhcp_from_params()
 
         self.set_upload_bw_limit_from_params()
 
