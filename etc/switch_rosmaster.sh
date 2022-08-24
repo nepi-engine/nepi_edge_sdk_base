@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# DEPRECATED - Use the dedicated ROS set_rosmaster topic instead!
+# This script does not work for 3DX-CS -- sonar node will fail to launch if you use this script to change rosmaster
+
 # Run this script locally on 3DX or remotely using
 # ssh -i ssh_priv_key numurus@<3dx_ip_addr> 'bash -s' < ./switch_rosmaster.sh <new_master_ip>
 

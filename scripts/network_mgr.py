@@ -5,6 +5,8 @@ import rospy
 import socket
 import subprocess
 import collections
+import os
+from datetime import datetime
 
 from std_msgs.msg import String, Bool, Empty, Int32
 from num_sdk_msgs.msg import Reset
@@ -25,6 +27,12 @@ class NetworkMgr:
     FACTORY_STATIC_IP_FILE = "/opt/numurus/ros/etc/linux_cfg/num_static_ipv4"
     USER_STATIC_IP_FILE = "/opt/numurus/ros/etc/network_mgr/numurus_user_ip_aliases"
     USER_STATIC_IP_FILE_PREFACE = "# This file includes all user-added IP address aliases. It is sourced by the top-level static IP addr file.\n\n"
+
+    # Following are to support changing rosmaster IP address
+    SYS_ENV_FILE = "/opt/numurus/sys_env.bash"
+    ROS_MASTER_PORT = 11311
+    ROSLAUNCH_FILE = "/opt/numurus/ros/etc/roslaunch.sh"
+    REMOTE_ROS_NODE_ENV_LOADER_FILES = ["numurus@num-sb1-zynq:/opt/numurus/ros/etc/env_loader.sh"]
 
     store_params_publisher = None
 
@@ -176,7 +184,12 @@ class NetworkMgr:
             with open(self.USER_STATIC_IP_FILE, "w") as f:
                 f.write(self.USER_STATIC_IP_FILE_PREFACE)
 
+            # Set the rosmaster back to localhost
+            self.set_rosmaster_impl("localhost")
+
             self.set_dhcp_from_params()
+            rospy.logwarn("{}: Factory reset complete -- must reboot device for IP and ROS_MASTER_URI changes to take effect")
+
         elif Reset.SOFTWARE_RESET:
             rospy.signal_shutdown("{}: shutdown by request".format(self.NODE_NAME))
         elif Reset.HARDWARE_RESET:
@@ -218,6 +231,84 @@ class NetworkMgr:
 
         # Now set from value from param server
         self.set_upload_bw_limit_from_params()
+
+    def set_rosmaster(self, msg):
+        new_master_ip = msg.data
+        self.set_rosmaster_impl(new_master_ip)
+
+    def set_rosmaster_impl(self, master_ip):
+        auto_comment = " # Modified by network_mgr " + str(datetime.now()) + "\n"
+
+        # First, determine if the master is local, either as localhost or one of the configured IP addrs
+        master_is_local = True if (master_ip == "localhost") else False
+        if master_is_local is False:
+            local_ips = self.get_current_ip_addrs()
+            for ip_cidr in local_ips:
+                ip = ip_cidr.split('/')[0]
+                if master_ip == ip:
+                    master_is_local = True
+                    break
+
+        if master_is_local is True:
+            master_ip = "localhost" # Force 'localhost' whenever the "new" master is a local IP in case that local IP (alias) is later removed
+            master_ip_for_remote_hosts = self.get_primary_ip_addr().split('/')[0]
+        else:
+            master_ip_for_remote_hosts = master_ip
+            # Now ensure we can contact the new rosmaster -- if not, bail out
+            ret_code = subprocess.call(['nc', '-zvw5', master_ip,  str(self.ROS_MASTER_PORT)])
+            if (ret_code != 0):
+                rospy.logerr("Failed to detect a remote rosmaster at " + master_ip + ":" + str(self.ROS_MASTER_PORT) + "... refusing to update ROS_MASTER_URI")
+                return
+
+        # Edit the sys_env file appropriately
+        rosmaster_line_prefix = "export ROS_MASTER_URI="
+        new_rosmaster_line = rosmaster_line_prefix + "http://" + master_ip + ":" + str(self.ROS_MASTER_PORT) + auto_comment
+        sys_env_output_lines = []
+        with open(self.SYS_ENV_FILE, "r") as f_in:
+            for line in f_in:
+                if rosmaster_line_prefix in line:
+                    line = new_rosmaster_line
+                sys_env_output_lines.append(line)
+        with open(self.SYS_ENV_FILE, "w") as f_out:
+            f_out.writelines(sys_env_output_lines)
+
+        # And the roslaunch file (add --wait for remote ros master)
+        roslaunch_line_prefix = "roslaunch ${ROS1_PACKAGE} ${ROS1_LAUNCH_FILE}"
+        new_roslaunch_line = roslaunch_line_prefix
+        if master_is_local is False:
+            new_roslaunch_line += " --wait"
+        new_roslaunch_line += auto_comment
+        roslaunch_output_lines = []
+        with open(self.ROSLAUNCH_FILE, "r") as f_in:
+            for line in f_in:
+                if roslaunch_line_prefix in line:
+                    line = new_roslaunch_line
+                roslaunch_output_lines.append(line)
+        with open(self.ROSLAUNCH_FILE, "w") as f_out:
+            f_out.writelines(roslaunch_output_lines)
+
+        # And the env_loader files for remote machines
+        new_rosmaster_line = rosmaster_line_prefix + "http://" + master_ip_for_remote_hosts + ":" + str(self.ROS_MASTER_PORT) + auto_comment
+        tmp_env_loader_file = "./env_loader_file.tmp"
+        for remote_env_loader_file in self.REMOTE_ROS_NODE_ENV_LOADER_FILES:
+            env_loader_lines = []
+            ret_code = subprocess.call(['scp', remote_env_loader_file, tmp_env_loader_file])
+            if (ret_code != 0):
+                rospy.logwarn("Failed to get copy of remote file " + remote_env_loader_file + "... not updating ROS_MASTER_URI for that remote host")
+                continue
+            with open(tmp_env_loader_file, "r") as f_in:
+                for line in f_in:
+                    if rosmaster_line_prefix in line:
+                        line = new_rosmaster_line
+                    env_loader_lines.append(line)
+            with open(tmp_env_loader_file, "w") as f_out:
+                f_out.writelines(env_loader_lines)
+            ret_code = subprocess.call(['scp', tmp_env_loader_file, remote_env_loader_file])
+            if (ret_code != 0):
+                rospy.logwarn("Failed to update remote file " + remote_env_loader_file)
+            os.remove(tmp_env_loader_file)
+
+        rospy.logwarn("Updated ROS_MASTER_URI to " + master_ip + "... requires reboot to complete the switch")
 
     def set_upload_bw_limit_from_params(self):
         bw_limit_mbps = -1
@@ -294,6 +385,7 @@ class NetworkMgr:
         rospy.Subscriber('reset', Reset, self.reset)
         rospy.Subscriber('save_config', Empty, self.save_config)
         rospy.Subscriber('set_tx_bw_limit_mbps', Int32, self.set_upload_bwlimit)
+        rospy.Subscriber('set_rosmaster', String, self.set_rosmaster)
 
         # Private namespace stuff
         rospy.Subscriber('~reset', Reset, self.reset)

@@ -24,7 +24,7 @@ export ROS1_LAUNCH_FILE=TBD
 # ROS_MASTER_URI may be modified for systems with a remote rosmaster
 # Note, though, that there are other system file modifications required, so you
 # should use the switch_rosmaster script instead of editing ROS_MASTER_URI directly.
-export ROS_MASTER_URI="http://localhost:11311"
+export ROS_MASTER_URI=http://localhost:11311
 
 # ROS2 Stuff - Leave it all TBD to avoid launching any ROS2 nodes
 export ROS2_PACKAGE=TBD
