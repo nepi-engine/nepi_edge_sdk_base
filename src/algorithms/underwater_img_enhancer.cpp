@@ -8,13 +8,27 @@
 namespace Numurus
 {
 
-bool underwaterImgAutoCorrect(cv::Mat &img_in_out, float sensitivity_ratio)
+UnderwaterImgEnhancer::UnderwaterImgEnhancer(size_t averaging_window_size) :
+  alpha_averager{averaging_window_size},
+  beta_averager{averaging_window_size}
+{
+  for (size_t i = 0; i < 3; ++i)
+  {
+    channel_offset_averager.emplace(channel_offset_averager.end(), averaging_window_size);
+    channel_scale_averager.emplace(channel_scale_averager.end(), averaging_window_size);
+  }
+}
+
+UnderwaterImgEnhancer::~UnderwaterImgEnhancer()
+{}
+
+bool UnderwaterImgEnhancer::applyImgAutoCorrect(cv::Mat &img_in_out, float sensitivity_ratio)
 {
   // Sanity check
   const int input_channel_count = img_in_out.channels();
   if (input_channel_count != IMG_CHANNEL_COUNT)
   {
-    printf("Invalid channel count (%d) for underwaterImgAutoCorrect\n");
+    printf("Invalid channel count (%d) for underwaterImgAutoCorrect\n", input_channel_count);
     return false;
   }
 
@@ -70,11 +84,15 @@ bool underwaterImgAutoCorrect(cv::Mat &img_in_out, float sensitivity_ratio)
       chan_offset = (int)(-10 * (1 + 9*sensitivity_ratio));
     }
 
+    // Apply averaging
+    chan_scale = channel_scale_averager[k].calculateNext(chan_scale);
+    chan_offset = channel_offset_averager[k].calculateNext(chan_offset);
+    //fprintf(stderr, "!!! Debug: chan_scale = %f, chan_offset = %f\n", chan_scale, chan_offset);
     cv::add(channels[k], chan_offset, channels[k]);
     channels[k] *= chan_scale;
   }
 
-  printf("!!! Debug: Rescaled the channels !!!\n");
+  //printf("!!! Debug: Rescaled the channels !!!\n");
 
   // Put the channels back together as a single image
   cv::merge(channels, IMG_CHANNEL_COUNT, img_in_out);
@@ -92,7 +110,7 @@ bool underwaterImgAutoCorrect(cv::Mat &img_in_out, float sensitivity_ratio)
   const float *hist_ranges[] = {hist_range};
   cv::Mat hist;
   cv::calcHist(&gray_img, 1, &hist_channels, cv::Mat(), hist, 1, &hist_size, hist_ranges, true, false);
-  printf("!!! Debug: Got the histogram !!!\n");
+  //printf("!!! Debug: Got the histogram !!!\n");
 
   const size_t hist_length = hist.rows * hist.cols;
 
@@ -128,152 +146,49 @@ bool underwaterImgAutoCorrect(cv::Mat &img_in_out, float sensitivity_ratio)
   }
 
   // Calculate alpha and beta
-  const float alpha = 255.0 / (max_gray_index - min_gray_index) * (0.5+sensitivity_ratio);
-  const float beta = (-min_gray_index * alpha + 10) * (0.5+sensitivity_ratio);
+  float alpha = 255.0 / (max_gray_index - min_gray_index) * (0.5+sensitivity_ratio);
+  float beta = (-min_gray_index * alpha + 10) * (0.5+sensitivity_ratio);
 
+  // Apply averaging
+  alpha = alpha_averager.calculateNext(alpha);
+  beta = beta_averager.calculateNext(beta);
+
+  //fprintf(stderr, "!!! Debug: alpha = %f, beta = %f\n", alpha, beta);
   // Rescale
   cv::convertScaleAbs(img_in_out, img_in_out, alpha, beta);
 
   return true;
 }
 
-/* Original python
-# encoding=utf-8
-import tkinter as tk
-from tkinter import filedialog
-import os
-import natsort
-import datetime
+void UnderwaterImgEnhancer::updateAveragingWindowSize(size_t window_size)
+{
+  for (auto &averager : channel_offset_averager)
+  {
+    averager.updateWindowSize(window_size);
+  }
 
-import numpy as np
-import cv2
+  for (auto &averager : channel_scale_averager)
+  {
+    averager.updateWindowSize(window_size);
+  }
+  alpha_averager.updateWindowSize(window_size);
+  beta_averager.updateWindowSize(window_size);
+}
 
+void UnderwaterImgEnhancer::resetAveraging()
+{
+  for (auto &averager : channel_offset_averager)
+  {
+    averager.reset();
+  }
 
-def image_auto_correct(img,sensitivity_ratio=0.5):
-
-    # Color Correction optimization
-    Max=[0,0,0]
-    for k in range(0, 3):
-        Max  = np.max(img[:,:,k])
-    Min_Max_channel  = np.min(Max)
-    for k in range(0, 3):
-        Max_channel  = np.max(img[:,:,k])
-        Min_channel  = np.min(img[:,:,k])
-        Mean_channel = np.mean(img[:,:,k])
-        Chan_scale = (255 - Mean_channel) / (Max_channel - Min_channel)
-
-        if Chan_scale < 1:
-            Chan_scale = 1 - (1-Chan_scale)*(255-Min_Max_channel)/170
-        elif Chan_scale > 1:
-            Chan_scale = 1 + (Chan_scale-1)*(255-Min_Max_channel)/170
-        if Chan_scale > 1*(1+sensitivity_ratio):
-            Chan_scale = 1 *(1+sensitivity_ratio)
-        if Chan_scale < -1*(1+sensitivity_ratio):
-            Chan_scale = -1 *(1+sensitivity_ratio)
-        print(Chan_scale)
-        Chan_offset = -1*Min_channel
-        if Chan_offset < -10 * (1+9*sensitivity_ratio):
-            Chan_offset = -10 * (1+9*sensitivity_ratio)
-
-        img[:,:,k] = (img[:,:,k] + Chan_offset) * Chan_scale
-
-    # Contrast and Brightness optimization
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Calculate grayscale histogram
-    hist = cv2.calcHist([gray],[0],None,[256],[0,256])
-    hist_size = len(hist)
-
-    # Calculate cumulative distribution from the histogram
-    accumulator = []
-    accumulator.append(float(hist[0]))
-    for index in range(1, hist_size):
-        accumulator.append(accumulator[index -1] + float(hist[index]))
-
-    # Locate points to clip
-    maximum = accumulator[-1]
-    clip_hist_percent = (maximum/100.0)
-    clip_hist_percent /= 2.0
-
-    # Locate left cut
-    minimum_gray = 0
-    while accumulator[minimum_gray] < clip_hist_percent:
-        minimum_gray += 5
-
-    # Locate right cut
-    maximum_gray = hist_size -1
-    while accumulator[maximum_gray] >= (maximum - clip_hist_percent):
-        maximum_gray -= 1
-
-    # Calculate alpha and beta values
-    alpha = 255 / (maximum_gray - minimum_gray) * (0.5+sensitivity_ratio)
-    beta = (-minimum_gray * alpha + 10) * (0.5+sensitivity_ratio)
-
-    img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
-    return (img)
-
-
-if __name__ == '__main__':
-
-    starttime = datetime.datetime.now()
-
-
-    # Get file path
-    start_folder='D:\Data\Image_Enhance\Image Sets\TestDIU'
-
-##    root = tk.Tk()
-##    root.withdraw()
-##    pathname = filedialog.askdirectory(initialdir=start_folder)
-##    #print('Folder Name')
-##    #print( pathname)
-    pathname=start_folder
-
-
-    path_in = pathname
-    path_out = path_in + "/Enhanced4b"
-    if os.path.isdir(path_out)==False:
-        os.mkdir(path_out)
-    img_files=[]
-    label_files=[]
-    for file in os.listdir(path_in):
-        if file.endswith(tuple(['.png','.PNG','.jpg','.JPG'])) and file.find('depth')==-1: # excludes depth map files
-              img_files.append(file)
-        if file.endswith(tuple(['.txt'])): # excludes depth map files
-              label_files.append(file)
-    img_files =  natsort.natsorted(img_files)
-    #label_files =  natsort.natsorted(label_files)
-
-    for i in range(len(img_files)):
-        file = img_files[i]
-        #print('********    file   ********',file)
-        img = cv2.imread(path_in +'/' + file)
-        img_filtered=image_auto_correct(img,0)
-        file_out=path_out + "/" + file[:-4] + '_Enhanced_0.png'
-        #print(file_out)
-        cv2.imwrite(file_out, img_filtered)
-
-    for i in range(len(img_files)):
-        file = img_files[i]
-        #print('********    file   ********',file)
-        img = cv2.imread(path_in +'/' + file)
-        img_filtered=image_auto_correct(img,0.5)
-        file_out=path_out + "/" + file[:-4] + '_Enhanced_1.png'
-        #print(file_out)
-        cv2.imwrite(file_out, img_filtered)
-
-    for i in range(len(img_files)):
-        file = img_files[i]
-        #print('********    file   ********',file)
-        img = cv2.imread(path_in +'/' + file)
-        img_filtered=image_auto_correct(img,1)
-        file_out=path_out + "/" + file[:-4] + '_Enhanced_2.png'
-        #print(file_out)
-        cv2.imwrite(file_out, img_filtered)
-
-    Endtime = datetime.datetime.now()
-    Time = Endtime - starttime
-    print('Time', Time)
-*/
+  for (auto &averager : channel_scale_averager)
+  {
+    averager.reset();
+  }
+  alpha_averager.reset();
+  beta_averager.reset();
+}
 
 } // namespace numurus
 
