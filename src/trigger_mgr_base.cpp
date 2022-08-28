@@ -101,6 +101,13 @@ void TriggerMgrBase::setPeriodicSwTrigImpl(bool enabled, uint32_t sw_trig_mask, 
 		return;
 	}
 
+	// If this is the default mask, make sure to update default trigger rate for param server saving
+	const uint32_t default_mask = default_periodic_trig_mask_;
+	if (default_mask == sw_trig_mask)
+	{
+		default_periodic_trig_rate_ = (enabled == false)? 0.0 : rate_hz;
+	}
+
 	// If disabling, just signal the worker thread by removing the map entry
 	if (false == enabled)
 	{
