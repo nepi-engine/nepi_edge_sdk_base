@@ -53,8 +53,8 @@ class SystemMgrNode():
 
 	def update_temperatures(self):
 		# Get the current temperatures
-		
-		# TODO: Should the temperature sensor or the entire subproc. cmd line be configurable? 
+
+		# TODO: Should the temperature sensor or the entire subproc. cmd line be configurable?
 		temp_string_mdegC = subprocess.check_output(["cat", "/sys/class/thermal/thermal_zone0/temp"])
 		self.status_msg.temperatures[0] = float(temp_string_mdegC) / 1000.0
 
@@ -186,7 +186,7 @@ class SystemMgrNode():
 		#      there are 8 "thermal zones" in /sys/class/thermal/
 		self.system_defs_msg.temperature_sensor_names.append('CPU Zone 0')
 		#TODO: Configurable warning/error temperatures
-		self.system_defs_msg.warning_temps.append(50.0)
+		self.system_defs_msg.warning_temps.append(60.0)
 		self.system_defs_msg.critical_temps.append(70.0)
 
 		statvfs = os.statvfs(self.data_mountpoint)
