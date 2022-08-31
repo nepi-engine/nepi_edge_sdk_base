@@ -170,7 +170,7 @@ protected:
   float heading_override_deg = 0.0f;
   bool heading_override_true_north = true;
 
-  bool orientation_override = true;
+  bool orientation_override = false;
   float orientation_override_q0 = 1.0f;
   float orientation_override_q1_i = 0.0f;
   float orientation_override_q2_j = 0.0f;
