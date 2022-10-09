@@ -147,7 +147,10 @@ bool UnderwaterImgEnhancer::applyImgAutoCorrect(cv::Mat &img_in_out, float sensi
 
   // Calculate alpha and beta
   float alpha = 255.0 / (max_gray_index - min_gray_index) * (0.5+sensitivity_ratio);
+  if (alpha > 2.0f) alpha = 2.0f; // Bounds added in Jay's version 4b2b
+
   float beta = (-min_gray_index * alpha + 10) * (0.5+sensitivity_ratio);
+  if (beta < -50.0f) beta = -50.0f; // Bounds added in Jay's version 4b2b
 
   // Apply averaging
   alpha = alpha_averager.calculateNext(alpha);
