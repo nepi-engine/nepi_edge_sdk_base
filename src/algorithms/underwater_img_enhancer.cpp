@@ -56,40 +56,53 @@ bool UnderwaterImgEnhancer::applyImgAutoCorrect(cv::Mat &img_in_out, float sensi
   // Color Correction Optimization
   for (size_t k = 0; k < 3; ++k) // Only do the color channels
   {
-    double chan_scale = (255.0 - mean_channel[k]) / (max_channel[k] - min_channel[k]);
-
-    if (chan_scale < 1.0)
+    if (algorithm == IMG_ENH_ALG_SHIFT_AND_SCALE)
     {
-      chan_scale = 1.0 - (1.0 - chan_scale) * (255.0 - minmax_channel) / 170.0;
-    }
-    else if (chan_scale > 1.0)
-    {
-      chan_scale = 1.0 + (chan_scale - 1.0) * (255.0 - minmax_channel) / 170.0;
-    }
+      double chan_scale = (255.0 - mean_channel[k]) / (max_channel[k] - min_channel[k]);
 
-    if (chan_scale > (1 + sensitivity_ratio))
-    {
-      chan_scale = 1 + sensitivity_ratio;
-    }
-    else if (chan_scale < -(1+sensitivity_ratio))
-    {
-      chan_scale = -(1+sensitivity_ratio);
-    }
+      if (chan_scale < 1.0)
+      {
+        chan_scale = 1.0 - (1.0 - chan_scale) * (255.0 - minmax_channel) / 170.0;
+      }
+      else if (chan_scale > 1.0)
+      {
+        chan_scale = 1.0 + (chan_scale - 1.0) * (255.0 - minmax_channel) / 170.0;
+      }
 
-    double chan_offset = -(min_channel[k]);
-    //printf("Debug: chan_offset[%zu] before limits = %f\n", k, chan_offset);
+      if (chan_scale > (1 + sensitivity_ratio))
+      {
+        chan_scale = 1 + sensitivity_ratio;
+      }
+      else if (chan_scale < -(1+sensitivity_ratio))
+      {
+        chan_scale = -(1+sensitivity_ratio);
+      }
 
-    if (chan_offset < (-10 * (1 + 9*sensitivity_ratio)))
-    {
-      chan_offset = (int)(-10 * (1 + 9*sensitivity_ratio));
+      double chan_offset = -(min_channel[k]);
+      //printf("Debug: chan_offset[%zu] before limits = %f\n", k, chan_offset);
+
+      if (chan_offset < (-10 * (1 + 9*sensitivity_ratio)))
+      {
+        chan_offset = (int)(-10 * (1 + 9*sensitivity_ratio));
+      }
+
+      // Apply averaging
+      chan_scale = channel_scale_averager[k].calculateNext(chan_scale);
+      chan_offset = channel_offset_averager[k].calculateNext(chan_offset);
+      //fprintf(stderr, "!!! Debug: chan_scale = %f, chan_offset = %f\n", chan_scale, chan_offset);
+      cv::add(channels[k], chan_offset, channels[k]);
+      channels[k] *= chan_scale;
     }
+    else // IMG_ENH_ALG_SHIFT_ONLY
+    {
+      double mod_channel = (255.0 - (max_channel[k] - min_channel[k])) / 50.0;
+      if (mod_channel > 1.0) mod_channel = 1.0;
+            
+      double chan_offset = (124 - mean_channel[k]) * mod_channel * (0.75 + (0.25*sensitivity_ratio));
+      chan_offset = channel_offset_averager[k].calculateNext(chan_offset);
 
-    // Apply averaging
-    chan_scale = channel_scale_averager[k].calculateNext(chan_scale);
-    chan_offset = channel_offset_averager[k].calculateNext(chan_offset);
-    //fprintf(stderr, "!!! Debug: chan_scale = %f, chan_offset = %f\n", chan_scale, chan_offset);
-    cv::add(channels[k], chan_offset, channels[k]);
-    channels[k] *= chan_scale;
+      cv::add(channels[k], chan_offset, channels[k]);
+    }
   }
 
   //printf("!!! Debug: Rescaled the channels !!!\n");
@@ -174,6 +187,7 @@ void UnderwaterImgEnhancer::updateAveragingWindowSize(size_t window_size)
   {
     averager.updateWindowSize(window_size);
   }
+
   alpha_averager.updateWindowSize(window_size);
   beta_averager.updateWindowSize(window_size);
 }
@@ -189,8 +203,23 @@ void UnderwaterImgEnhancer::resetAveraging()
   {
     averager.reset();
   }
+
   alpha_averager.reset();
   beta_averager.reset();
+}
+
+bool UnderwaterImgEnhancer::setAlgorithm(ImgEnhancerAlgorithm alg)
+{
+  switch (alg)
+  {
+    case IMG_ENH_ALG_SHIFT_ONLY:
+    case IMG_ENH_ALG_SHIFT_AND_SCALE:
+      resetAveraging();
+      algorithm = alg;
+      return true;
+    default: // Unknown algorithm
+      return false;
+  }
 }
 
 } // namespace numurus
