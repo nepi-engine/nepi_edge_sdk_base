@@ -10,7 +10,7 @@ from datetime import datetime
 
 from std_msgs.msg import String, Bool, Empty, Int32
 from num_sdk_msgs.msg import Reset
-from num_sdk_msgs.srv import IPAddrQuery, FileReset, BandwidthUsageQuery
+from num_sdk_msgs.srv import IPAddrQuery, FileReset, BandwidthUsageQuery, WifiQuery
 
 class NetworkMgr:
     """The Network Manager Node of the Numurus core SDK.
@@ -33,6 +33,12 @@ class NetworkMgr:
     ROS_MASTER_PORT = 11311
     ROSLAUNCH_FILE = "/opt/numurus/ros/etc/roslaunch.sh"
     REMOTE_ROS_NODE_ENV_LOADER_FILES = ["numurus@num-sb1-zynq:/opt/numurus/ros/etc/env_loader.sh"]
+
+    # Following support WiFi setup
+    WIFI_IFACE = "wlan0"
+    CREATE_AP_CALL = "/opt/numurus/ros/share/create_ap/create_ap"
+    DEFAULT_WIFI_AP_NAME = "nepi_device_ap"
+    DEFAULT_WIFI_AP_PASSWORD = "nepi_device_ap"
 
     store_params_publisher = None
 
@@ -162,7 +168,6 @@ class NetworkMgr:
             if self.dhcp_enabled != enabled:
                 self.enable_dhcp_impl(enabled)
 
-
     def reset(self, msg):
         if Reset.USER_RESET == msg.reset_type:
             user_reset_proxy = rospy.ServiceProxy('user_reset', FileReset)
@@ -219,6 +224,12 @@ class NetworkMgr:
 
         # DHCP Settings are stored in the ROS config file
         rospy.set_param('~dhcp_enabled', self.dhcp_enabled)
+
+        # Wifi settings are stored in the ROS config file
+        rospy.set_param('~wifi/enable_access_point', self.wifi_ap_enabled)
+        rospy.set_param('~wifi/access_point_name', self.wifi_ap_name)
+        rospy.set_param('~wifi/access_point_password', self.wifi_ap_password)
+
         self.store_params_publisher.publish(rospy.get_name())
 
     def set_upload_bwlimit(self, msg):
@@ -335,7 +346,43 @@ class NetworkMgr:
             rospy.loginfo("Updated TX bandwidth limit to " + str(bw_limit_mbps) + " Mbps")
             #self.tx_byte_cnt_deque.clear()
         except Exception as e:
-            rospy.logerr("Unable to set uploade bandwidth limit: " + str(e))
+            rospy.logerr("Unable to set upload bandwidth limit: " + str(e))
+
+    def enable_wifi_ap_handler(self, enabled_msg):
+        if self.has_wifi is False:
+            rospy.logwarn("Cannot enable WiFi access point - system has no WiFi")
+            return
+        
+        # Just set the param and let the ...from_params() function handle the rest
+        rospy.set_param("~wifi/enable_access_point", enabled_msg.data)
+        self.set_wifi_from_params()
+
+    def set_wifi_from_params(self):
+        self.wifi_ap_enabled = rospy.get_param('~wifi/enable_access_point', False)
+        self.wifi_ap_name = rospy.get_param('~wifi/access_point_name', self.DEFAULT_WIFI_AP_NAME)
+        self.wifi_ap_password = rospy.get_param('~wifi/access_point_password', self.DEFAULT_WIFI_AP_PASSWORD)
+        
+        if self.wifi_ap_enabled is True:
+            if self.has_wifi is False:
+                rospy.logwarn("Cannot enable WiFi access point - system has no WiFi")
+                return
+            try:
+                # Use the create_ap command line
+                subprocess.check_call([self.CREATE_AP_CALL, '-n', '--redirect-to-localhost', '--isolate-clients', '--daemon',
+                                       self.WIFI_IFACE, self.wifi_ap_name, self.wifi_ap_password])
+                rospy.loginfo("Started WiFi access point: " + self.wifi_ap_name)
+            except Exception as e:
+                rospy.logerr("Unable to start wifi access point with " + str(e))
+        else:
+            try:
+                subprocess.check_call([self.CREATE_AP_CALL, '--stop', self.WIFI_IFACE])
+            except Exception as e:
+                rospy.logwarn("Unable to terminate wifi access point: " + str(e))
+
+        # TODO: Connect to external network if so configured. Because we don't typically run
+        # NetworkManager Linux util, the nmcli schemes for accomplishing this do not work. Instead, we must
+        # use wpa_supplicant. Can use wpa_passphrase to generate the input to wpa_supplicant as per
+        # https://wiki.archlinux.org/title/wpa_supplicant#Connecting_with_wpa_passphrase
 
     def monitor_bandwidth_usage(self, event):
         with open('/sys/class/net/' + self.NET_IFACE + '/statistics/tx_bytes', 'r') as f:
@@ -364,6 +411,18 @@ class NetworkMgr:
 
         return {'tx_rate_mbps':tx_rate_mbps, 'rx_rate_mbps':rx_rate_mbps, 'tx_limit_mbps': tx_rate_limit_mbps}
 
+    def handle_wifi_query(self, req):
+        return {'has_wifi': self.has_wifi, 'wifi_ap_enabled': self.wifi_ap_enabled, 
+                'wifi_ap_name': self.wifi_ap_name, 'wifi_ap_password': self.wifi_ap_password}
+
+    def isWifiPresent(self):
+        # Just check for the existence of the interface. Maybe more sophisticated in the future
+        try:
+            subprocess.check_call(['ip','addr','list','dev',self.WIFI_IFACE])
+            return True
+        except:
+            return False
+
     def __init__(self):
         rospy.init_node(self.NODE_NAME)
 
@@ -372,6 +431,13 @@ class NetworkMgr:
         self.dhcp_enabled = False # initialize to false -- will be updated in set_dhcp_from_params
         self.tx_byte_cnt_deque = collections.deque(maxlen=2)
         self.rx_byte_cnt_deque = collections.deque(maxlen=2)
+        
+        self.has_wifi = self.isWifiPresent()
+        if self.has_wifi is True:
+            rospy.loginfo("Detected WiFi (interface queried = " + self.WIFI_IFACE + ")")
+            self.wifi_ap_enabled = False
+            self.wifi_ap_name = self.DEFAULT_WIFI_AP_NAME
+            self.wifi_ap_password = self.DEFAULT_WIFI_AP_PASSWORD
 
         # Initialize from the config file (which should be loaded ahead of this call)
         self.set_dhcp_from_params()
@@ -393,11 +459,26 @@ class NetworkMgr:
 
         rospy.Service('ip_addr_query', IPAddrQuery, self.handle_ip_addr_query)
         rospy.Service('bandwidth_usage_query', BandwidthUsageQuery, self.handle_bandwidth_usage_query)
+        rospy.Service('wifi_query', WifiQuery, self.handle_wifi_query)
 
         rospy.Timer(rospy.Duration(self.BANDWIDTH_MONITOR_PERIOD_S), self.monitor_bandwidth_usage)
 
         self.store_params_publisher = rospy.Publisher('store_params', String, queue_size=1)
 
+        # Wifi stuff -- only enabled if WiFi is present
+        self.wifi_ap_enabled = False
+        self.wifi_ap_name = "n/a"
+        self.wifi_ap_password = "n/a"
+        
+        self.has_wifi = self.isWifiPresent()
+        if self.has_wifi is True:
+            rospy.loginfo("Detected WiFi on " + self.WIFI_IFACE)
+            self.set_wifi_from_params()
+
+            rospy.Subscriber('enable_wifi_access_point', Bool, self.enable_wifi_ap_handler)
+        else:
+            rospy.loginfo("No WiFi detected (interface queried = " + self.WIFI_IFACE + ")")
+                
         self.run()
 
 if __name__ == "__main__":

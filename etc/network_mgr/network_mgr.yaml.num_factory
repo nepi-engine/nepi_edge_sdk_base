@@ -1,2 +1,7 @@
 dhcp_enabled: false        # Specifies whether this device acts as a DHCP client or not. Does not affect default static IP
 tx_bw_limit_mbps: -1       # Bandwidth limit for transmitted data in Mbps. -1 indicates no bandwidth limit is in place
+
+wifi:
+    enable_access_point: false              # Specifies whether onboard wifi will be enabled as an access point for remote devices
+    access_point_name: "nepi_device_ap"     # Access point name (visible to external devices during WiFi discovery)
+    access_point_password: "nepi_device_ap" # Access point password (for external device login)
