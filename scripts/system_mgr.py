@@ -4,6 +4,7 @@ import shutil
 import random  # Only necessary for simulation of temperature data
 from collections import deque
 import re
+from datetime import datetime
 
 import subprocess
 
@@ -11,9 +12,11 @@ import rospy
 
 from std_msgs.msg import String, Empty, Float32
 from num_sdk_msgs.msg import SystemStatus, SystemDefs, WarningFlags, StampedString, SaveData
-from num_sdk_msgs.srv import SystemDefsQuery, SystemDefsQueryResponse, OpEnvironmentQuery, OpEnvironmentQueryResponse
+from num_sdk_msgs.srv import SystemDefsQuery, SystemDefsQueryResponse, OpEnvironmentQuery, OpEnvironmentQueryResponse, \
+                             SystemSoftwareStatusQuery, SystemSoftwareStatusQueryResponse
 
 from num_sdk_base.save_cfg_if import SaveCfgIF
+import num_sdk_base.nepi_software_update_utils as sw_update_utils
 
 BYTES_PER_MEGABYTE = 2**20
 
@@ -37,6 +40,18 @@ class SystemMgrNode():
     # Shorter period for more responsive updates
     disk_usage_deque = deque(maxlen=3)
 
+    first_stage_rootfs_device = "/dev/mmcblk0p1"
+    new_img_staging_device = "/dev/mmcblk1p3"
+    new_img_staging_device_removable = False
+    usb_device = "/dev/sda" 
+    sd_card_device = "/dev/mmcblk1p"
+    emmc_device = "/dev/mmcblk0p"
+    auto_switch_rootfs_on_new_img_install = True
+    sw_update_progress = ""
+
+    installing_new_image = False
+    archiving_inactive_image = False
+
     def add_info_string(self, string, level):
         self.status_msg.info_strings.append(StampedString(
             timestamp=rospy.get_rostime(), payload=string, priority=level))
@@ -51,7 +66,7 @@ class SystemMgrNode():
     def get_fw_rev(self):
         if (os.path.exists(self.FW_VERSION_PATH) and (os.path.getsize(self.FW_VERSION_PATH) > 0)):
             with open(self.FW_VERSION_PATH, "r") as f:
-                return f.readline()
+                return f.readline().strip()
         return "UNSPECIFIED"
 
     def update_temperatures(self):
@@ -96,6 +111,7 @@ class SystemMgrNode():
                               self.current_throttle_ratio)
 
     def update_storage(self):
+        # Data partition
         statvfs = os.statvfs(self.data_mountpoint)
         disk_free = float(statvfs.f_frsize) * \
             statvfs.f_bavail / BYTES_PER_MEGABYTE  # In MB
@@ -114,6 +130,41 @@ class SystemMgrNode():
             self.save_data_pub.publish(save_continuous=False, save_raw=False)
         else:
             self.status_msg.warnings.flags[WarningFlags.DISK_FULL] = False
+
+    def provide_sw_update_status(self, req):
+        resp = SystemSoftwareStatusQueryResponse()
+        resp.new_sys_img_staging_device = self.get_device_friendly_name(self.new_img_staging_device)
+        resp.new_sys_img_staging_device_free_mb = sw_update_utils.getPartitionFreeByteCount(self.new_img_staging_device) / BYTES_PER_MEGABYTE
+
+        # Don't query anything if we are in the middle of installing a new image
+        if self.installing_new_image:
+            resp.new_sys_img = 'busy'
+            resp.new_sys_img_version = 'busy'
+            return resp
+
+        (status, err_string, new_img_file, new_img_version, new_img_filesize) = sw_update_utils.checkForNewImageAvailable(
+            self.new_img_staging_device, self.new_img_staging_device_removable)
+        if status is False:
+            rospy.logwarn("Unable to update software status: " + err_string)
+            resp.new_sys_img = 'query failed'
+            resp.new_sys_img_version = 'query failed'
+            resp.new_sys_img_size_mb = 0
+            self.status_msg.sys_img_update_status = 'query failed'
+            return resp
+
+        # Update the response
+        if new_img_file:
+            resp.new_sys_img = new_img_file
+            resp.new_sys_img_version = new_img_version
+            resp.new_sys_img_size_mb = new_img_filesize / BYTES_PER_MEGABYTE
+            if not self.status_msg.sys_img_update_status:
+                self.status_msg.sys_img_update_status = "ready to install"
+        else:
+            resp.new_sys_img = 'none detected'
+            resp.new_sys_img_version = 'none detected'
+            resp.new_sys_img_size_mb = 0
+                
+        return resp
 
     def publish_periodic_status(self, event):
         self.status_msg.sys_time = event.current_real
@@ -186,12 +237,102 @@ class SystemMgrNode():
     def handle_system_error_msg(self, msg):
         self.add_info_string(msg.data, StampedString.PRI_HIGH)
 
+    def receive_sw_update_progress(self, progress_val):
+        self.status_msg.sys_img_update_progress = progress_val
+
+    def receive_archive_progress(self, progress_val):
+        self.status_msg.sys_img_archive_progress = progress_val
+    
+    def handle_install_new_img(self, msg):
+        if self.installing_new_image:
+            rospy.logwarn("New image is already being installed")
+            return
+
+        decompressed_img_filename = msg.data
+        self.status_msg.sys_img_update_status = 'flashing'
+        self.installing_new_image = True
+
+        status, err_msg = sw_update_utils.writeImage(self.new_img_staging_device, decompressed_img_filename, self.inactive_rootfs_device, 
+                                                     do_slow_transfer=False, progress_cb=self.receive_sw_update_progress)
+
+        # Finished installing
+        self.installing_new_image = False
+        if status is False:
+            rospy.logerr("Failed to flash image: " + err_msg)
+            self.status_msg.sys_img_update_status = 'failed'
+            return
+        else:
+            rospy.loginfo("Finished flashing new image to inactive partition")
+            self.status_msg.sys_img_update_status = 'complete - needs rootfs switch and reboot'
+
+        # Check and repair the newly written filesystem as necessary
+        status, err_msg = sw_update_utils.checkAndRepairPartition(self.inactive_rootfs_device)
+        if status is False:
+            rospy.logerr("Newly flashed image has irrepairable filesystem issues: ", err_msg)
+            self.status_msg.sys_img_update_status = 'failed - fs errors'
+            return
+        else:
+            rospy.loginfo("New image filesystem checked and repaired (as necessary)")
+
+        # Do automatic rootfs switch if so configured
+        if self.auto_switch_rootfs_on_new_img_install:
+            status, err_msg = sw_update_utils.switchActiveAndInactivePartitions(
+                self.first_stage_rootfs_device)
+            if status is False:
+                rospy.logwarn("Automatic rootfs active/inactive switch failed: " + err_msg)
+            else:
+                rospy.loginfo("Executed automatic rootfs A/B switch... on next reboot new image will load")
+                self.status_msg.sys_img_update_status = 'complete - needs reboot'
+    
+    def handle_switch_active_inactive_rootfs(self, msg):
+        status, err_msg = sw_update_utils.switchActiveAndInactivePartitions(
+            self.first_stage_rootfs_device)
+        if status is False:
+            rospy.logwarn("Failed to switch active/inactive rootfs: " + err_msg)
+            return
+
+        rospy.logwarn(
+            "Switched active and inactive rootfs. Must reboot system for changes to take effect")
+
+    def handle_archive_inactive_rootfs(self, msg):
+        if self.archiving_inactive_image is True:
+            rospy.logwarn("Already in the process of archiving image")
+            return
+
+        now = datetime.now()
+        backup_file_basename = 'nepi_rootfs_archive_' + now.strftime("%Y_%m_%d_%H%M%S") + '.img.raw'
+        self.status_msg.sys_img_archive_status = 'archiving'
+        self.status_msg.sys_img_archive_filename = backup_file_basename
+
+        # Transfers to USB seem to have trouble with the standard block size, so allow those to proceed at a lower
+        # block size
+        slow_transfer = True if self.usb_device in self.new_img_staging_device else False
+                
+        self.archiving_inactive_image = True
+        status, err_msg = sw_update_utils.archiveInactiveToStaging(
+            self.inactive_rootfs_device, self.new_img_staging_device, backup_file_basename, slow_transfer, progress_cb = self.receive_archive_progress)
+        self.archiving_inactive_image = False
+
+        if status is False:
+            rospy.logerr("Failed to backup inactive rootfs: " + err_msg)
+            self.status_msg.sys_img_archive_status = 'failed'
+        else:
+            rospy.loginfo("Finished archiving inactive rootfs")
+            self.status_msg.sys_img_archive_status = 'archive complete'
+    
     def provide_system_defs(self, req):
         return SystemDefsQueryResponse(self.system_defs_msg)
 
     def provide_op_environment(self, req):
         # Just proxy the param server
         return OpEnvironmentQueryResponse(rospy.get_param("~op_environment", OpEnvironmentQueryResponse.OP_ENV_AIR))
+
+    def get_device_friendly_name(self, devfs_name):
+        # Leave space for the partition number
+        friendly_name = devfs_name.replace(self.emmc_device, "EMMC Partition ")
+        friendly_name = friendly_name.replace(self.usb_device, "USB Partition ")
+        friendly_name = friendly_name.replace(self.sd_card_device, "SD/SSD Partition ")
+        return friendly_name
 
     def init_msgs(self):
         self.system_defs_msg.firmware_version = self.get_fw_rev()
@@ -209,10 +350,41 @@ class SystemMgrNode():
         self.system_defs_msg.disk_capacity = statvfs.f_frsize * statvfs.f_blocks / \
             BYTES_PER_MEGABYTE     # Size of data filesystem in Megabytes
 
+        self.system_defs_msg.first_stage_rootfs_device = self.get_device_friendly_name(self.first_stage_rootfs_device)
+        
+        # Gather some info about ROOTFS A/B configuration
+        (status, err_msg, rootfs_ab_settings_dict) = sw_update_utils.getRootfsABStatus(
+            self.first_stage_rootfs_device)
+        if status is True:
+            self.system_defs_msg.active_rootfs_device = self.get_device_friendly_name(rootfs_ab_settings_dict[
+                'active_part_device'])
+
+            self.system_defs_msg.active_rootfs_size_mb = sw_update_utils.getPartitionByteCount(rootfs_ab_settings_dict[
+                'active_part_device']) / BYTES_PER_MEGABYTE
+            
+            self.inactive_rootfs_device = rootfs_ab_settings_dict[
+                'inactive_part_device']
+            self.system_defs_msg.inactive_rootfs_device = self.get_device_friendly_name(self.inactive_rootfs_device)
+
+            self.system_defs_msg.inactive_rootfs_size_mb = sw_update_utils.getPartitionByteCount(self.inactive_rootfs_device) / BYTES_PER_MEGABYTE
+            
+            self.system_defs_msg.inactive_rootfs_fw_version = rootfs_ab_settings_dict[
+                'inactive_part_fw_version']
+            self.system_defs_msg.max_boot_fail_count = rootfs_ab_settings_dict[
+                'max_boot_fail_count']
+        else:
+            rospy.logwarn(
+                "Unable to gather ROOTFS A/B system definitions: " + err_msg)
+            self.system_defs_msg.active_rootfs_device = "Unknown"
+            self.system_defs_msg.inactive_rootfs_device = "Unknown"
+            self.inactive_rootfs_device = "Unknown"
+            self.system_defs_msg.inactive_rootfs_fw_version = "Unknown"
+            self.system_defs_msg.max_boot_fail_count = 0
+
         for i in self.system_defs_msg.temperature_sensor_names:
             self.status_msg.temperatures.append(0.0)
 
-        # TODO: Should this be queried somehow e.g., from the param server
+	    # TODO: Should this be queried somehow e.g., from the param server
         self.status_msg.save_all_enabled = False
 
     def updateFromParamServer(self):
@@ -224,14 +396,55 @@ class SystemMgrNode():
         self.data_mountpoint = rospy.get_param(
             "~data_mountpoint", self.data_mountpoint)
 
+        self.first_stage_rootfs_device = rospy.get_param(
+            "~first_stage_rootfs_device", self.first_stage_rootfs_device
+        )
+
+        self.new_img_staging_device = rospy.get_param(
+            "~new_img_staging_device", self.new_img_staging_device
+        )
+
+        self.new_img_staging_device_removable = rospy.get_param(
+            "~new_img_staging_device_removable", self.new_img_staging_device_removable
+        )
+
+        self.emmc_device = rospy.get_param(
+            "~emmc_device", self.emmc_device
+        )
+
+        self.usb_device = rospy.get_param(
+            "~usb_device", self.usb_device
+        )
+
+        self.sd_card_device = rospy.get_param(
+            "~sd_card_device", self.sd_card_device
+        )
+
+        self.auto_switch_rootfs_on_new_img_install = rospy.get_param(
+            "~auto_switch_rootfs_on_new_img_install", self.auto_switch_rootfs_on_new_img_install
+        )
+    
     def run(self):
         # Want to update the op_environment (from param server) through the whole system once at
         # start-up, but the only reasonable way to do that is to delay long enough to let all nodes start
         rospy.sleep(3)
         self.updateFromParamServer()
 
+        # Reset the A/B rootfs boot fail counter -- if this node is running, pretty safe bet that we've booted successfully
+        # This should be redundant, as we need a non-ROS reset mechanism, too, in case e.g., ROS nodes are delayed waiting
+        # for a remote ROS master to start. That could be done in roslaunch.sh or a separate start-up script.
+        status, err_msg = sw_update_utils.resetBootFailCounter(
+            self.first_stage_rootfs_device)
+        if status is False:
+            rospy.logerr("Failed to reset boot fail counter: " + err_msg)
+
         rospy.Timer(rospy.Duration(self.STATUS_PERIOD),
                     self.publish_periodic_status)
+
+        # Call the method to update s/w status once internally to prime the status fields now that we have all the parameters
+        # established
+        self.provide_sw_update_status(0) # Any argument is fine here as the req. field is unused
+        
         rospy.spin()
 
     def __init__(self):
@@ -266,18 +479,31 @@ class SystemMgrNode():
         rospy.Subscriber('submit_system_error_msg', String,
                          self.handle_system_error_msg)
 
+        rospy.Subscriber('install_new_image', String,
+                         self.handle_install_new_img, queue_size=1)
+
+        rospy.Subscriber('switch_active_inactive_rootfs', Empty,
+                         self.handle_switch_active_inactive_rootfs)
+
+        rospy.Subscriber('archive_inactive_rootfs', Empty, self.handle_archive_inactive_rootfs, queue_size=1)
+
         # Advertise services
         rospy.Service('system_defs_query', SystemDefsQuery,
                       self.provide_system_defs)
         rospy.Service('op_environment_query', OpEnvironmentQuery,
                       self.provide_op_environment)
+        rospy.Service('sw_update_status_query', SystemSoftwareStatusQuery,
+                       self.provide_sw_update_status)
 
         self.save_cfg_if = SaveCfgIF(
             updateParamsCallback=None, paramsModifiedCallback=self.updateFromParamServer)
 
-        # Need to get the data_mountpoint early because it is used in init_msgs()
+        # Need to get the data_mountpoint and first-stage rootfs early because they are used in init_msgs()
         self.data_mountpoint = rospy.get_param(
             "~data_mountpoint", self.data_mountpoint)
+        self.first_stage_rootfs_device = rospy.get_param(
+            "~first_stage_rootfs_device", self.first_stage_rootfs_device)
+
         self.init_msgs()
 
         self.valid_device_id_re = re.compile(r"^[a-zA-Z][\w]*$")
