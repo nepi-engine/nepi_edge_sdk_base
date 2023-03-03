@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import os
 import shutil
-import random  # Only necessary for simulation of temperature data
 from collections import deque
 import re
 from datetime import datetime
@@ -34,18 +33,20 @@ class SystemMgrNode():
     status_msg = SystemStatus()
     system_defs_msg = SystemDefs()
 
-    data_mountpoint = "/home/numurus_user/data"
+    storage_mountpoint = "/mnt/nepi_storage"
+    data_folder = storage_mountpoint + "/data"
 
     # disk_usage_deque = deque(maxlen=10)
     # Shorter period for more responsive updates
     disk_usage_deque = deque(maxlen=3)
 
     first_stage_rootfs_device = "/dev/mmcblk0p1"
-    new_img_staging_device = "/dev/mmcblk1p3"
+    new_img_staging_device = "/dev/nvme0n1p3"
     new_img_staging_device_removable = False
     usb_device = "/dev/sda" 
     sd_card_device = "/dev/mmcblk1p"
     emmc_device = "/dev/mmcblk0p"
+    ssd_device = "/dev/nvme0n1p"
     auto_switch_rootfs_on_new_img_install = True
     sw_update_progress = ""
 
@@ -112,7 +113,16 @@ class SystemMgrNode():
 
     def update_storage(self):
         # Data partition
-        statvfs = os.statvfs(self.data_mountpoint)
+        try:
+            statvfs = os.statvfs(self.storage_mountpoint)
+        except Exception as e:
+            warn_str = "Error checking data storage status of " + self.storage_mountpoint + ": " + e.what()
+            rospy.logwarn(warn_str)
+            self.add_info_string("warn_str")
+            self.status_msg.disk_usage = 0
+            self.storage_rate = 0
+            return
+
         disk_free = float(statvfs.f_frsize) * \
             statvfs.f_bavail / BYTES_PER_MEGABYTE  # In MB
         self.status_msg.disk_usage = self.system_defs_msg.disk_capacity - disk_free
@@ -192,8 +202,14 @@ class SystemMgrNode():
             return
 
         rospy.loginfo("Clearing data folder by request")
-        for filename in os.listdir(self.data_mountpoint):
-            file_path = os.path.join(self.data_mountpoint, filename)
+        if not os.path.isdir(self.data_folder):
+            rospy.logwarn(
+                "No such folder " + self.data_folder + "... nothing to clear"
+            )
+            return
+
+        for filename in os.listdir(self.data_folder):
+            file_path = os.path.join(self.data_folder, filename)
             try:
                 if os.path.isfile(file_path) or os.path.islink(file_path):
                     os.unlink(file_path)
@@ -331,7 +347,8 @@ class SystemMgrNode():
         # Leave space for the partition number
         friendly_name = devfs_name.replace(self.emmc_device, "EMMC Partition ")
         friendly_name = friendly_name.replace(self.usb_device, "USB Partition ")
-        friendly_name = friendly_name.replace(self.sd_card_device, "SD/SSD Partition ")
+        friendly_name = friendly_name.replace(self.sd_card_device, "SD Partition ")
+        friendly_name = friendly_name.replace(self.ssd_device, "SSD Partition ")
         return friendly_name
 
     def init_msgs(self):
@@ -346,7 +363,7 @@ class SystemMgrNode():
         self.system_defs_msg.warning_temps.append(60.0)
         self.system_defs_msg.critical_temps.append(70.0)
 
-        statvfs = os.statvfs(self.data_mountpoint)
+        statvfs = os.statvfs(self.storage_mountpoint)
         self.system_defs_msg.disk_capacity = statvfs.f_frsize * statvfs.f_blocks / \
             BYTES_PER_MEGABYTE     # Size of data filesystem in Megabytes
 
@@ -393,8 +410,9 @@ class SystemMgrNode():
         # Publish it to all subscribers (which includes this node) to ensure the parameter is applied
         self.set_op_env_pub.publish(String(op_env))
 
-        self.data_mountpoint = rospy.get_param(
-            "~data_mountpoint", self.data_mountpoint)
+        self.storage_mountpoint = rospy.get_param(
+            "~storage_mountpoint", self.storage_mountpoint)
+        self.data_folder = self.storage_mountpoint + "/data"
 
         self.first_stage_rootfs_device = rospy.get_param(
             "~first_stage_rootfs_device", self.first_stage_rootfs_device
@@ -418,6 +436,10 @@ class SystemMgrNode():
 
         self.sd_card_device = rospy.get_param(
             "~sd_card_device", self.sd_card_device
+        )
+
+        self.ssd_device = rospy.get_param(
+            "~ssd_device", self.ssd_device
         )
 
         self.auto_switch_rootfs_on_new_img_install = rospy.get_param(
@@ -498,9 +520,10 @@ class SystemMgrNode():
         self.save_cfg_if = SaveCfgIF(
             updateParamsCallback=None, paramsModifiedCallback=self.updateFromParamServer)
 
-        # Need to get the data_mountpoint and first-stage rootfs early because they are used in init_msgs()
-        self.data_mountpoint = rospy.get_param(
-            "~data_mountpoint", self.data_mountpoint)
+        # Need to get the storage_mountpoint and first-stage rootfs early because they are used in init_msgs()
+        self.storage_mountpoint = rospy.get_param(
+            "~storage_mountpoint", self.storage_mountpoint)
+        self.data_folder = self.storage_mountpoint + "/data"
         self.first_stage_rootfs_device = rospy.get_param(
             "~first_stage_rootfs_device", self.first_stage_rootfs_device)
 
