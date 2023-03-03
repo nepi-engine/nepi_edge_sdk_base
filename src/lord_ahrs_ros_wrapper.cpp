@@ -1,5 +1,5 @@
 #include "lord_ahrs_ros_wrapper.h"
-#include "num_sdk_msgs/Heading.h"
+#include "nepi_ros_interfaces/Heading.h"
 
 #include "sensor_msgs/Imu.h"
 #include "nav_msgs/Odometry.h"
@@ -75,7 +75,7 @@ void LORDAHRSRosWrapper::initPublishers()
 {
   imu_pub = n_priv.advertise<sensor_msgs::Imu>("~imu", 10);
   odom_pub = n_priv.advertise<nav_msgs::Odometry>("~odom", 10);
-  heading_pub = n.advertise<num_sdk_msgs::Heading>("nav_pos_mgr/set_heading_override", 10);
+  heading_pub = n.advertise<nepi_ros_interfaces::Heading>("nav_pos_mgr/set_heading_override", 10);
 }
 
 void LORDAHRSRosWrapper::publishIMUandOdom()
@@ -147,7 +147,7 @@ void LORDAHRSRosWrapper::publishIMUandOdom()
 
   if (data.heading_valid)
   {
-    num_sdk_msgs::Heading heading_msg;
+    nepi_ros_interfaces::Heading heading_msg;
     heading_msg.heading = data.heading;
     heading_msg.true_north = data.heading_true_north;
     heading_pub.publish(heading_msg);

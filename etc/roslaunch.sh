@@ -1,8 +1,8 @@
 #! /bin/bash
 
-source /opt/numurus/ros/setup.sh
+source /opt/nepi/ros/setup.sh
 
-SYS_ENV_FILE=/opt/numurus/sys_env.bash
+SYS_ENV_FILE=/opt/nepi/sys_env.bash
 
 # The sys_env script must exist and be valid. The committed base file is
 # (intentionally) not valid because TBD fields are not populated

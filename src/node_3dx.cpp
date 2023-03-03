@@ -60,9 +60,9 @@ Node3DX::Node3DX():
 	  }
 	#endif
 
-	num_sdk_msgs::Status3DX status_3dx;
+	nepi_ros_interfaces::Status3DX status_3dx;
 	status_flags.resize(status_3dx.flags.max_size(), false); // std::vector sized from boost::array
-	status_flags[num_sdk_msgs::Status3DX::DEVICE_STARTING] = true;
+	status_flags[nepi_ros_interfaces::Status3DX::DEVICE_STARTING] = true;
 
 	_save_data_if = new SaveDataInterface(this, &n, &n_priv);
 	_save_data_if->registerDataProduct("img_0");
@@ -70,7 +70,7 @@ Node3DX::Node3DX():
 	_save_data_if->registerDataProduct("img_alt");
 
 	// Load the sim mode files
-	const std::string SIM_IMG_BASENAME = "/opt/numurus/ros/etc/" + getUnqualifiedName() + "/sim_img_";
+	const std::string SIM_IMG_BASENAME = "/opt/nepi/ros/etc/" + getUnqualifiedName() + "/sim_img_";
 
 	const std::string IMG_0_SIM_FILENAME = SIM_IMG_BASENAME + "0.png";
 	loadSimData(IMG_0_SIM_FILENAME, &img_0_sim_data);
@@ -121,8 +121,8 @@ void Node3DX::initPublishers()
 
 	// Advertise the status_3dx topic, using the overload form that provides a callback on new subscriber connection.
 	// Want to always send a status update whenever a subscriber connects.
-	//_status_pub = n_priv.advertise<num_sdk_msgs::Status3DX>("status_3dx", 3, boost::bind(&Node3DX::publishStatus, this));
-	_status_pub = n_priv.advertise<num_sdk_msgs::Status3DX>("status_3dx", 3, true);
+	//_status_pub = n_priv.advertise<nepi_ros_interfaces::Status3DX>("status_3dx", 3, boost::bind(&Node3DX::publishStatus, this));
+	_status_pub = n_priv.advertise<nepi_ros_interfaces::Status3DX>("status_3dx", 3, true);
 	_transformed_pointcloud_pub = n_priv.advertise<sensor_msgs::PointCloud2>("pointcloud_3dx", 3);
 }
 
@@ -241,7 +241,7 @@ void Node3DX::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
 
 // Node-specific subscription callbacks. Concrete instances should define what actions these take,
 // though we provide a very basic private member setter implementation in this baseclass
-void Node3DX::setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg)
+void Node3DX::setRangeHandler(const nepi_ros_interfaces::Range3DX::ConstPtr &msg)
 {
 	// Range-check inputs
 	if (msg->min_range < 0.0f ||
@@ -263,7 +263,7 @@ void Node3DX::setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg)
 	}
 }
 
-void Node3DX::setAngleHandler(const num_sdk_msgs::Angle3DX::ConstPtr &msg)
+void Node3DX::setAngleHandler(const nepi_ros_interfaces::Angle3DX::ConstPtr &msg)
 {
 	// Generic bounds checking for "angle"
 	if (msg->angle_offset < 0.0f ||
@@ -285,7 +285,7 @@ void Node3DX::setAngleHandler(const num_sdk_msgs::Angle3DX::ConstPtr &msg)
 	}
 }
 
-void Node3DX::setResolutionHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
+void Node3DX::setResolutionHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -305,7 +305,7 @@ void Node3DX::setResolutionHandler(const num_sdk_msgs::AutoManualSelection3DX::C
 	}
 }
 
-void Node3DX::setGainHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
+void Node3DX::setGainHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -325,7 +325,7 @@ void Node3DX::setGainHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPt
 	}
 }
 
-void Node3DX::setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
+void Node3DX::setFilterHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -345,7 +345,7 @@ void Node3DX::setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::Const
 	}
 }
 
-void Node3DX::setEnhancementHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
+void Node3DX::setEnhancementHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -365,7 +365,7 @@ void Node3DX::setEnhancementHandler(const num_sdk_msgs::AutoManualSelection3DX::
 	}
 }
 
-void Node3DX::setIntensityHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
+void Node3DX::setIntensityHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg)
 {
 	if (false == autoManualMsgIsValid(msg))
 	{
@@ -389,7 +389,7 @@ void Node3DX::clearStatusFlagsHandler(const std_msgs::Empty::ConstPtr &msg)
 {
 	ROS_INFO("%s clearing status flags by request", getUnqualifiedName().c_str());
 
-	num_sdk_msgs::Status3DX status_3dx;
+	nepi_ros_interfaces::Status3DX status_3dx;
 	for (size_t i = 0; i < status_3dx.flags.max_size(); ++i)
 	{
 		status_flags[i] = false;
@@ -567,7 +567,7 @@ void Node3DX::saveDataIfNecessary(int img_id, sensor_msgs::ImageConstPtr img)
 
 void Node3DX::publishStatus()
 {
-	num_sdk_msgs::Status3DX msg;
+	nepi_ros_interfaces::Status3DX msg;
 
 	msg.display_name = _display_name;
 
@@ -735,7 +735,7 @@ void Node3DX::run()
 		init();
 	}
 
-	status_flags[num_sdk_msgs::Status3DX::DEVICE_STARTING] = false; // Clear the starting flag
+	status_flags[nepi_ros_interfaces::Status3DX::DEVICE_STARTING] = false; // Clear the starting flag
 
 	// Set up periodic publishing of the 3DX status
 	//const ros::Duration status_pub_period(2.0);

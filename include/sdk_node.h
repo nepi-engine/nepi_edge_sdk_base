@@ -11,7 +11,7 @@
 #include "std_msgs/Bool.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Float32.h"
-#include "num_sdk_msgs/Reset.h"
+#include "nepi_ros_interfaces/Reset.h"
 
 namespace Numurus
 {
@@ -327,7 +327,7 @@ protected:
 	 *
 	 * @param[in]  msg   The message containing the reset type requested
 	 */
-	void resetHandler(const num_sdk_msgs::Reset::ConstPtr &msg);
+	void resetHandler(const nepi_ros_interfaces::Reset::ConstPtr &msg);
 
   /**
 	 * @brief      Handle a request to set the node's throttle value

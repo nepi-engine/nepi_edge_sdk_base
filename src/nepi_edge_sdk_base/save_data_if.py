@@ -4,8 +4,8 @@ import datetime
 import rospy
 
 from std_msgs.msg import String
-from num_sdk_msgs.msg import SaveData, SaveDataRate, SaveDataStatus
-from num_sdk_msgs.srv import DataProductQuery, DataProductQueryResponse
+from nepi_ros_interfaces.msg import SaveData, SaveDataRate, SaveDataStatus
+from nepi_ros_interfaces.srv import DataProductQuery, DataProductQueryResponse
 
 '''
 Basic interface for the global and private save_data topics.

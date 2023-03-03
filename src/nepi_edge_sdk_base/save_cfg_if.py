@@ -1,8 +1,8 @@
 import rospy
 
 from std_msgs.msg import Empty, String
-from num_sdk_msgs.msg import Reset
-from num_sdk_msgs.srv import *
+from nepi_ros_interfaces.msg import Reset
+from nepi_ros_interfaces.srv import *
 
 '''
 Basic interface for the global and private save_config topics.

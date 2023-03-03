@@ -1,4 +1,4 @@
-#include "num_sdk_msgs/TriggerIndexSettings.h"
+#include "nepi_ros_interfaces/TriggerIndexSettings.h"
 
 #include "trigger_interface.h"
 
@@ -27,10 +27,10 @@ void TriggerInterface::initPublishers()
 	SDKInterface::initPublishers();
 
 	// Advertise and publish (with latch) the trigger index so trig mgr. can populate trig defs appropriately
-	_trig_index_pub = _parent_pub_nh->advertise<num_sdk_msgs::TriggerIndexSettings>("trigger_index_settings", 5, true); // true to latch it; ensure it is sent on each new subscriber connection
+	_trig_index_pub = _parent_pub_nh->advertise<nepi_ros_interfaces::TriggerIndexSettings>("trigger_index_settings", 5, true); // true to latch it; ensure it is sent on each new subscriber connection
 	
 	// Publish TriggerIndexSettings once to latch automatic response to future subscribers
-	num_sdk_msgs::TriggerIndexSettings index_settings;
+	nepi_ros_interfaces::TriggerIndexSettings index_settings;
 	index_settings.trigger_name = _parent_node->getDisplayName(); // Use display name for configurability
 	index_settings.index = _trig_index;
 	_trig_index_pub.publish(index_settings);

@@ -1,17 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(num_sdk_base)
+project(nepi_edge_sdk_base)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
 add_compile_options(-Wall)
 
-# Need the hostname because OpenCV_DIR location depends on which host -- num-tx2 uses Jetpack-installed opencv4
-cmake_host_system_information( RESULT BUILDHOST QUERY HOSTNAME )
-if( (${BUILDHOST} STREQUAL "num-tx2") OR (${BUILDHOST} STREQUAL "wesmar-xavier-nx") )
-    set(OpenCV_DIR /usr/lib/aarch64-linux-gnu/cmake/opencv4)
-else()
-    set(OpenCV_DIR /usr/share/OpenCV)
-endif()
+# Following relies (sometimes, e.g., Jetpack-installed OpenCV) on a symlink from /usr/share/OpenCV to
+# true OpenCV cmake folder (e.g., usr/lib/aarch64-linux-gnu/cmake/opencv4 on Jetson)
+set(OpenCV_DIR /usr/share/OpenCV)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -25,14 +21,12 @@ find_package(
     REQUIRED
     COMPONENTS
     message_generation
-    num_sdk_msgs
+    nepi_ros_interfaces
     roscpp
     image_transport
     cv_bridge
     OpenCV
     sensor_msgs
-    vision_msgs
-    cv_bridge
     rospy
     std_msgs
     pcl_ros
@@ -101,7 +95,7 @@ generate_messages(
      DEPENDENCIES
      std_msgs  # Or other packages containing msgs
      sensor_msgs
-     num_sdk_msgs
+     nepi_ros_interfaces
 )
 
 ################################################
@@ -136,7 +130,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include include/drivers/generic_ahrs
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS image_transport num_sdk_msgs
+  CATKIN_DEPENDS image_transport nepi_ros_interfaces
 
 #  DEPENDS system_lib
 )
@@ -233,19 +227,7 @@ catkin_install_python(PROGRAMS
   scripts/config_mgr.py
   scripts/time_sync_mgr.py
   scripts/network_mgr.py
-  scripts/nepi_core_mgr.py
-#  scripts/pipeline_mgr.py
   scripts/image_color_converter.py
-#  pipeline/scripts/acl.py
-#  pipeline/scripts/gyr.py
-#  pipeline/scripts/mag.py
-#  pipeline/scripts/bat.py
-#  pipeline/scripts/thr.py
-#  pipeline/scripts/gps.py
-#  pipeline/scripts/hmt.py
-#  pipeline/scripts/tdt.py
-#  pipeline/scripts/sbt.py
-#  pipeline/scripts/lpd.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -275,7 +257,7 @@ install(DIRECTORY
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
-# sys_env.bash goes in /opt/numurus
+# sys_env.bash goes in parent of the install folder
 SET(SYS_ENV_DIR ${CMAKE_INSTALL_PREFIX}/..)
 SET(SYS_ENV_FILE ${SYS_ENV_DIR}/sys_env.bash)
 

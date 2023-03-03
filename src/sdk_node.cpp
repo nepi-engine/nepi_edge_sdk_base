@@ -2,7 +2,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "std_msgs/String.h"
-#include "num_sdk_msgs/FileReset.h"
+#include "nepi_ros_interfaces/FileReset.h"
 
 #include "sdk_node.h"
 #include "sdk_utils.h"
@@ -177,28 +177,28 @@ void SDKNode::saveCfgRtHandler(const std_msgs::Bool::ConstPtr &msg)
 	}
 }
 
-void SDKNode::resetHandler(const num_sdk_msgs::Reset::ConstPtr &msg)
+void SDKNode::resetHandler(const nepi_ros_interfaces::Reset::ConstPtr &msg)
 {
 	const uint8_t reset_type = msg->reset_type;
 
 	switch (reset_type)
 	{
-	case num_sdk_msgs::Reset::USER_RESET:
+	case nepi_ros_interfaces::Reset::USER_RESET:
 		ROS_INFO("%s: Executing user-level reset by request", getUnqualifiedName().c_str());
 		userReset();
 		break;
-	case num_sdk_msgs::Reset::FACTORY_RESET:
+	case nepi_ros_interfaces::Reset::FACTORY_RESET:
 	{
 		ROS_INFO("%s: Executing factory reset by request", getUnqualifiedName().c_str());
 		factoryReset();
 	}
 		break;
-	case num_sdk_msgs::Reset::SOFTWARE_RESET:
+	case nepi_ros_interfaces::Reset::SOFTWARE_RESET:
 		ROS_INFO("%s: Executing software reset by request", getUnqualifiedName().c_str());
 		softwareReset();
 		break;
 	// No implentation for HARDWARE_RESET in this base class
-	case num_sdk_msgs::Reset::HARDWARE_RESET:
+	case nepi_ros_interfaces::Reset::HARDWARE_RESET:
 		ROS_INFO("%s: Executing hardware reset by request", getUnqualifiedName().c_str());
 		hardwareReset();
 	default:
@@ -221,8 +221,8 @@ void SDKNode::submitSysErrorMsg(const std::string &error_msg)
 
 void SDKNode::userReset()
 {
-	ros::ServiceClient client = n.serviceClient<num_sdk_msgs::FileReset>("user_reset");
-	num_sdk_msgs::FileReset srv;
+	ros::ServiceClient client = n.serviceClient<nepi_ros_interfaces::FileReset>("user_reset");
+	nepi_ros_interfaces::FileReset srv;
 	srv.request.node_name = getQualifiedName();
 
 	if (false == client.call(srv) || false == srv.response.success)
@@ -238,8 +238,8 @@ void SDKNode::userReset()
 
 void SDKNode::factoryReset()
 {
-	ros::ServiceClient client = n.serviceClient<num_sdk_msgs::FileReset>("factory_reset");
-	num_sdk_msgs::FileReset srv;
+	ros::ServiceClient client = n.serviceClient<nepi_ros_interfaces::FileReset>("factory_reset");
+	nepi_ros_interfaces::FileReset srv;
 	srv.request.node_name = getQualifiedName();
 	if (false == client.call(srv) || false == srv.response.success)
 	{

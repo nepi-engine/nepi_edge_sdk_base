@@ -13,13 +13,13 @@ import os
 import errno
 
 from std_msgs.msg import String
-from num_sdk_msgs.srv import FileReset
+from nepi_ros_interfaces.srv import FileReset
 
 CFG_SUFFIX = '.yaml'
 FACTORY_SUFFIX = '.num_factory'
 USER_SUFFIX = '.user'
 
-CFG_PATH = '/opt/numurus/ros/etc/'
+CFG_PATH = '/opt/nepi/ros/etc/'
 
 pending_nodes = {}
 

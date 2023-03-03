@@ -23,7 +23,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 <robot name="numurus_3dx_cw" xmlns:xacro="http://ros.org/wiki/xacro">
 
 <!-- Includes -->
-    <xacro:include filename="$(find num_sdk_msgs)/urdf/include/materials.urdf.xacro" />
+    <xacro:include filename="$(find nepi_ros_interfaces)/urdf/include/materials.urdf.xacro" />
 
     <!-- Arguments -->
     <xacro:arg name="camera_name"   default="stereo_cam" />
@@ -66,7 +66,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <visual>
         <origin xyz="-0.24 0.095 0.051" rpy="-1.57075 0 -1.57075"/>
         <geometry>
-          <mesh filename="package://num_sdk_msgs/urdf/models/3dx_cw.stl" name="3dx_mat" scale="0.001 0.001 0.001"/>
+          <mesh filename="package://nepi_ros_interfaces/urdf/models/3dx_cw.stl" name="3dx_mat" scale="0.001 0.001 0.001"/>
         </geometry>
         <material name="3dx_mat" />
       </visual>

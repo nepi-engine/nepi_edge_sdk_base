@@ -12,16 +12,16 @@ import rospy
 
 from std_msgs.msg import String, Empty, Time
 
-from num_sdk_msgs.msg import Reset
-from num_sdk_msgs.msg import TimeStatus
+from nepi_ros_interfaces.msg import Reset
+from nepi_ros_interfaces.msg import TimeStatus
 
-from num_sdk_msgs.srv import TimeStatusQuery, TimeStatusQueryResponse
+from nepi_ros_interfaces.srv import TimeStatusQuery, TimeStatusQueryResponse
 
 FACTORY_CFG_SUFFIX = '.num_factory'
 USER_CFG_SUFFIX = '.user'
 
 CHRONY_CFG_LINKNAME = '/etc/chrony/chrony.conf'
-CHRONY_CFG_BASENAME = '/opt/numurus/ros/etc/time_sync_mgr/chrony.conf'
+CHRONY_CFG_BASENAME = '/opt/nepi/ros/etc/time_sync_mgr/chrony.conf'
 CHRONY_SYSTEMD_SERVICE_NAME = 'chrony.service'
 
 g_last_set_time = rospy.Time(0.0)

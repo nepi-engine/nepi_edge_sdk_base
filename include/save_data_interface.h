@@ -10,9 +10,9 @@
 #include <ros/ros.h>
 
 #include <std_msgs/String.h>
-#include <num_sdk_msgs/SaveData.h>
-#include <num_sdk_msgs/SaveDataRate.h>
-#include <num_sdk_msgs/DataProductQuery.h>
+#include <nepi_ros_interfaces/SaveData.h>
+#include <nepi_ros_interfaces/SaveDataRate.h>
+#include <nepi_ros_interfaces/DataProductQuery.h>
 
 #include <sdk_interface.h>
 #include <sdk_node.h>
@@ -98,7 +98,7 @@ protected:
 	 *
 	 * @param[in]  msg   Indicates the save_data settings
 	 */
-	void saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg);
+	void saveDataHandler(const nepi_ros_interfaces::SaveData::ConstPtr &msg);
 
 	/**
 	 * @brief      Callback for the save_data_prefix topic subscription
@@ -107,9 +107,9 @@ protected:
 	 */
 	void saveDataPrefixHandler(const std_msgs::String::ConstPtr &msg);
 
-	void saveDataRateHandler(const num_sdk_msgs::SaveDataRate::ConstPtr &msg);
+	void saveDataRateHandler(const nepi_ros_interfaces::SaveDataRate::ConstPtr &msg);
 
-	bool queryDataProductsHandler(num_sdk_msgs::DataProductQuery::Request &req, num_sdk_msgs::DataProductQuery::Response &res);
+	bool queryDataProductsHandler(nepi_ros_interfaces::DataProductQuery::Request &req, nepi_ros_interfaces::DataProductQuery::Response &res);
 
 	/**
 	 * @brief      Publish the save_data settings on the save_status topic

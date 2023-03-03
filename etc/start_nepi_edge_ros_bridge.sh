@@ -1,14 +1,14 @@
 #! /bin/bash
 
-# This file is in the num_sdk_base project because nepi-edge-sdk is intended to become
+# This file is in the nepi_edge_sdk_base project because nepi-edge-sdk is intended to become
 # open-source and general purpose, and the following is reliant on other Numurus infrastructure
 # that isn't necessarily available on a generic target.
 
 # Must source the ROS setup first, as it overwrites important messages
-source /opt/numurus/ros/setup.sh
-source /opt/numurus/nepi/nepi-edge-sdk/setup.bash
+source /opt/nepi/ros/setup.sh
+source /opt/nepi/nepi/nepi-edge-sdk/setup.bash
 
-SYS_ENV_FILE=/opt/numurus/sys_env.bash
+SYS_ENV_FILE=/opt/nepi/sys_env.bash
 
 # The sys_env script must exist and be valid. The committed base file is
 # (intentionally) not valid because TBD fields are not populated
@@ -39,6 +39,6 @@ fi
 
 # Set the required env. variables
 export NEPI_EDGE_ROS_BRIDGE_NS=/numurus/$DEVICE_TYPE/$DEVICE_ID
-export NEPI_EDGE_ROS_BRIDGE_PARAM_FILE=/opt/numurus/ros/etc/nepi_edge_ros_bridge/nepi_edge_ros_bridge.yaml
+export NEPI_EDGE_ROS_BRIDGE_PARAM_FILE=/opt/nepi/ros/etc/nepi_edge_ros_bridge/nepi_edge_ros_bridge.yaml
 
 roslaunch nepi_edge_ros_bridge nepi_edge_ros_bridge.launch --wait # Wait for main ROS master to come up

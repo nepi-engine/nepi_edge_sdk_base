@@ -11,12 +11,12 @@ import subprocess
 import rospy
 
 from std_msgs.msg import String, Empty, Float32
-from num_sdk_msgs.msg import SystemStatus, SystemDefs, WarningFlags, StampedString, SaveData
-from num_sdk_msgs.srv import SystemDefsQuery, SystemDefsQueryResponse, OpEnvironmentQuery, OpEnvironmentQueryResponse, \
+from nepi_ros_interfaces.msg import SystemStatus, SystemDefs, WarningFlags, StampedString, SaveData
+from nepi_ros_interfaces.srv import SystemDefsQuery, SystemDefsQueryResponse, OpEnvironmentQuery, OpEnvironmentQueryResponse, \
                              SystemSoftwareStatusQuery, SystemSoftwareStatusQueryResponse
 
-from num_sdk_base.save_cfg_if import SaveCfgIF
-import num_sdk_base.nepi_software_update_utils as sw_update_utils
+from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
+import nepi_edge_sdk_base.nepi_software_update_utils as sw_update_utils
 
 BYTES_PER_MEGABYTE = 2**20
 
@@ -28,8 +28,8 @@ class SystemMgrNode():
 
     DISK_FULL_MARGIN_MB = 250  # MB TODO: Configurable?
 
-    SYS_ENV_PATH = "/opt/numurus/sys_env.bash"
-    FW_VERSION_PATH = "/opt/numurus/ros/etc/fw_version.txt"
+    SYS_ENV_PATH = "/opt/nepi/sys_env.bash"
+    FW_VERSION_PATH = "/opt/nepi/ros/etc/fw_version.txt"
 
     status_msg = SystemStatus()
     system_defs_msg = SystemDefs()

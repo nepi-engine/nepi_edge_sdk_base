@@ -9,12 +9,12 @@
 #include "std_msgs/UInt32.h"
 #include "std_msgs/Bool.h"
 
-#include "num_sdk_msgs/HwTrigInCfg.h"
-#include "num_sdk_msgs/HwTrigOutCfg.h"
-#include "num_sdk_msgs/PeriodicSwTrig.h"
-#include "num_sdk_msgs/TriggerIndexSettings.h"
-#include "num_sdk_msgs/TriggerStatusQuery.h"
-#include "num_sdk_msgs/TriggerDefs.h"
+#include "nepi_ros_interfaces/HwTrigInCfg.h"
+#include "nepi_ros_interfaces/HwTrigOutCfg.h"
+#include "nepi_ros_interfaces/PeriodicSwTrig.h"
+#include "nepi_ros_interfaces/TriggerIndexSettings.h"
+#include "nepi_ros_interfaces/TriggerStatusQuery.h"
+#include "nepi_ros_interfaces/TriggerDefs.h"
 #include "sdk_node.h"
 
 namespace Numurus
@@ -44,9 +44,9 @@ protected:
 	virtual void executeSwTrig(const std_msgs::UInt32::ConstPtr& trig_mask);
 	// Pure virtual h/w capability functions
 	virtual void setHwTrigInEnab(const std_msgs::UInt32::ConstPtr& enab_mask) = 0;
-	virtual void configureHwTrigIn(const num_sdk_msgs::HwTrigInCfg::ConstPtr& cfg) = 0;
+	virtual void configureHwTrigIn(const nepi_ros_interfaces::HwTrigInCfg::ConstPtr& cfg) = 0;
 	virtual void setHwTrigOutEnab(const std_msgs::Bool::ConstPtr& enable) = 0;
-	virtual void configureHwTrigOut(const num_sdk_msgs::HwTrigOutCfg::ConstPtr& cfg) = 0;
+	virtual void configureHwTrigOut(const nepi_ros_interfaces::HwTrigOutCfg::ConstPtr& cfg) = 0;
 	virtual void setHwTrigOutDly(const std_msgs::UInt32::ConstPtr& dly_usecs) = 0;
 
 private:
@@ -93,7 +93,7 @@ private:
 	 *
 	 * @param[in]  trig_cfg  The trig configuration message
 	 */
-	void setPeriodicSwTrig(const num_sdk_msgs::PeriodicSwTrig::ConstPtr& trig_cfg);
+	void setPeriodicSwTrig(const nepi_ros_interfaces::PeriodicSwTrig::ConstPtr& trig_cfg);
 
 	void setPeriodicSwTrigImpl(bool enabled, uint32_t sw_trig_mask, float rate_hz);
 
@@ -111,7 +111,7 @@ private:
 	 *
 	 * @param[in]  trig_idx_settings  The trig index settings message
 	 */
-	void updateTriggerIndexSet(const num_sdk_msgs::TriggerIndexSettings::ConstPtr& trig_idx_settings);
+	void updateTriggerIndexSet(const nepi_ros_interfaces::TriggerIndexSettings::ConstPtr& trig_idx_settings);
 
 	/**
 	 * @brief      Provide the trigger status
@@ -123,7 +123,7 @@ private:
 	 *
 	 * @return     true if successful, false otherwise
 	 */
-	bool provideTriggerStatus(num_sdk_msgs::TriggerStatusQuery::Request &req, num_sdk_msgs::TriggerStatusQuery::Response &resp);
+	bool provideTriggerStatus(nepi_ros_interfaces::TriggerStatusQuery::Request &req, nepi_ros_interfaces::TriggerStatusQuery::Response &resp);
 
 	/**
 	 * @brief      Provide the trigger defs
@@ -135,7 +135,7 @@ private:
 	 *
 	 * @return     true
 	 */
-	bool provideTriggerDefs(num_sdk_msgs::TriggerDefs::Request &req, num_sdk_msgs::TriggerDefs::Response &resp);
+	bool provideTriggerDefs(nepi_ros_interfaces::TriggerDefs::Request &req, nepi_ros_interfaces::TriggerDefs::Response &resp);
 
 };
 

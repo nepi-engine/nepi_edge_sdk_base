@@ -4,7 +4,7 @@
 #include "save_data_interface.h"
 #include "sdk_utils.h"
 
-#include "num_sdk_msgs/SaveDataStatus.h"
+#include "nepi_ros_interfaces/SaveDataStatus.h"
 
 
 namespace Numurus
@@ -41,7 +41,7 @@ void SaveDataInterface::retrieveParams()
 
 void SaveDataInterface::initPublishers()
 {
-	_save_status_pub = _parent_priv_nh->advertise<num_sdk_msgs::SaveDataStatus>("save_data_status", 5, true);
+	_save_status_pub = _parent_priv_nh->advertise<nepi_ros_interfaces::SaveDataStatus>("save_data_status", 5, true);
 }
 
 void SaveDataInterface::initSubscribers()
@@ -149,7 +149,7 @@ const std::string SaveDataInterface::getFullPathFilename(const std::string &time
 	return (_save_data_dir + "/" + _filename_prefix + timestamp_string + "_" + identifier + "." + extension);
 }
 
-void SaveDataInterface::saveDataHandler(const num_sdk_msgs::SaveData::ConstPtr &msg)
+void SaveDataInterface::saveDataHandler(const nepi_ros_interfaces::SaveData::ConstPtr &msg)
 {
 	const bool save_data_updated = (msg->save_continuous != _save_continuous) ||
 								   (msg->save_raw != _save_raw);
@@ -195,7 +195,7 @@ void SaveDataInterface::saveDataPrefixHandler(const std_msgs::String::ConstPtr &
 	publishSaveStatus();
 }
 
-void SaveDataInterface::saveDataRateHandler(const num_sdk_msgs::SaveDataRate::ConstPtr &msg)
+void SaveDataInterface::saveDataRateHandler(const nepi_ros_interfaces::SaveDataRate::ConstPtr &msg)
 {
 	if (msg->save_rate_hz < 0.0)
 	{
@@ -204,7 +204,7 @@ void SaveDataInterface::saveDataRateHandler(const num_sdk_msgs::SaveDataRate::Co
 	}
 
 	// Handle the special ALL indicator
-	if (msg->data_product == num_sdk_msgs::SaveDataRate::ALL_DATA_PRODUCTS)
+	if (msg->data_product == nepi_ros_interfaces::SaveDataRate::ALL_DATA_PRODUCTS)
 	{
 		for (std::pair<std::string, data_product_registry_entry_t> entry : data_product_registry)
 		{
@@ -235,11 +235,11 @@ void SaveDataInterface::saveDataRateHandler(const num_sdk_msgs::SaveDataRate::Co
 	return;
 }
 
-bool SaveDataInterface::queryDataProductsHandler(num_sdk_msgs::DataProductQuery::Request &req, num_sdk_msgs::DataProductQuery::Response &res)
+bool SaveDataInterface::queryDataProductsHandler(nepi_ros_interfaces::DataProductQuery::Request &req, nepi_ros_interfaces::DataProductQuery::Response &res)
 {
 	for (std::pair<std::string, data_product_registry_entry_t> entry : data_product_registry)
 	{
-		num_sdk_msgs::SaveDataRate d;
+		nepi_ros_interfaces::SaveDataRate d;
 		d.data_product = entry.first;
 		d.save_rate_hz = entry.second[0];
 		res.data_products.push_back(d);
@@ -250,7 +250,7 @@ bool SaveDataInterface::queryDataProductsHandler(num_sdk_msgs::DataProductQuery:
 void SaveDataInterface::publishSaveStatus()
 {
 
-	num_sdk_msgs::SaveDataStatus stat_msg;
+	nepi_ros_interfaces::SaveDataStatus stat_msg;
 	stat_msg.current_data_dir = _save_data_dir + "/" + _filename_prefix; // TODO: Keep track of a real directory
 	stat_msg.save_data.save_continuous = _save_continuous;
 	stat_msg.save_data.save_raw = _save_raw;

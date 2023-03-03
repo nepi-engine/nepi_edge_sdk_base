@@ -7,12 +7,12 @@ DATA_CONTENTS=/home/numurus_user/data/*
 NUMURUS_ROS_LOG_CONTENTS=/home/numurus/.ros/log/*
 ROOT_ROS_LOG_CONTENTS=/root/.ros/log/*
 
-NUMURUS_ROS_FOLDER=/opt/numurus/ros
+NUMURUS_ROS_FOLDER=/opt/nepi/ros
 
-NEPI_LOG_CONTENTS=/opt/numurus/nepi/nepi-bot/log/*
-NEPI_DB_CONTENTS=/opt/numurus/nepi/nepi-bot/db/nepibot.db
-NEPI_HB_CONTENTS=/opt/numurus/nepi/nepi-bot/hb/*
-NEPI_LB_CONTENTS=/opt/numurus/nepi/nepi-bot/lb/*
+NEPI_LOG_CONTENTS=/opt/nepi/nepi/nepi-bot/log/*
+NEPI_DB_CONTENTS=/opt/nepi/nepi/nepi-bot/db/nepibot.db
+NEPI_HB_CONTENTS=/opt/nepi/nepi/nepi-bot/hb/*
+NEPI_LB_CONTENTS=/opt/nepi/nepi/nepi-bot/lb/*
 
 if [ "$EUID" -ne 0 ]
 then

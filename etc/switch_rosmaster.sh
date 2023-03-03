@@ -6,8 +6,8 @@
 # Run this script locally on 3DX or remotely using
 # ssh -i ssh_priv_key numurus@<3dx_ip_addr> 'bash -s' < ./switch_rosmaster.sh <new_master_ip>
 
-SYS_ENV_FILE="/opt/numurus/sys_env.bash"
-ROS1_LAUNCH_SCRIPT="/opt/numurus/ros/etc/roslaunch.sh"
+SYS_ENV_FILE="/opt/nepi/sys_env.bash"
+ROS1_LAUNCH_SCRIPT="/opt/nepi/ros/etc/roslaunch.sh"
 MASTER_HOST_IP="localhost"
 
 if [ -z $1 ]

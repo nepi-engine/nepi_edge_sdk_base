@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# This interactive script installs an entire local copy of the /opt/numurus/ros directory
+# This interactive script installs an entire local copy of the /opt/nepi/ros directory
 # to a remote machine, overwriting the existing folder if it exists.
-# Before overwriting, the existing /opt/numurus/ros directory on the remote target
+# Before overwriting, the existing /opt/nepi/ros directory on the remote target
 # is archived locally.
 
 # The following environment variables can be set ahead of time outside this script for
 # faster running:
 # SSH_KEY_PATH ==> full path to the private key for the remote system. Defaults to $HOME/.ssh/numurus/numurus_3dx_jetson_sshkey
 # REMOTE_HOST ==> IP address or resolvable hostname for the remote system. Defaults to 192.168.179.102
-# SRC_PATH ==> Path to the "ros" folder to be written to /opt/numurus/ros on the remote system. Defaults to ../../
+# SRC_PATH ==> Path to the "ros" folder to be written to /opt/nepi/ros on the remote system. Defaults to ../../
 # SERIAL_NUM ==> Device serial number. Defaults to 0000
 
-#echo "THIS SCRIPT NEEDS REWORK TO INSTALL ENTIRE /opt/numurus FOLDER"
+#echo "THIS SCRIPT NEEDS REWORK TO INSTALL ENTIRE /opt/nepi FOLDER"
 #exit 1
 echo "Warning -- this script will overwrite existing settings on the device."
 
@@ -63,7 +63,7 @@ echo "   Source Path   = `pwd`/ros"
 echo "   Serial Number = $SERIAL_NUM"
 read CONTINUE
 
-# This no longer works because serial number is at /opt/numurus/sys_env.bash on the remote system
+# This no longer works because serial number is at /opt/nepi/sys_env.bash on the remote system
 #cp ros/etc/sys_env_base.bash ros/etc/sys_env.bash
 #sed -i 's/DEVICE_TYPE=TBD/DEVICE_TYPE=3dsc/' ros/etc/sys_env.bash
 #sed -i 's/DEVICE_SN=.*/DEVICE_SN='$SERIAL_NUM'/' ros/etc/sys_env.bash
@@ -77,19 +77,19 @@ NOW=`date +"%F_%H%M%S"`
 ARCHIVE_FOLDER=`pwd`/pre_install_archive_$REMOTE_HOST_$NOW
 echo "Archiving the existing installation to $ARCHIVE_FOLDER.tar.gz... this may take a moment"
 sleep 3
-rsync -avzhe "ssh -i $SSH_KEY_PATH" numurus@$REMOTE_HOST:/opt/numurus/ros $ARCHIVE_FOLDER
+rsync -avzhe "ssh -i $SSH_KEY_PATH" numurus@$REMOTE_HOST:/opt/nepi/ros $ARCHIVE_FOLDER
 tar -czf $ARCHIVE_FOLDER.tar.gz $ARCHIVE_FOLDER
 rm -rf $ARCHIVE_FOLDER
 
 # Delete the remote folder
 echo "Removing the old installation on the remote system"
 sleep 3
-echo numurus | ssh -tt -i $SSH_KEY_PATH numurus@$REMOTE_HOST "rm -rf /opt/numurus/ros/*"
+echo numurus | ssh -tt -i $SSH_KEY_PATH numurus@$REMOTE_HOST "rm -rf /opt/nepi/ros/*"
 
 # Write the new folder to the remote system
 echo "Uploading the new installation"
 sleep 3
-rsync -avzhe "ssh -i $SSH_KEY_PATH" ros/* numurus@192.168.179.102:/opt/numurus/ros/
+rsync -avzhe "ssh -i $SSH_KEY_PATH" ros/* numurus@192.168.179.102:/opt/nepi/ros/
 
 # All done
 echo "Installation Complete. Prior installation is archived at $ARCHIVE_FOLDER.tar.gz"

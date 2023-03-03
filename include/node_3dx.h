@@ -17,11 +17,11 @@
 
 #include "sdk_node.h"
 
-#include "num_sdk_msgs/SaveData.h"
-#include "num_sdk_msgs/Range3DX.h"
-#include "num_sdk_msgs/Angle3DX.h"
-#include "num_sdk_msgs/AutoManualSelection3DX.h"
-#include "num_sdk_msgs/Status3DX.h"
+#include "nepi_ros_interfaces/SaveData.h"
+#include "nepi_ros_interfaces/Range3DX.h"
+#include "nepi_ros_interfaces/Angle3DX.h"
+#include "nepi_ros_interfaces/AutoManualSelection3DX.h"
+#include "nepi_ros_interfaces/Status3DX.h"
 
 namespace Numurus
 {
@@ -274,7 +274,7 @@ protected:
 	virtual void pauseEnableHandler(const std_msgs::Bool::ConstPtr &msg);
 	virtual void simulateDataHandler(const std_msgs::Bool::ConstPtr &msg);
 
-	static inline bool autoManualMsgIsValid(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg)
+	static inline bool autoManualMsgIsValid(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg)
 	{
 		if (true == msg->enabled) return (msg->adjustment >= 0.0f && msg->adjustment <= 1.0f);
 		return true;
@@ -282,13 +282,13 @@ protected:
 
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
 	// though we provide a very basic private member setter implementation in this baseclass
-	virtual void setRangeHandler(const num_sdk_msgs::Range3DX::ConstPtr &msg);
-	virtual void setAngleHandler(const num_sdk_msgs::Angle3DX::ConstPtr &msg);
-	virtual void setResolutionHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
-	virtual void setGainHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
-	virtual void setFilterHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
-	virtual void setEnhancementHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
-	virtual void setIntensityHandler(const num_sdk_msgs::AutoManualSelection3DX::ConstPtr &msg);
+	virtual void setRangeHandler(const nepi_ros_interfaces::Range3DX::ConstPtr &msg);
+	virtual void setAngleHandler(const nepi_ros_interfaces::Angle3DX::ConstPtr &msg);
+	virtual void setResolutionHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg);
+	virtual void setGainHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg);
+	virtual void setFilterHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg);
+	virtual void setEnhancementHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg);
+	virtual void setIntensityHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg);
 	virtual void clearStatusFlagsHandler(const std_msgs::Empty::ConstPtr &msg);
 
 	void publishStatus();
