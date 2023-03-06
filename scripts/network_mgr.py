@@ -213,15 +213,15 @@ class NetworkMgr:
         # is on a subnet only reachable via one of these aliases
         current_ips = self.get_current_ip_addrs()
 
-        if (len(current_ips) > 1):
-            with open(self.USER_STATIC_IP_FILE, "w") as f:
-                f.write(self.USER_STATIC_IP_FILE_PREFACE)
+        with open(self.USER_STATIC_IP_FILE, "w") as f:
+            f.write(self.USER_STATIC_IP_FILE_PREFACE)
+            if (len(current_ips) > 1):
                 for i,ip_cidr in enumerate(current_ips[1:]): # Skip the first one -- that is the factory default
                     alias_name = self.NET_IFACE + ":" + str(i+1)
                     f.write("auto " + alias_name + "\n")
                     f.write("iface " + alias_name + " inet static\n")
                     f.write("    address " + ip_cidr + "\n\n")
-
+                    
         # DHCP Settings are stored in the ROS config file
         rospy.set_param('~dhcp_enabled', self.dhcp_enabled)
 
