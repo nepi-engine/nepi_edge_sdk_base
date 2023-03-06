@@ -13,7 +13,7 @@ from nepi_ros_interfaces.msg import Reset
 from nepi_ros_interfaces.srv import IPAddrQuery, FileReset, BandwidthUsageQuery, WifiQuery
 
 class NetworkMgr:
-    """The Network Manager Node of the Numurus core SDK.
+    """The Network Manager Node of the NEPI core SDK.
 
     This node controls network IP settings. Users are not able to override the factory configuration
     but they can add and remove additional IPv4 addresses.
@@ -24,8 +24,8 @@ class NetworkMgr:
     WONDERSHAPER_CALL = "/opt/nepi/ros/share/wondershaper/wondershaper"
     BANDWIDTH_MONITOR_PERIOD_S = 2.0
 
-    FACTORY_STATIC_IP_FILE = "/opt/nepi/ros/etc/linux_cfg/num_static_ipv4"
-    USER_STATIC_IP_FILE = "/opt/nepi/ros/etc/network_mgr/numurus_user_ip_aliases"
+    FACTORY_STATIC_IP_FILE = "/opt/nepi/config/etc/network/interfaces.d/nepi_static_ip"
+    USER_STATIC_IP_FILE = "/opt/nepi/config/etc/network/interfaces.d/nepi_user_ip_aliases"
     USER_STATIC_IP_FILE_PREFACE = "# This file includes all user-added IP address aliases. It is sourced by the top-level static IP addr file.\n\n"
 
     # Following are to support changing rosmaster IP address
