@@ -21,7 +21,7 @@ FACTORY_CFG_SUFFIX = '.num_factory'
 USER_CFG_SUFFIX = '.user'
 
 CHRONY_CFG_LINKNAME = '/etc/chrony/chrony.conf'
-CHRONY_CFG_BASENAME = '/opt/nepi/ros/etc/time_sync_mgr/chrony.conf'
+CHRONY_CFG_BASENAME = '/opt/nepi/config/etc/chrony/chrony.conf'
 CHRONY_SYSTEMD_SERVICE_NAME = 'chrony.service'
 
 g_last_set_time = rospy.Time(0.0)
