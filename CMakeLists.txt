@@ -228,6 +228,7 @@ catkin_install_python(PROGRAMS
   scripts/time_sync_mgr.py
   scripts/network_mgr.py
   scripts/image_color_converter.py
+  scripts/rui_config_mgr.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
