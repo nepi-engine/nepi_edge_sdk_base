@@ -180,6 +180,18 @@ target_link_libraries(lord_ahrs_ros_wrapper
   ${PROJECT_NAME}
   ${catkin_LIBRARIES})
 
+## Trigger Manager (No hardware support) Node
+add_executable(trigger_mgr_no_hardware
+  src/trigger_mgr_no_hardware)
+
+add_dependencies(trigger_mgr_no_hardware
+  ${catkin_EXPORTED_TARGETS}
+  ${PROJECT_NAME})
+
+target_link_libraries(trigger_mgr_no_hardware
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES})
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -234,6 +246,20 @@ catkin_install_python(PROGRAMS
 
 ## Mark executables and/or libraries for installation
 install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(TARGETS lord_ahrs_ros_wrapper
+  lord_ahrs_ros_wrapper
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(TARGETS trigger_mgr_no_hardware
+  trigger_mgr_no_hardware
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
