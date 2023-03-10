@@ -1,0 +1,52 @@
+<launch>
+  <arg name="global_ns" value="$(env ROOTNAME)" />
+  <arg name="device_ns" value="$(env ROOTNAME)/$(env DEVICE_ID)" />
+  <arg name="output_destination" value="screen" />
+
+  <!-- Args. to run or not run specific nodes -->
+  <arg name="run_web_utils" default="true" />
+  <arg name="run_darknet_ros_mgr" default="true" />
+  <arg name="run_target_localizer" default="true" />
+  
+  <!-- Everything lives in the device namespace -->
+  <group ns="$(arg device_ns)">
+    <node name="config_mgr" pkg="nepi_edge_sdk_base" type="config_mgr.py" respawn="true" output="$(arg output_destination)" />
+
+    <rosparam command="load" file="/opt/nepi/ros/etc/system_mgr/system_mgr.yaml" ns="system_mgr" />
+    <node name="system_mgr" pkg="nepi_edge_sdk_base" type="system_mgr.py" respawn="true" output="$(arg output_destination)" />
+
+    <rosparam command="load" file="/opt/nepi/ros/etc/time_sync_mgr/time_sync_mgr.yaml" ns="time_sync_mgr" />
+    <node name="time_sync_mgr" pkg="nepi_edge_sdk_base" type="time_sync_mgr.py" respawn="true" output="$(arg output_destination)" />
+
+    <rosparam command="load" file="/opt/nepi/ros/etc/network_mgr/network_mgr.yaml" ns="network_mgr" />
+    <node name="network_mgr" pkg="nepi_edge_sdk_base" type="network_mgr.py" respawn="true" output="$(arg output_destination)" />
+
+    <group if="$(arg run_web_utils)" >
+      <!-- Rosbridge_websocket (for RUI or stand-alone)-->
+      <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" >
+        <arg name="address" value="0.0.0.0"/>
+        <arg name="port" value="9090"/>
+        <!-- Use a long unregister_timeout as a work-around for the well-known unregister rospy bug -->
+        <arg name="unregister_timeout" value="31536000"/>
+      </include>
+
+      <!-- Web Video Server (for RUI or stand-alone) -->
+      <node name="web_video_server" pkg="web_video_server" type="web_video_server" output="$(arg output_destination)">
+        <param name="port" value="9091"/>
+      </node>
+    </group>
+
+    <!-- NEPI Darknet Mgr -->
+    <group if="$(arg run_darknet_ros_mgr)" >
+      <rosparam command="load" file="/opt/nepi/ros/etc/nepi_darknet_ros_mgr/nepi_darknet_ros_mgr.yaml" ns="nepi_darknet_ros_mgr" />
+      <node name="nepi_darknet_ros_mgr" pkg="nepi_darknet_ros" type="nepi_darknet_ros_mgr.py" respawn="true" output="screen" />
+    </group>
+
+    <!-- NEPI Target Localizer -->
+    <group if="$(arg run_target_localizer)" >
+      <rosparam command="load" file="/opt/nepi/ros/etc/target_localizer/target_localizer.yaml" ns="target_localizer" />
+      <node name="target_localizer" pkg="nepi_edge_sdk_ai" type="target_localizer" respawn="true" output="$(arg output_destination)" />
+    </group>
+  </group>
+
+</launch>
