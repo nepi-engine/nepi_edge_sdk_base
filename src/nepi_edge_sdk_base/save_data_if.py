@@ -11,9 +11,9 @@ from nepi_ros_interfaces.srv import DataProductQuery, DataProductQueryResponse
 Basic interface for the global and private save_data topics.
 '''
 class SaveDataIF(object):
-    SAVE_DATA_ROOT_DIRECTORY = '/home/numurus_user/data'
-    DATA_UID = 1001 # numurus_user
-    DAGA_GID = 1001 # numurus_user
+    SAVE_DATA_ROOT_DIRECTORY = '/mnt/nepi_storage/data' # TODO: This should probably be configurable and/or queried from system_mgr.
+    DATA_UID = 1001 # nepi_user
+    DAGA_GID = 1001 # nepi_user
 
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled

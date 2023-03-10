@@ -2,7 +2,7 @@
 # of the device and launch files.
 
 # The ROOTNAME is used as the first namespace element. It is numurus by default, but can be overridden here
-export ROOTNAME=numurus
+export ROOTNAME=nepi
 
 # The DEVICE_TYPE represents the "name" of the device
 export DEVICE_TYPE=TBD
@@ -14,7 +14,7 @@ export DEVICE_SN=TBD
 export DEVICE_ID=TBD
 
 # Controls logging for both ROS1 and ROS2
-export ROS_LOG_DIR=/home/numurus_user/data/ros_log
+export ROS_LOG_DIR=/mnt/nepi_storage/data/ros_log
 
 # ROS1 Stuff - Leave it all "TBD" to avoid launching any ROS1 nodes
 # The ROS1_PACKAGE must be set as the package that contains ROS1_LAUNCH_FILE
@@ -23,7 +23,7 @@ export ROS1_PACKAGE=TBD
 export ROS1_LAUNCH_FILE=TBD
 # ROS_MASTER_URI may be modified for systems with a remote rosmaster
 # Note, though, that there are other system file modifications required, so you
-# should use the switch_rosmaster script instead of editing ROS_MASTER_URI directly.
+# should use the switch_rosmaster script or ROS topic instead of editing ROS_MASTER_URI directly.
 export ROS_MASTER_URI=http://localhost:11311
 
 # ROS2 Stuff - Leave it all TBD to avoid launching any ROS2 nodes

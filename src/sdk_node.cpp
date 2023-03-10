@@ -22,13 +22,13 @@ static std::vector<std::string> splitNamespace()
 
 static const std::string extractDeviceNamespace(const std::vector<std::string> &ns_tokens)
 {
-	if (ns_tokens.size() < 4)
+	if (ns_tokens.size() < 3)
 	{
 		ROS_ERROR("Invalid namespace token length");
 		return "";
 	}
 	// Trial and error determined these token indices
-	const std::string device_ns = "/" + ns_tokens[1] + "/" + ns_tokens[2] + "/" + ns_tokens[3];
+	const std::string device_ns = "/" + ns_tokens[1] + "/" + ns_tokens[2];
 	return device_ns;
 }
 

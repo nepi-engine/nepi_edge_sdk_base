@@ -1,5 +1,5 @@
 [Unit]
-Description=Numurus ROS Launch
+Description=NEPI ROS Launch
 After=network.target chrony.service
 
 [Service]

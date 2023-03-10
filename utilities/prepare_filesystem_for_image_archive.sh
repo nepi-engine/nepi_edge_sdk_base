@@ -3,7 +3,7 @@
 # This script cleans up a working system ahead of a release archive (e.g., via l4t flash.sh)
 # It is intended to run locally on a Numurus system (3DX, S2X, etc)
 # It must be run under sudo or as root
-DATA_CONTENTS=/home/numurus_user/data/*
+DATA_CONTENTS=/mnt/nepi_storage/data/*
 NUMURUS_ROS_LOG_CONTENTS=/home/numurus/.ros/log/*
 ROOT_ROS_LOG_CONTENTS=/root/.ros/log/*
 

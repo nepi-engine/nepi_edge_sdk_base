@@ -69,6 +69,13 @@ class SystemMgrNode():
             with open(self.FW_VERSION_PATH, "r") as f:
                 return f.readline().strip()
         return "UNSPECIFIED"
+    
+    def get_device_type(self):
+        with open(self.SYS_ENV_PATH, "r") as f:
+            for line in f:
+                if line.startswith("export DEVICE_TYPE="):
+                    return line.split('=')[1].rstrip()
+        return "undefined"            
 
     def update_temperatures(self):
         # Get the current temperatures
@@ -355,6 +362,8 @@ class SystemMgrNode():
         self.system_defs_msg.firmware_version = self.get_fw_rev()
 
         self.system_defs_msg.device_sn = self.get_device_sn()
+
+        self.system_defs_msg.device_type = self.get_device_type()
 
         # TODO: Determine how many temperature readings we have. On Jetson, for example
         #      there are 8 "thermal zones" in /sys/class/thermal/
