@@ -3,11 +3,13 @@
   <arg name="device_ns" value="$(env ROOTNAME)/$(env DEVICE_ID)" />
   <arg name="output_destination" value="screen" />
   <arg name="config_file_root" value="/opt/nepi/ros/etc" />
+  <arg name="nepi_edge_sdk_link_libpath" value="/opt/nepi/nepi_link/nepi_edge_sdk_link/lib" />
 
   <!-- Args. to run or not run specific nodes -->
   <arg name="run_web_utils" default="true" />
   <arg name="run_darknet_ros_mgr" default="true" />
   <arg name="run_target_localizer" default="true" />
+  <arg name="run_nepi_link" default="true" />
   
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
@@ -43,7 +45,7 @@
     <!-- NEPI Darknet Mgr -->
     <group if="$(arg run_darknet_ros_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/nepi_darknet_ros_mgr/nepi_darknet_ros_mgr.yaml" ns="nepi_darknet_ros_mgr" />
-      <node name="nepi_darknet_ros_mgr" pkg="nepi_darknet_ros" type="nepi_darknet_ros_mgr.py" respawn="true" output="screen" />
+      <node name="nepi_darknet_ros_mgr" pkg="nepi_darknet_ros" type="nepi_darknet_ros_mgr.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- NEPI Target Localizer -->
@@ -51,6 +53,17 @@
       <rosparam command="load" file="$(arg config_file_root)/target_localizer/target_localizer.yaml" ns="target_localizer" />
       <node name="target_localizer" pkg="nepi_edge_sdk_ai" type="target_localizer" respawn="true" output="$(arg output_destination)" />
     </group>
+
+    <!-- NEPI Link (NEPI-Bot via nepi_link_ros_bridge) -->
+    <group if="$(arg run_nepi_link)" >
+      <rosparam command="load" file="$(arg config_file_root)/nepi_link_ros_bridge/nepi_link_ros_bridge.yaml" ns="nepi_link_ros_bridge" />
+      <node name="nepi_link_ros_bridge" pkg="nepi_link_ros_bridge" type="nepi_link_ros_bridge.py" respawn="true" output="$(arg output_destination)" >
+        <!-- To use the nepi_edge_sdk_link components, must update the LD_LIBRARY_PATH and PYTHONPATH as described in that package's README -->
+        <env name="LD_LIBRARY_PATH" value="$(env LD_LIBRARY_PATH):$(arg nepi_edge_sdk_link_libpath)" />
+        <env name="PYTHONPATH" value="$(arg nepi_edge_sdk_link_libpath):$(env PYTHONPATH)" />
+      </node>
+    </group>
+
   </group>
 
 </launch>
