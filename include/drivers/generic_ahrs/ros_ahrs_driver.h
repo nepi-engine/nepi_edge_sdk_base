@@ -38,8 +38,8 @@ private:
   message_filters::Subscriber<sensor_msgs::Imu> imu_sub;
   message_filters::Subscriber<nav_msgs::Odometry> odom_sub;
 
-  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Imu, nav_msgs::Odometry> ApproxNavPosSyncPolicy;
-  message_filters::Synchronizer<ApproxNavPosSyncPolicy>* approx_nav_pos_sync = nullptr;
+  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Imu, nav_msgs::Odometry> ApproxNavPoseSyncPolicy;
+  message_filters::Synchronizer<ApproxNavPoseSyncPolicy>* approx_nav_pose_sync = nullptr;
 
   void callbackIMUAndOdom(const sensor_msgs::ImuConstPtr& imu_msg, const nav_msgs::OdometryConstPtr& odom_msg);
 

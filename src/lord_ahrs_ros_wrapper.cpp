@@ -75,7 +75,7 @@ void LORDAHRSRosWrapper::initPublishers()
 {
   imu_pub = n_priv.advertise<sensor_msgs::Imu>("~imu", 10);
   odom_pub = n_priv.advertise<nav_msgs::Odometry>("~odom", 10);
-  heading_pub = n.advertise<nepi_ros_interfaces::Heading>("nav_pos_mgr/set_heading_override", 10);
+  heading_pub = n.advertise<nepi_ros_interfaces::Heading>("nav_pose_mgr/set_heading_override", 10);
 }
 
 void LORDAHRSRosWrapper::publishIMUandOdom()
@@ -141,7 +141,7 @@ void LORDAHRSRosWrapper::publishIMUandOdom()
     odom_msg.twist.twist.linear.z = data.velocity_z;
   }
 
-  // Publish IMU and Odom close together because nav_pos mgr has a dual-filter
+  // Publish IMU and Odom close together because nav_pose mgr has a dual-filter
   imu_pub.publish(imu_msg);
   odom_pub.publish(odom_msg);
 
