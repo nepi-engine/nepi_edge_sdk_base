@@ -10,6 +10,7 @@
   <arg name="run_darknet_ros_mgr" default="true" />
   <arg name="run_target_localizer" default="true" />
   <arg name="run_nepi_link" default="true" />
+  <arg name="run_nav_pose" default="true" />
   
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
@@ -62,6 +63,17 @@
         <env name="LD_LIBRARY_PATH" value="$(env LD_LIBRARY_PATH):$(arg nepi_edge_sdk_link_libpath)" />
         <env name="PYTHONPATH" value="$(arg nepi_edge_sdk_link_libpath):$(env PYTHONPATH)" />
       </node>
+    </group>
+
+    <!-- NEPI Nav/Pose -->
+    <group if="$(arg run_nav_pose)" >
+      <!-- Nav/Pose Mgr -->
+      <rosparam command="load" file="$(arg config_file_root)/nav_pose_mgr/nav_pose_mgr.yaml" ns="nav_pose_mgr" />
+      <node name="nav_pose_mgr" pkg="nepi_edge_sdk_nav_pose" type="nav_pose_mgr_node" respawn="true" output="$(arg output_destination)" />
+
+      <!-- GPSD ROS Client -->
+      <rosparam command="load" file="$(arg config_file_root)/gpsd_ros_client/gpsd_ros_client.yaml" ns="gpsd_ros_client" />
+      <node name="gpsd_ros_client" pkg="nepi_edge_sdk_nav_pose" type="gpsd_ros_client_node" respawn="true" output="$(arg output_destination)" />
     </group>
 
   </group>
