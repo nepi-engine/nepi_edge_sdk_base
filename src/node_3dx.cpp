@@ -241,24 +241,24 @@ void Node3DX::simulateDataHandler(const std_msgs::Bool::ConstPtr &msg)
 
 // Node-specific subscription callbacks. Concrete instances should define what actions these take,
 // though we provide a very basic private member setter implementation in this baseclass
-void Node3DX::setRangeHandler(const nepi_ros_interfaces::Range3DX::ConstPtr &msg)
+void Node3DX::setRangeHandler(const nepi_ros_interfaces::RangeWindow::ConstPtr &msg)
 {
 	// Range-check inputs
-	if (msg->min_range < 0.0f ||
-		msg->max_range > 1.0f ||
-		msg->min_range > msg->max_range)
+	if (msg->start_range < 0.0f ||
+		msg->stop_range > 1.0f ||
+		msg->start_range > msg->stop_range)
 	{
-		ROS_ERROR("%s received invalid range settings (%.3f,%.3f)", getUnqualifiedName().c_str(), msg->min_range, msg->max_range);
+		ROS_ERROR("%s received invalid range settings (%.3f,%.3f)", getUnqualifiedName().c_str(), msg->start_range, msg->stop_range);
 		return;
 	}
 
-	const bool updated_range = (msg->min_range != _min_range) || (msg->max_range != _max_range);
+	const bool updated_range = (msg->start_range != _min_range) || (msg->stop_range != _max_range);
 
 	if (true == updated_range)
 	{
-		_min_range = msg->min_range;
-		_max_range = msg->max_range;
-		ROS_DEBUG("%s updated range to (%.3f,%.3f)", getUnqualifiedName().c_str(), msg->min_range, msg->max_range);
+		_min_range = msg->start_range;
+		_max_range = msg->stop_range;
+		ROS_DEBUG("%s updated range to (%.3f,%.3f)", getUnqualifiedName().c_str(), msg->start_range, msg->stop_range);
 		publishStatus();
 	}
 }
@@ -575,8 +575,8 @@ void Node3DX::publishStatus()
 
 	msg.simulate_data = _simulated_data;
 
-	msg.range.min_range = _min_range;
-	msg.range.max_range = _max_range;
+	msg.range.start_range = _min_range;
+	msg.range.stop_range = _max_range;
 
 	msg.angle.angle_offset = _angle_offset;
 	msg.angle.total_angle = _total_angle;

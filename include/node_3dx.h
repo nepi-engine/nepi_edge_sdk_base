@@ -18,7 +18,7 @@
 #include "sdk_node.h"
 
 #include "nepi_ros_interfaces/SaveData.h"
-#include "nepi_ros_interfaces/Range3DX.h"
+#include "nepi_ros_interfaces/RangeWindow.h"
 #include "nepi_ros_interfaces/Angle3DX.h"
 #include "nepi_ros_interfaces/AutoManualSelection3DX.h"
 #include "nepi_ros_interfaces/Status3DX.h"
@@ -282,7 +282,7 @@ protected:
 
 	// Node-specific subscription callbacks. Concrete instances should define what actions these take,
 	// though we provide a very basic private member setter implementation in this baseclass
-	virtual void setRangeHandler(const nepi_ros_interfaces::Range3DX::ConstPtr &msg);
+	virtual void setRangeHandler(const nepi_ros_interfaces::RangeWindow::ConstPtr &msg);
 	virtual void setAngleHandler(const nepi_ros_interfaces::Angle3DX::ConstPtr &msg);
 	virtual void setResolutionHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg);
 	virtual void setGainHandler(const nepi_ros_interfaces::AutoManualSelection3DX::ConstPtr &msg);
