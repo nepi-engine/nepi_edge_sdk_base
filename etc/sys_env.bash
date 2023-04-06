@@ -14,7 +14,7 @@ export DEVICE_SN=TBD
 export DEVICE_ID=TBD
 
 # Controls logging for both ROS1 and ROS2
-export ROS_LOG_DIR=/mnt/nepi_storage/data/ros_log
+export ROS_LOG_DIR=/mnt/nepi_storage/logs/ros_log
 
 # ROS1 Stuff - Leave it all "TBD" to avoid launching any ROS1 nodes
 # The ROS1_PACKAGE must be set as the package that contains ROS1_LAUNCH_FILE
