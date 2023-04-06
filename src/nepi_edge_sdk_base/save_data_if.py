@@ -12,8 +12,8 @@ Basic interface for the global and private save_data topics.
 '''
 class SaveDataIF(object):
     SAVE_DATA_ROOT_DIRECTORY = '/mnt/nepi_storage/data' # TODO: This should probably be configurable and/or queried from system_mgr.
-    DATA_UID = 1001 # nepi_user
-    DAGA_GID = 1001 # nepi_user
+    DATA_UID = 1000 # nepi
+    DATA_GID = 1000 # nepi
 
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
