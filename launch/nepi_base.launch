@@ -6,11 +6,13 @@
   <arg name="nepi_edge_sdk_link_libpath" value="/opt/nepi/nepi_link/nepi_edge_sdk_link/lib" />
 
   <!-- Args. to run or not run specific nodes -->
+  <arg name="run_robot_state_publisher" default="false" />
   <arg name="run_web_utils" default="true" />
   <arg name="run_darknet_ros_mgr" default="true" />
   <arg name="run_target_localizer" default="true" />
   <arg name="run_nepi_link" default="true" />
   <arg name="run_nav_pose" default="true" />
+  <arg name="run_onvif_nodes" default="true" />
   
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
@@ -27,6 +29,8 @@
 
     <rosparam command="load" file="$(arg config_file_root)/trigger_mgr/trigger_mgr.yaml" ns="trigger_mgr" />
     <node name="trigger_mgr" pkg="nepi_edge_sdk_base" type="trigger_mgr_no_hardware" respawn="true" output="$(arg output_destination)" />
+
+    <node if="$(arg run_robot_state_publisher)" name="nepi_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" required="true" />
 
     <group if="$(arg run_web_utils)" >
       <!-- Rosbridge_websocket (for RUI or stand-alone)-->
@@ -74,6 +78,10 @@
       <!-- GPSD ROS Client -->
       <rosparam command="load" file="$(arg config_file_root)/gpsd_ros_client/gpsd_ros_client.yaml" ns="gpsd_ros_client" />
       <node name="gpsd_ros_client" pkg="nepi_edge_sdk_nav_pose" type="gpsd_ros_client_node" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <group if="$(arg run_onvif_nodes)" >
+      <include file="$(find nepi_edge_sdk_onvif)/launch/nepi_onvif_demo.launch" pass_all_args="true"/>
     </group>
 
   </group>
