@@ -128,7 +128,7 @@ class ROSIDXSensorIF:
     def provide_capabilities(self, _):
         return self.capabilities_report
            
-    def __init__(self, setResolutionModeCb=None, setFramerateModeCb=None, setContrastCb=None, 
+    def __init__(self, sensor_name, setResolutionModeCb=None, setFramerateModeCb=None, setContrastCb=None, 
                  setBrightnessCb=None, setThresholdingCb=None, setRangeCb=None, 
                  getColor2DImgCb=None, stopColor2DImgAcquisitionCb=None, 
                  getGrayscale2DImgCb=None, stopGrayscale2DImgAcquisitionCb=None,
@@ -138,6 +138,7 @@ class ROSIDXSensorIF:
                  getPointcloudImgCb=None, stopPointcloudImgAcquisitionCb=None):
         
         data_products = []
+        self.sensor_name = sensor_name
 
         # Create the CV bridge. Do this early so it can be used in the threading run() methods below 
         # TODO: Need one per image output type for thread safety?
@@ -212,7 +213,6 @@ class ROSIDXSensorIF:
             data_products.append('color_2d_image')
             self.color_img_thread = threading.Thread(target=self.runColorImgThread)
             self.color_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
-            self.color_img_thread.start()
             self.capabilities_report.has_color_2d_image = True
         else:
             self.capabilities_report.has_color_2d_image = False
@@ -224,7 +224,6 @@ class ROSIDXSensorIF:
             data_products.append('bw_2d_image')
             self.bw_img_thread = threading.Thread(target=self.runGrayscaleImgThread)
             self.bw_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
-            self.bw_img_thread.start()            
             self.capabilities_report.has_bw_2d_image = True
         else:
             self.capabilities_report.has_bw_2d_image = False
@@ -234,7 +233,7 @@ class ROSIDXSensorIF:
         if (self.getDepthMapCb is not None):
             self.depth_map_pub = rospy.Publisher('~idx/depth_map', Image, queue_size=1)
             data_products.append('depth_map')
-            rospy.logwarn("idx_sensor_if.py: TODO: Need to start depth map thread")
+            rospy.logwarn("idx_sensor_if.py: TODO: Need to create depth map thread")
             self.capabilities_report.has_depth_map = True
         else:
             self.capabilities_report.has_depth_map = False
@@ -244,7 +243,7 @@ class ROSIDXSensorIF:
         if (self.getDepthImgCb is not None):
             self.depth_img_pub = rospy.Publisher('~idx/depth_image', Image, queue_size = 3)
             data_products.append('depth_image')
-            rospy.logwarn("idx_sensor_if.py: TODO: Need to start depth image thread")
+            rospy.logwarn("idx_sensor_if.py: TODO: Need to create depth image thread")
             self.capabilities_report.has_depth_image = True
         else:
             self.capabilities_report.has_depth_image = False
@@ -254,7 +253,7 @@ class ROSIDXSensorIF:
         if (self.getPointcloudImgCb is not None):
             self.pointcloud_img_pub = rospy.Publisher('~idx/pointcloud_image', Image, queue_size=1)
             data_products.append('pointcloud_image')
-            rospy.logwarn("idx_sensor_if.py: TODO: Need to start pointcloud image thread")
+            rospy.logwarn("idx_sensor_if.py: TODO: Need to create pointcloud image thread")
             self.capabilities_report.has_pointcloud_image = True
         else:
             self.capabilities_report.has_pointcloud_image = False
@@ -264,7 +263,7 @@ class ROSIDXSensorIF:
         if (self.getPointcloudCb is not None):
             self.pointcloud_img_pub = rospy.Publisher('~idx/pointcloud', PointCloud2, queue_size=1)
             data_products.append('pointcloud')
-            rospy.logwarn("idx_sensor_if.py: TODO: Need to start pointcloud thread")
+            rospy.logwarn("idx_sensor_if.py: TODO: Need to create pointcloud thread")
             self.capabilities_report.has_pointcloud = True
         else:
             self.capabilities_report.has_pointcloud = False
@@ -274,39 +273,58 @@ class ROSIDXSensorIF:
         self.status_msg = IDXStatus()
         self.status_pub = rospy.Publisher('~idx/status', IDXStatus, queue_size=5, latch=True)
 
+        # Set up the save data and save cfg i/f -- Do this before launching threads so that they can check data_product_should_save() immediately
+        self.save_data_if = SaveDataIF(data_product_names = data_products)
+        self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.setCurrentSettingsAsDefault, paramsModifiedCallback=self.updateFromParamServer)
+
+        # Launch the acquisition threads
+        self.color_img_thread.start()
+        self.bw_img_thread.start()  
+        # TODO: Start other acquisition threads here when they are implemented  
+
         # Set up service providers
         rospy.Service('~idx/capabilities_query', IDXCapabilitiesQuery, self.provide_capabilities)
-
-        # Set up the save data and save cfg i/f
-        self.save_data_if = SaveDataIF(data_product_names = data_products)
-        self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.setCurrentSettingsAsDefault, paramsModifiedCallback=self.updateFromParamServer) 
 
     def runColorImgThread(self):
         rospy.loginfo(rospy.get_name() + ": starting color_2d_image acquisition thread")
         acquiring = False
         while (True):
-            if (self.color_img_pub.get_num_connections() > 0):
+            saving_is_enabled = self.save_data_if.data_product_saving_enabled('color_2d_image')
+            has_subscribers = (self.color_img_pub.get_num_connections() > 0)
+            if (has_subscribers is True) or (saving_is_enabled is True):
                 acquiring = True
                 status, msg, cv_img = self.getColor2DImgCb()
                 if (status is False):
                     rospy.logerr_throttle(1, msg)
                     continue
-                # Convert cv to ros and publish
-                ros_img = self.cv_bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
-                self.color_img_pub.publish(ros_img)
+
+                if (has_subscribers is True):
+                    # Convert cv to ros and publish
+                    ros_img = self.cv_bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
+                    self.color_img_pub.publish(ros_img)
+                
+                if (self.save_data_if.data_product_should_save('color_2d_image') is True):
+                    full_path_filename = self.save_data_if.get_full_path_filename(self.save_data_if.get_timestamp_string(), 
+                                                                                  self.sensor_name + '_color_2d_img', 'png')
+                    #rospy.logwarn("Debugging: Time to save color_2d_img to " + full_path_filename)
+                    cv2.imwrite(full_path_filename, cv_img)
+
             elif acquiring is True:
                 if self.stopColor2DImgAcquisitionCb is not None:
-                    rospy.loginfo(rospy.get_name() + ": stopping color_2d_image acquisition because all subscribers have dropped off")
+                    rospy.loginfo(rospy.get_name() + ": stopping color_2d_image acquisition because all subscribers have dropped off and save_data_product disabled")
                     self.stopColor2DImgAcquisitionCb()
                 acquiring = False
             else: # No subscribers and already stopped
+                acquiring = False
                 rospy.sleep(0.25)
 
     def runGrayscaleImgThread(self):
         rospy.loginfo(rospy.get_name() + ": starting bw_2d_image acquisition thread")
         acquiring = False
         while (True):
-            if (self.grayscale_img_pub.get_num_connections() > 0):
+            saving_is_enabled = self.save_data_if.data_product_saving_enabled('bw_2d_image')
+            has_subscribers = (self.color_img_pub.get_num_connections() > 0)
+            if (has_subscribers is True) or (saving_is_enabled is True):
                 status, msg, cv_img = self.getGrayscale2DImgCb()
                 if (status is False):
                     rospy.logerr_throttle(1, msg)
@@ -317,16 +335,24 @@ class ROSIDXSensorIF:
                 # Fix the channel count if necessary
                 if cv_img.ndim == 3:
                     cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-                
-                # Convert cv to ros and publish
-                ros_img = self.cv_bridge.cv2_to_imgmsg(cv_img, encoding="mono8")
-                self.grayscale_img_pub.publish(ros_img)
+
+                if (has_subscribers is True):
+                    # Convert cv to ros and publish
+                    ros_img = self.cv_bridge.cv2_to_imgmsg(cv_img, encoding="mono8")
+                    self.grayscale_img_pub.publish(ros_img)
+
+                if (self.save_data_if.data_product_should_save('bw_2d_image') is True):
+                    full_path_filename = self.save_data_if.get_full_path_filename(self.save_data_if.get_timestamp_string(), 
+                                                                                  self.sensor_name + '_bw_2d_img', 'png')
+                    cv2.imwrite(full_path_filename, cv_img)
+
             elif acquiring is True:
                 if self.stopGrayscale2DImgCb is not None:
-                    rospy.loginfo(rospy.get_name() + ": stopping bw_2d_image acquisition because all subscribers have dropped off")
+                    rospy.loginfo(rospy.get_name() + ": stopping bw_2d_image acquisition because all subscribers have dropped off and save_data_product disabled")
                     self.stopGrayscale2DImgCb()
                 acquiring = False
             else: # No subscribers and already stopped
+                acquiring = False
                 rospy.sleep(0.25)
 
     def updateAndPublishStatus(self, do_updates = True):

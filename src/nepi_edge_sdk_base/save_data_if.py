@@ -13,7 +13,7 @@ Basic interface for the global and private save_data topics.
 class SaveDataIF(object):
     SAVE_DATA_ROOT_DIRECTORY = '/mnt/nepi_storage/data' # TODO: This should probably be configurable and/or queried from system_mgr.
     DATA_UID = 1000 # nepi
-    DATA_GID = 1000 # nepi
+    DATA_GID = 130 # sambashare # TODO This is very fragile
 
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
@@ -86,6 +86,18 @@ class SaveDataIF(object):
             return True
 
         return False
+    
+    def data_product_saving_enabled(self, data_product_name):
+        # If saving is disabled for this node, then no data products are saving
+        if not self.save_continuous:
+            return False
+
+        if data_product_name not in self.data_rate_dict:
+            rospy.logwarn("Unknown data product %s", data_product_name)
+            return False
+
+        save_rate = self.data_rate_dict[data_product_name][0]
+        return (save_rate > 0.0)
 
     def calibration_should_save(self):
         needs_cal = False
