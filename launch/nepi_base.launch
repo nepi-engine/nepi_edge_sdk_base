@@ -9,7 +9,7 @@
   <arg name="run_robot_state_publisher" default="false" />
   <arg name="run_web_utils" default="true" />
   <arg name="run_darknet_ros_mgr" default="true" />
-  <arg name="run_target_localizer" default="true" />
+  <arg name="run_target_localizer" default="false" />
   <arg name="run_nepi_link" default="true" />
   <arg name="run_nav_pose" default="true" />
   <arg name="run_onvif_nodes" default="true" />
