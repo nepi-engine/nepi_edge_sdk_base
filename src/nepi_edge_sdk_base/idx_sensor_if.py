@@ -159,7 +159,7 @@ class ROSIDXSensorIF:
             self.capabilities_report.adjustable_resolution = False
                
         self.setFramerateModeCb = setFramerateModeCb
-        if (self.setResolutionModeCb is not None):
+        if (self.setFramerateModeCb is not None):
             rospy.Subscriber('~idx/set_framerate_mode', UInt8, self.setFramerateMode, queue_size=1)
             init_framerate = rospy.get_param('~idx/framerate_mode', self.FRAMERATE_MODE_MAX) # Default to 3: Ultra
             rospy.set_param('~idx/framerate_mode', init_framerate)
