@@ -311,19 +311,21 @@ class ROSIDXSensorIF:
 
             elif acquiring is True:
                 if self.stopColor2DImgAcquisitionCb is not None:
-                    rospy.loginfo(rospy.get_name() + ": stopping color_2d_image acquisition because all subscribers have dropped off and save_data_product disabled")
+                    rospy.loginfo(rospy.get_name() + ": stopping color_2d_image acquisition")
                     self.stopColor2DImgAcquisitionCb()
                 acquiring = False
             else: # No subscribers and already stopped
                 acquiring = False
                 rospy.sleep(0.25)
 
+            rospy.sleep(0.01) # Yield
+
     def runGrayscaleImgThread(self):
         rospy.loginfo(rospy.get_name() + ": starting bw_2d_image acquisition thread")
         acquiring = False
         while (True):
             saving_is_enabled = self.save_data_if.data_product_saving_enabled('bw_2d_image')
-            has_subscribers = (self.color_img_pub.get_num_connections() > 0)
+            has_subscribers = (self.grayscale_img_pub.get_num_connections() > 0)
             if (has_subscribers is True) or (saving_is_enabled is True):
                 status, msg, cv_img = self.getGrayscale2DImgCb()
                 if (status is False):
@@ -332,10 +334,6 @@ class ROSIDXSensorIF:
 
                 acquiring = True
                 
-                # Fix the channel count if necessary
-                if cv_img.ndim == 3:
-                    cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-
                 if (has_subscribers is True):
                     # Convert cv to ros and publish
                     ros_img = self.cv_bridge.cv2_to_imgmsg(cv_img, encoding="mono8")
