@@ -348,26 +348,29 @@ class ROSIDXSensorIF:
 
             elif acquiring is True:
                 if self.stopGrayscale2DImgCb is not None:
-                    rospy.loginfo(rospy.get_name() + ": stopping bw_2d_image acquisition because all subscribers have dropped off and save_data_product disabled")
+                    rospy.loginfo(rospy.get_name() + ": stopping bw_2d_image acquisition")
                     self.stopGrayscale2DImgCb()
                 acquiring = False
             else: # No subscribers and already stopped
                 acquiring = False
                 rospy.sleep(0.25)
+                
+            rospy.sleep(0.01) # Yield
 
     def updateAndPublishStatus(self, do_updates = True):
         if do_updates is True:
             # TODO: Probably these should be queried from the parent (and through the driver) via explicit callbacks rather than via the param server
-            self.status_msg.resolution_mode = rospy.get_param('~idx/resolution_mode', 0)
-            self.status_msg.frame_rate_mode = rospy.get_param('~idx/framerate_mode', 0)
-            self.status_msg.contrast = rospy.get_param('~idx/contrast', 0)
-            self.status_msg.brightness = rospy.get_param('~idx/brightness', 0)
-            self.status_msg.thresholding = rospy.get_param('~idx/thresholding', 0)
-            self.status_msg.range_window.start_range = rospy.get_param('~idx/range_window/start_range', 0)
-            self.status_msg.range_window.stop_range = rospy.get_param('~idx/range_window/stop_range', 0)
+            idx_params = rospy.get_param('~idx')
+            self.status_msg.resolution_mode = idx_params['resolution_mode'] if 'resolution_mode' in idx_params else 0
+            self.status_msg.frame_rate_mode = idx_params['framerate_mode'] if 'framerate_mode' in idx_params else 0
+            self.status_msg.contrast = idx_params['contrast'] if 'contrast' in idx_params else 0
+            self.status_msg.brightness = idx_params['brightness'] if 'contrast' in idx_params else 0
+            self.status_msg.thresholding = idx_params['thresholding'] if 'thresholding' in idx_params else 0
+            self.status_msg.range_window.start_range = idx_params['range_window']['start_range'] if 'range_window' in idx_params else 0
+            self.status_msg.range_window.stop_range = idx_params['range_window']['stop_range'] if 'range_window' in idx_params else 0
         
             # The transfer frame into which 3D data (pointclouds) are transformed for the pointcloud data topic
-            self.status_msg.frame_3d = rospy.get_param('~idx/frame_3d', "nepi_center_frame")
+            self.status_msg.frame_3d = idx_params['frame_3d'] if 'frame_3d' in idx_params else "nepi_center_frame"
         
         self.status_pub.publish(self.status_msg)
     
