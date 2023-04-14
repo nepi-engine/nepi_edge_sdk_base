@@ -53,6 +53,7 @@ public:
 
 	void registerDataProduct(const std::string product_name, double save_rate_hz = 1.0, double max_save_rate_hz = 100.0);
 	bool dataProductShouldSave(const std::string product_name, ros::Time data_time = ros::Time::now());
+	bool dataProductSavingEnabled(const std::string product_name);
 	bool calibrationShouldSave();
 
 	static std::string getTimestampString(const ros::Time &time = ros::Time::now());

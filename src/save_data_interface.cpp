@@ -104,6 +104,28 @@ bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ro
 	return false;
 }
 
+bool SaveDataInterface::dataProductSavingEnabled(const std::string product_name)
+{
+	data_product_registry_entry_t entry;
+	try
+	{
+		entry = data_product_registry.at(product_name);
+	}
+	catch (int e)
+	{
+		// Unregistered data product -- just return false
+		// TODO: Log warning?
+		return false;
+	}
+
+	const float rate_hz = entry[0];
+	if (0 == rate_hz)
+	{
+		// Saving disabled for this data product
+		return false;
+	}	
+}
+
 bool SaveDataInterface::calibrationShouldSave()
 {
 	bool should_save = false;
