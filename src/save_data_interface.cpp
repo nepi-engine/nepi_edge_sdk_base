@@ -1,3 +1,4 @@
+#include <sys/stat.h>
 #include "boost/filesystem.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
 
@@ -22,12 +23,27 @@ SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pu
 		boost::filesystem::create_directories(p);
 		// Mark that we should save calibration to the new folder
 		_needs_save_calibration = true;
+
+		// Ensure default ownership
+		if (0 != chown(_save_data_dir.c_str(), _data_uid, _data_gid))
+		{
+			ROS_ERROR("Unable to set ownership of the Data folder (%s)", strerror(errno));
+		}
 	}
-	// Ensure proper ownership
-	if (0 != chown(_save_data_dir.c_str(), _data_uid, _data_gid))
+
+	// Ensure we know the correct user and group for folder creation later
+	struct stat stat_buf;
+	if (0 != stat(_save_data_dir.c_str(), &stat_buf))
 	{
-		ROS_ERROR("Unable to set ownership of the Data folder (%s)", strerror(errno));
+		ROS_ERROR("Unable to obtain ownership details of Data folder");
 	}
+	else
+	{
+		_data_uid = stat_buf.st_uid;
+		_data_gid = stat_buf.st_gid;
+	}
+
+
 }
 
 SaveDataInterface::~SaveDataInterface(){}

@@ -12,8 +12,6 @@ Basic interface for the global and private save_data topics.
 '''
 class SaveDataIF(object):
     SAVE_DATA_ROOT_DIRECTORY = '/mnt/nepi_storage/data' # TODO: This should probably be configurable and/or queried from system_mgr.
-    DATA_UID = 1000 # nepi
-    DATA_GID = 130 # sambashare # TODO This is very fragile
 
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
@@ -116,6 +114,9 @@ class SaveDataIF(object):
         return self.SAVE_DATA_ROOT_DIRECTORY + '/' + self.save_data_prefix + timestamp_string + "_" + identifier + "." + extension
 
     def __init__(self, data_product_names=None):
+        self.DATA_UID = 1000 # default to "nepi"
+        self.DATA_GID = 130 # default to "sambashare" # TODO This is very fragile
+
         self.data_rate_dict = {}
         for d in data_product_names:
             self.data_rate_dict[d] = [1.0, 0.0, 100.0] # Default to 1Hz save rate, max rate = 100.0Hz
@@ -148,3 +149,8 @@ class SaveDataIF(object):
         if not os.path.exists(self.SAVE_DATA_ROOT_DIRECTORY):
             os.makedirs(self.SAVE_DATA_ROOT_DIRECTORY)
             os.chown(self.SAVE_DATA_ROOT_DIRECTORY, self.DATA_UID, self.DATA_GID)
+
+        # And update so that we know what user/group to create folders with
+        stat_info = os.stat(self.SAVE_DATA_ROOT_DIRECTORY)
+        self.DATA_UID = stat_info.st_uid
+        self.DATA_GID = stat_info.st_gid

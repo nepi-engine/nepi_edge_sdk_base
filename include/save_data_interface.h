@@ -64,8 +64,8 @@ public:
 	 * Non-user-configurable base path
 	 */
 	const std::string _save_data_dir = "/mnt/nepi_storage/data";
-	const uid_t _data_uid = 1001; // numurus_user
-	const gid_t _data_gid = 1001; // numurus_user
+	uid_t _data_uid = 1000; // Default to nepi as owner
+	gid_t _data_gid = 130; // Default to sambashare as group: This is very fragile!
 
 protected:
 	/**
