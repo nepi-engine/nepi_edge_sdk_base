@@ -61,11 +61,11 @@ public:
 	const std::string getFullPathFilename(const std::string &timestamp_string, const std::string &identifier, const std::string &extension);
 
 	/**
-	 * Non-user-configurable base path
+	 * User-configurable base path (provided by service call)
 	 */
-	const std::string _save_data_dir = "/mnt/nepi_storage/data";
-	uid_t _data_uid = 1000; // Default to nepi as owner
-	gid_t _data_gid = 130; // Default to sambashare as group: This is very fragile!
+	std::string _save_data_dir;
+	uid_t _data_uid;
+	gid_t _data_gid;
 
 protected:
 	/**
@@ -106,7 +106,8 @@ protected:
 	 *
 	 * @param[in]  msg   Indicates the save_data_prefix settings
 	 */
-	void saveDataPrefixHandler(const std_msgs::String::ConstPtr &msg);
+	void saveDataPrefixPubNSHandler(const std_msgs::String::ConstPtr &msg);
+	void saveDataPrefixPrivNSHandler(const std_msgs::String::ConstPtr &msg);
 
 	void saveDataRateHandler(const nepi_ros_interfaces::SaveDataRate::ConstPtr &msg);
 

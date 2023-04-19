@@ -12,7 +12,7 @@ import rospy
 from std_msgs.msg import String, Empty, Float32
 from nepi_ros_interfaces.msg import SystemStatus, SystemDefs, WarningFlags, StampedString, SaveData
 from nepi_ros_interfaces.srv import SystemDefsQuery, SystemDefsQueryResponse, OpEnvironmentQuery, OpEnvironmentQueryResponse, \
-                             SystemSoftwareStatusQuery, SystemSoftwareStatusQueryResponse
+                             SystemSoftwareStatusQuery, SystemSoftwareStatusQueryResponse, SystemStorageFolderQuery, SystemStorageFolderQueryResponse
 
 from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
 import nepi_edge_sdk_base.nepi_software_update_utils as sw_update_utils
@@ -36,11 +36,16 @@ class SystemMgrNode():
     storage_mountpoint = "/mnt/nepi_storage"
     data_folder = storage_mountpoint + "/data"
 
+    storage_uid = 1000 # default to nepi
+    storage_gid = 130 # default to "sambashare" # TODO This is very fragile
+    REQD_STORAGE_SUBDIRS = ["ai_models", "automation_scripts", "data", "nepi_full_img", "nepi_full_img_archive", "logs"]
+
     # disk_usage_deque = deque(maxlen=10)
     # Shorter period for more responsive updates
     disk_usage_deque = deque(maxlen=3)
 
     first_stage_rootfs_device = "/dev/mmcblk0p1"
+    nepi_storage_device = "/dev/nvme0n1p3"
     new_img_staging_device = "/dev/nvme0n1p3"
     new_img_staging_device_removable = False
     usb_device = "/dev/sda" 
@@ -182,6 +187,12 @@ class SystemMgrNode():
             resp.new_sys_img_size_mb = 0
                 
         return resp
+    
+    def provide_system_data_folder(self, req):
+        if req.type not in self.storage_subdirs:
+            return None
+        
+        return SystemStorageFolderQueryResponse(self.storage_subdirs[req.type])
 
     def publish_periodic_status(self, event):
         self.status_msg.sys_time = event.current_real
@@ -202,6 +213,40 @@ class SystemMgrNode():
     def set_save_status(self, save_msg):
         self.status_msg.save_all_enabled = save_msg.save_continuous
 
+    def ensure_reqd_storage_subdirs(self):
+        # First check that the storage partition is actually mounted
+        if not os.path.ismount(self.storage_mountpoint):
+           rospy.logwarn("NEPI Storage partition is not mounted... attempting to mount")
+           ret, msg = sw_update_utils.mountPartition(self.nepi_storage_device, self.storage_mountpoint)
+           if ret is False:
+               rospy.logwarn("Unable to mount NEPI Storage partition... system may be dysfunctional")
+               #return False # Allow it continue on local storage...
+
+        # ... as long as there is enough space
+        self.update_storage()
+        if self.status_msg.warnings.flags[WarningFlags.DISK_FULL] is True:
+            rospy.logerr("Insufficient space on storage partition")
+            self.storage_mountpoint = ""
+            return False
+
+        # Gather owner and group details for storage mountpoint
+        stat_info = os.stat(self.storage_mountpoint)
+        self.storage_uid = stat_info.st_uid
+        self.storage_gid = stat_info.st_gid
+
+        # Check for and create subdirectories as necessary
+        for subdir in self.REQD_STORAGE_SUBDIRS:
+            full_path_subdir = os.path.join(self.storage_mountpoint, subdir)
+            if not os.path.isdir(full_path_subdir):
+                rospy.logwarn("Required storage subdir " + subdir + " not present... will create")
+                os.makedirs(full_path_subdir)
+                # And set the owner:group
+                # TODO: Different owner:group for different folders?
+                os.chown(full_path_subdir, self.storage_uid, self.storage_gid)
+            self.storage_subdirs[subdir] = full_path_subdir
+
+        return True
+
     def clear_data_folder(self, msg):
         if (self.status_msg.save_all_enabled is True):
             rospy.logwarn(
@@ -209,14 +254,15 @@ class SystemMgrNode():
             return
 
         rospy.loginfo("Clearing data folder by request")
-        if not os.path.isdir(self.data_folder):
+        data_folder = self.storage_subdirs['data']
+        if not os.path.isdir(data_folder):
             rospy.logwarn(
-                "No such folder " + self.data_folder + "... nothing to clear"
+                "No such folder " + data_folder + "... nothing to clear"
             )
             return
 
-        for filename in os.listdir(self.data_folder):
-            file_path = os.path.join(self.data_folder, filename)
+        for filename in os.listdir(data_folder):
+            file_path = os.path.join(data_folder, filename)
             try:
                 if os.path.isfile(file_path) or os.path.islink(file_path):
                     os.unlink(file_path)
@@ -349,7 +395,29 @@ class SystemMgrNode():
     def provide_op_environment(self, req):
         # Just proxy the param server
         return OpEnvironmentQueryResponse(rospy.get_param("~op_environment", OpEnvironmentQueryResponse.OP_ENV_AIR))
+    
+    def save_data_prefix_callback(self, msg):
+        save_data_prefix = msg.data
 
+        data_folder = self.storage_subdirs['data']
+        if data_folder is None:
+            return # No data directory
+
+        # Now ensure the directory exists if this prefix defines a subdirectory
+        full_path = os.path.join(data_folder, save_data_prefix)
+        parent_path = os.path.dirname(full_path)
+        if not os.path.exists(parent_path):
+            rospy.loginfo("Creating new data subdirectory " + parent_path)
+            os.makedirs(parent_path)
+            
+            # Gather owner and group details for data folder to propagate them
+            # TODO: Do we need to do this recursively in case this we are creating multiple levels of subdirectory here
+            stat_info = os.stat(data_folder)
+            new_dir_uid = stat_info.st_uid
+            new_dir_guid = stat_info.st_gid
+
+            os.chown(parent_path, new_dir_uid, new_dir_guid)
+    
     def get_device_friendly_name(self, devfs_name):
         # Leave space for the partition number
         friendly_name = devfs_name.replace(self.emmc_device, "EMMC Partition ")
@@ -421,8 +489,7 @@ class SystemMgrNode():
 
         self.storage_mountpoint = rospy.get_param(
             "~storage_mountpoint", self.storage_mountpoint)
-        self.data_folder = self.storage_mountpoint + "/data"
-
+        
         self.first_stage_rootfs_device = rospy.get_param(
             "~first_stage_rootfs_device", self.first_stage_rootfs_device
         )
@@ -518,6 +585,8 @@ class SystemMgrNode():
 
         rospy.Subscriber('archive_inactive_rootfs', Empty, self.handle_archive_inactive_rootfs, queue_size=1)
 
+        rospy.Subscriber('save_data_prefix', String, self.save_data_prefix_callback)
+
         # Advertise services
         rospy.Service('system_defs_query', SystemDefsQuery,
                       self.provide_system_defs)
@@ -532,11 +601,17 @@ class SystemMgrNode():
         # Need to get the storage_mountpoint and first-stage rootfs early because they are used in init_msgs()
         self.storage_mountpoint = rospy.get_param(
             "~storage_mountpoint", self.storage_mountpoint)
-        self.data_folder = self.storage_mountpoint + "/data"
         self.first_stage_rootfs_device = rospy.get_param(
             "~first_stage_rootfs_device", self.first_stage_rootfs_device)
 
         self.init_msgs()
+
+        # Ensure that the user partition is properly laid out
+        self.storage_subdirs = {} # Populated in function below
+        if self.ensure_reqd_storage_subdirs() is True:
+            # Now can advertise the system folder query
+            rospy.Service('system_storage_folder_query', SystemStorageFolderQuery,
+                self.provide_system_data_folder)
 
         self.valid_device_id_re = re.compile(r"^[a-zA-Z][\w]*$")
 

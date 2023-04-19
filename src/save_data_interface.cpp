@@ -6,44 +6,60 @@
 #include "sdk_utils.h"
 
 #include "nepi_ros_interfaces/SaveDataStatus.h"
+#include "nepi_ros_interfaces/SystemStorageFolderQuery.h"
 
 
 namespace Numurus
 {
 SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pub_nh, ros::NodeHandle *parent_priv_nh):
 	SDKInterface{parent, parent_pub_nh, parent_priv_nh},
+	_save_data_dir{""},
+	_data_uid{0},
+	_data_gid{0},
 	_save_continuous{"save_data_continuous", false, parent},
 	_save_raw{"save_data_raw", false, parent}
 {
-	// Check that the data directory exists, and if not create it
-	boost::filesystem::path p(_save_data_dir);
-	if (false == boost::filesystem::exists(p))
+	// First, get the data directory
+	if (false == ros::service::waitForService("system_storage_folder_query", 10000)) // Timeout is in ms, so 10 seconds
 	{
-		// Using boost because the equivalent std::filesystem::create_directories only exists since C++17
-		boost::filesystem::create_directories(p);
-		// Mark that we should save calibration to the new folder
-		_needs_save_calibration = true;
-
-		// Ensure default ownership
-		if (0 != chown(_save_data_dir.c_str(), _data_uid, _data_gid))
-		{
-			ROS_ERROR("Unable to set ownership of the Data folder (%s)", strerror(errno));
-		}
-	}
-
-	// Ensure we know the correct user and group for folder creation later
-	struct stat stat_buf;
-	if (0 != stat(_save_data_dir.c_str(), &stat_buf))
-	{
-		ROS_ERROR("Unable to obtain ownership details of Data folder");
+		ROS_ERROR("Failed to obtain system data folder");
 	}
 	else
 	{
-		_data_uid = stat_buf.st_uid;
-		_data_gid = stat_buf.st_gid;
+		ros::ServiceClient data_folder_query_client = parent_pub_nh->serviceClient<nepi_ros_interfaces::SystemStorageFolderQuery>("system_storage_folder_query");
+		nepi_ros_interfaces::SystemStorageFolderQuery data_folder_query;
+		data_folder_query.request.type = "data";
+		if (false == data_folder_query_client.call(data_folder_query))
+		{
+			ROS_ERROR("Failed to obtain system data folder");
+		}
+		else
+		{
+			_save_data_dir = data_folder_query.response.folder_path;
+		}
 	}
 
-
+	// Check that the data directory actually exists
+	boost::filesystem::path p(_save_data_dir);
+	if (false == boost::filesystem::exists(p))
+	{
+		ROS_ERROR("Reported data folder does not exist... data saving is disabled");
+		_save_data_dir = ""; // Set it back to blank
+	}
+	else
+	{
+		// Ensure we know the correct user and group for folder creation later
+		struct stat stat_buf;
+		if (0 != stat(_save_data_dir.c_str(), &stat_buf))
+		{
+			ROS_ERROR("Unable to obtain ownership details of Data folder");
+		}
+		else
+		{
+			_data_uid = stat_buf.st_uid;
+			_data_gid = stat_buf.st_gid;
+		}
+	}
 }
 
 SaveDataInterface::~SaveDataInterface(){}
@@ -57,38 +73,55 @@ void SaveDataInterface::retrieveParams()
 
 void SaveDataInterface::initPublishers()
 {
-	_save_status_pub = _parent_priv_nh->advertise<nepi_ros_interfaces::SaveDataStatus>("save_data_status", 5, true);
+	if (_save_data_dir.length() != 0)
+	{
+		_save_status_pub = _parent_priv_nh->advertise<nepi_ros_interfaces::SaveDataStatus>("save_data_status", 5, true);
+	}
 }
 
 void SaveDataInterface::initSubscribers()
 {
-	// Public namespace subscriptions
-	subscribers.push_back(_parent_pub_nh->subscribe("save_data", 3, &SaveDataInterface::saveDataHandler, this));
-	subscribers.push_back(_parent_pub_nh->subscribe("save_data_prefix", 3, &SaveDataInterface::saveDataPrefixHandler, this));
-	subscribers.push_back(_parent_pub_nh->subscribe("save_data_rate", 3, &SaveDataInterface::saveDataRateHandler, this));
+	if (_save_data_dir.length() != 0)
+	{
+		// Public namespace subscriptions
+		subscribers.push_back(_parent_pub_nh->subscribe("save_data", 3, &SaveDataInterface::saveDataHandler, this));
+		subscribers.push_back(_parent_pub_nh->subscribe("save_data_prefix", 3, &SaveDataInterface::saveDataPrefixPubNSHandler, this));
+		subscribers.push_back(_parent_pub_nh->subscribe("save_data_rate", 3, &SaveDataInterface::saveDataRateHandler, this));
 
-	// Private namespace subscriptions
-	subscribers.push_back(_parent_priv_nh->subscribe("save_data", 3, &SaveDataInterface::saveDataHandler, this));
-	subscribers.push_back(_parent_priv_nh->subscribe("save_data_prefix", 3, &SaveDataInterface::saveDataPrefixHandler, this));
-	subscribers.push_back(_parent_priv_nh->subscribe("save_data_rate", 3, &SaveDataInterface::saveDataRateHandler, this));
+		// Private namespace subscriptions
+		subscribers.push_back(_parent_priv_nh->subscribe("save_data", 3, &SaveDataInterface::saveDataHandler, this));
+		subscribers.push_back(_parent_priv_nh->subscribe("save_data_prefix", 3, &SaveDataInterface::saveDataPrefixPrivNSHandler, this));
+		subscribers.push_back(_parent_priv_nh->subscribe("save_data_rate", 3, &SaveDataInterface::saveDataRateHandler, this));
+	}
 }
 
 void SaveDataInterface::initServices()
 {
-	servicers.push_back(_parent_priv_nh->advertiseService("query_data_products", &SaveDataInterface::queryDataProductsHandler, this));
+	if (_save_data_dir.length() != 0)
+	{
+		servicers.push_back(_parent_priv_nh->advertiseService("query_data_products", &SaveDataInterface::queryDataProductsHandler, this));
+	}
 }
 
 void SaveDataInterface::registerDataProduct(const std::string product_name, double save_rate_hz, double max_save_rate_hz)
 {
-	if (save_rate_hz > max_save_rate_hz)
+	if (_save_data_dir.length() != 0)
 	{
-		save_rate_hz = max_save_rate_hz;
+		if (save_rate_hz > max_save_rate_hz)
+		{
+			save_rate_hz = max_save_rate_hz;
+		}
+		data_product_registry[product_name] = {save_rate_hz, 0.0, max_save_rate_hz};
 	}
-	data_product_registry[product_name] = {save_rate_hz, 0.0, max_save_rate_hz};
 }
 
 bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ros::Time data_time)
 {
+	if (_save_data_dir.length() == 0)
+	{
+		return false;
+	}
+
 	data_product_registry_entry_t entry;
 	try
 	{
@@ -139,11 +172,17 @@ bool SaveDataInterface::dataProductSavingEnabled(const std::string product_name)
 	{
 		// Saving disabled for this data product
 		return false;
-	}	
+	}
+	return true;	
 }
 
 bool SaveDataInterface::calibrationShouldSave()
 {
+	if (_save_data_dir.length() == 0)
+	{
+		return false;
+	}
+
 	bool should_save = false;
 	if (_needs_save_calibration == true)
 	{
@@ -184,6 +223,11 @@ std::string SaveDataInterface::getTimestampString(const ros::Time &timestamp)
 
 const std::string SaveDataInterface::getFullPathFilename(const std::string &timestamp_string, const std::string &identifier, const std::string &extension)
 {
+	if (_save_data_dir.length() == 0)
+	{
+		return "";
+	}
+	
 	return (_save_data_dir + "/" + _filename_prefix + timestamp_string + "_" + identifier + "." + extension);
 }
 
@@ -208,7 +252,23 @@ void SaveDataInterface::saveDataHandler(const nepi_ros_interfaces::SaveData::Con
 	publishSaveStatus();
 }
 
-void SaveDataInterface::saveDataPrefixHandler(const std_msgs::String::ConstPtr &msg)
+void SaveDataInterface::saveDataPrefixPubNSHandler(const std_msgs::String::ConstPtr &msg)
+{
+	_filename_prefix = msg->data;
+
+	// Mark for calibration save if this will be in a subdirectory
+	// TODO: Better would be if we detected that this was a *new* subdirectory, but that logic is more complicated and
+	// saving calibration more often than necessary seems pretty benign
+	if (_filename_prefix.find('/') != std::string::npos)
+	{
+		_needs_save_calibration = true;
+	}
+	//TODO: Should we monitor here to ensure that a new folder gets created by system_mgr if required according to the new prefix before proceeding?
+
+	publishSaveStatus();
+}
+
+void SaveDataInterface::saveDataPrefixPrivNSHandler(const std_msgs::String::ConstPtr &msg)
 {
 	_filename_prefix = msg->data;
 

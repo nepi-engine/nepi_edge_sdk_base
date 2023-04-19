@@ -5,14 +5,12 @@ import rospy
 
 from std_msgs.msg import String
 from nepi_ros_interfaces.msg import SaveData, SaveDataRate, SaveDataStatus
-from nepi_ros_interfaces.srv import DataProductQuery, DataProductQueryResponse
+from nepi_ros_interfaces.srv import DataProductQuery, DataProductQueryResponse, SystemStorageFolderQuery, SystemStorageFolderQueryResponse
 
 '''
 Basic interface for the global and private save_data topics.
 '''
 class SaveDataIF(object):
-    SAVE_DATA_ROOT_DIRECTORY = '/mnt/nepi_storage/data' # TODO: This should probably be configurable and/or queried from system_mgr.
-
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
         if (self.save_continuous is False) and (msg.save_continuous is True):
@@ -26,14 +24,30 @@ class SaveDataIF(object):
 
         self.publish_save_status()
 
-    def save_data_prefix_callback(self, msg):
+    def save_data_prefix_pub_ns_callback(self, msg):
         self.save_data_prefix = msg.data
 
-        # Now ensure the directory exists if this prefix defines a subdirectory
-        full_path = self.SAVE_DATA_ROOT_DIRECTORY + '/' + self.save_data_prefix
+        # Mark for calibration save if this will be in a subdirectory
+        # TODO: Better would be if we detected that this was a *new* subdirectory, but that logic is more complicated and
+        # saving calibration more often than necessary seems pretty benign
+        if '/' in self.save_data_prefix:
+            self.needs_save_calibration = True
+        # TODO: Should we monitor here to ensure that a new folder gets created by system_mgr if required according to the new prefix before proceeding?
+        
+        self.publish_save_status()
 
+    def save_data_prefix_priv_ns_callback(self, msg):
+        self.save_data_prefix = msg.data
+
+        if self.save_data_root_directory is None:
+            return # No data directory
+
+        # Now ensure the directory exists if this prefix defines a subdirectory
+        full_path = os.path.join(self.save_data_root_directory, self.save_data_prefix)
         parent_path = os.path.dirname(full_path)
-        if not os.path.exists(os.path.dirname(parent_path)):
+        #rospy.logwarn("DEBUG!!!! Computed full path " + full_path + " and parent path " + parent_path)
+        if not os.path.exists(parent_path):
+            rospy.loginfo("Creating new data subdirectory " + parent_path)
             os.makedirs(parent_path)
             os.chown(parent_path, self.DATA_UID, self.DATA_GID)
             # Mark that we should save calibration to the new folder
@@ -61,7 +75,11 @@ class SaveDataIF(object):
 
     def publish_save_status(self):
         current_save_data = SaveData(save_continuous = self.save_continuous, save_raw = self.save_raw)
-        self.save_data_status_pub.publish(current_data_dir = self.save_data_dir, save_data = current_save_data)
+        if self.save_data_root_directory is None:
+            self.save_data_status_pub.publish(current_data_dir = "", save_data = current_save_data)
+        else:
+            current_dir = os.path.dirname(os.path.join(self.save_data_root_directory, self.save_data_prefix))
+            self.save_data_status_pub.publish(current_data_dir = current_dir, save_data = current_save_data)
 
     def data_product_should_save(self, data_product_name):
         # If saving is disabled for this node, then it is not time to save this data product!
@@ -108,14 +126,36 @@ class SaveDataIF(object):
         return datetime.datetime.now().strftime('%Y-%m-%dT%H%M%S.%f')[:-3]
 
     def get_filename_path_and_prefix(self):
-        return self.SAVE_DATA_ROOT_DIRECTORY + '/' + self.save_data_prefix
+        if self.save_data_root_directory is None:
+            return ""
+        return os.path.join(self.save_data_root_directory, self.save_data_prefix)
 
     def get_full_path_filename(self, timestamp_string, identifier, extension):
-        return self.SAVE_DATA_ROOT_DIRECTORY + '/' + self.save_data_prefix + timestamp_string + "_" + identifier + "." + extension
+        if self.save_data_root_directory is None:
+            return ""
+        return os.path.join(self.save_data_root_directory, self.save_data_prefix + timestamp_string + "_" + identifier + "." + extension)
 
     def __init__(self, data_product_names=None):
-        self.DATA_UID = 1000 # default to "nepi"
-        self.DATA_GID = 130 # default to "sambashare" # TODO This is very fragile
+        # First thing, need to get the data folder
+        try:
+            rospy.wait_for_service('system_storage_folder_query', 10.0)
+            system_storage_folder_query = rospy.ServiceProxy('system_storage_folder_query', SystemStorageFolderQuery)
+            self.save_data_root_directory = system_storage_folder_query('data').folder_path
+        except Exception as e:
+            rospy.logwarn("Failed to obtain system data folder: " + str(e))
+            self.save_data_root_directory = None # Flag it as non-existent
+            return
+
+        # Ensure the data folder exists with proper ownership
+        if not os.path.exists(self.save_data_root_directory):
+            rospy.logwarn("Reported data folder does not exist... data saving is disabled")
+            self.save_data_root_directory = None # Flag it as non-existent
+            return # Don't enable any of the ROS interface stuff
+
+        # And figure out user/group so that we know what ownership to create subfolders with
+        stat_info = os.stat(self.save_data_root_directory)
+        self.DATA_UID = stat_info.st_uid
+        self.DATA_GID = stat_info.st_gid
 
         self.data_rate_dict = {}
         for d in data_product_names:
@@ -128,29 +168,18 @@ class SaveDataIF(object):
         rospy.set_param('~save_data_raw', self.save_raw)
 
         self.save_data_prefix = ''
-        self.save_data_dir = self.SAVE_DATA_ROOT_DIRECTORY
-
+        
         self.needs_save_calibration = self.save_continuous
 
         # Setup subscribers -- public and private versions
         rospy.Subscriber('save_data', SaveData, self.save_data_callback)
-    	rospy.Subscriber('save_data_prefix', String, self.save_data_prefix_callback)
-    	rospy.Subscriber('save_data_rate', SaveDataRate, self.save_data_rate_callback)
+        rospy.Subscriber('save_data_prefix', String, self.save_data_prefix_pub_ns_callback)
+        rospy.Subscriber('save_data_rate', SaveDataRate, self.save_data_rate_callback)
 
         rospy.Subscriber('~save_data', SaveData, self.save_data_callback)
-    	rospy.Subscriber('~save_data_prefix', String, self.save_data_prefix_callback)
-    	rospy.Subscriber('~save_data_rate', SaveDataRate, self.save_data_rate_callback)
+        rospy.Subscriber('~save_data_prefix', String, self.save_data_prefix_priv_ns_callback)
+        rospy.Subscriber('~save_data_rate', SaveDataRate, self.save_data_rate_callback)
 
         rospy.Service('~query_data_products', DataProductQuery, self.query_data_products_callback)
 
         self.save_data_status_pub = rospy.Publisher('~save_data_status', SaveDataStatus, queue_size = 5)
-
-        # Ensure the data folder exists with proper ownership
-        if not os.path.exists(self.SAVE_DATA_ROOT_DIRECTORY):
-            os.makedirs(self.SAVE_DATA_ROOT_DIRECTORY)
-            os.chown(self.SAVE_DATA_ROOT_DIRECTORY, self.DATA_UID, self.DATA_GID)
-
-        # And update so that we know what user/group to create folders with
-        stat_info = os.stat(self.SAVE_DATA_ROOT_DIRECTORY)
-        self.DATA_UID = stat_info.st_uid
-        self.DATA_GID = stat_info.st_gid
