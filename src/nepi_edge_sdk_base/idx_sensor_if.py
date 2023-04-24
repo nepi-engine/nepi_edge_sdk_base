@@ -360,7 +360,7 @@ class ROSIDXSensorIF:
             # TODO: Probably these should be queried from the parent (and through the driver) via explicit callbacks rather than via the param server
             idx_params = rospy.get_param('~idx')
             self.status_msg.resolution_mode = idx_params['resolution_mode'] if 'resolution_mode' in idx_params else 0
-            self.status_msg.frame_rate_mode = idx_params['framerate_mode'] if 'framerate_mode' in idx_params else 0
+            self.status_msg.framerate_mode = idx_params['framerate_mode'] if 'framerate_mode' in idx_params else 0
             self.status_msg.contrast = idx_params['contrast'] if 'contrast' in idx_params else 0
             self.status_msg.brightness = idx_params['brightness'] if 'contrast' in idx_params else 0
             self.status_msg.thresholding = idx_params['thresholding'] if 'thresholding' in idx_params else 0
