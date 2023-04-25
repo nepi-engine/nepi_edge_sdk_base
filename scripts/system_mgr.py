@@ -163,6 +163,9 @@ class SystemMgrNode():
             resp.new_sys_img = 'busy'
             resp.new_sys_img_version = 'busy'
             return resp
+        
+        # At this point, not currently installing, so clear any previous query failed message so the status update logic below will work
+        self.status_msg.sys_img_update_status = ""
 
         (status, err_string, new_img_file, new_img_version, new_img_filesize) = sw_update_utils.checkForNewImageAvailable(
             self.new_img_staging_device, self.new_img_staging_device_removable)
@@ -173,18 +176,18 @@ class SystemMgrNode():
             resp.new_sys_img_size_mb = 0
             self.status_msg.sys_img_update_status = 'query failed'
             return resp
-
+        
         # Update the response
         if new_img_file:
             resp.new_sys_img = new_img_file
             resp.new_sys_img_version = new_img_version
             resp.new_sys_img_size_mb = new_img_filesize / BYTES_PER_MEGABYTE
-            if not self.status_msg.sys_img_update_status:
-                self.status_msg.sys_img_update_status = "ready to install"
+            self.status_msg.sys_img_update_status = "ready to install"
         else:
             resp.new_sys_img = 'none detected'
             resp.new_sys_img_version = 'none detected'
             resp.new_sys_img_size_mb = 0
+            self.status_msg.sys_img_update_status = "no new image available"
                 
         return resp
     
