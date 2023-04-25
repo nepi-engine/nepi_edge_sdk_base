@@ -354,6 +354,7 @@ class SystemMgrNode():
                 rospy.logwarn("Automatic rootfs active/inactive switch failed: " + err_msg)
             else:
                 rospy.loginfo("Executed automatic rootfs A/B switch... on next reboot new image will load")
+                self.status_msg.warnings.flags[WarningFlags.ACTIVE_INACTIVE_ROOTFS_STALE] = True
                 self.status_msg.sys_img_update_status = 'complete - needs reboot'
     
     def handle_switch_active_inactive_rootfs(self, msg):
@@ -363,6 +364,7 @@ class SystemMgrNode():
             rospy.logwarn("Failed to switch active/inactive rootfs: " + err_msg)
             return
 
+        self.status_msg.warnings.flags[WarningFlags.ACTIVE_INACTIVE_ROOTFS_STALE] = True
         rospy.logwarn(
             "Switched active and inactive rootfs. Must reboot system for changes to take effect")
 
