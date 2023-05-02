@@ -499,6 +499,10 @@ class SystemMgrNode():
             "~first_stage_rootfs_device", self.first_stage_rootfs_device
         )
 
+        self.nepi_storage_device = rospy.get_param(
+            "~nepi_storage_device", self.nepi_storage_device
+        )
+
         self.new_img_staging_device = rospy.get_param(
             "~new_img_staging_device", self.new_img_staging_device
         )
