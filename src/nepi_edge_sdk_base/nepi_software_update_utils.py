@@ -92,13 +92,13 @@ def checkForNewImageAvailable(new_img_staging_device, staging_device_is_removabl
     # First, check that the new image staging device actually exists. If not, probably just
     # removable
     if staging_device_is_removable and not os.path.exists(new_img_staging_device):
-        return True, "Removable staging device not detected", None, None
+        return True, "Removable staging device not detected", None, None, 0
 
     # Now mount the staging partition
     status, err_string = mountPartition(
         new_img_staging_device, STAGING_MOUNTPOINT)
     if status is False:
-        return status, err_string, None, None
+        return status, err_string, None, None, 0
 
     new_img_search_string = os.path.join(
         STAGING_MOUNTPOINT, NEPI_FULL_IMG_SUBDIR, NEPI_FULL_IMG_SEARCH_STRING)
