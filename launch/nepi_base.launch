@@ -81,13 +81,14 @@
       <node name="gpsd_ros_client" pkg="nepi_edge_sdk_nav_pose" type="gpsd_ros_client_node" respawn="true" output="$(arg output_destination)" />
     </group>
 
+    <!-- ONVIF nodes -->
     <group if="$(arg run_onvif_nodes)" >
       <include file="$(find nepi_edge_sdk_onvif)/launch/nepi_onvif_demo.launch" pass_all_args="true"/>
     </group>
 
     <!-- Automation Mgr -->
     <group if="$(arg run_automation_mgr)" >
-      <rosparam command="load" file="$(arg config_file_root)/automation_mgr/automation_mgr.yaml" />
+      <rosparam command="load" file="$(arg config_file_root)/automation_mgr/automation_mgr.yaml" ns="automation_mgr" />
       <node name="automation_mgr" pkg="nepi_automation_mgr" type="automation_manager.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
