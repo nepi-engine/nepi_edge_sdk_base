@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import time
 import threading
 import rospy
 from cv_bridge import CvBridge
@@ -139,6 +140,7 @@ class ROSIDXSensorIF:
         
         data_products = []
         self.sensor_name = sensor_name
+        self.camera_frame_id = sensor_name + "_frame" # TODO: Configurable?
 
         # Create the CV bridge. Do this early so it can be used in the threading run() methods below 
         # TODO: Need one per image output type for thread safety?
@@ -209,7 +211,7 @@ class ROSIDXSensorIF:
         # Start the data producer threads
         self.getColor2DImgCb = getColor2DImgCb
         if (self.getColor2DImgCb is not None):
-            self.color_img_pub = rospy.Publisher('~idx/color_2d_image', Image, queue_size=1)
+            self.color_img_pub = rospy.Publisher('~idx/color_2d_image', Image, queue_size=1, tcp_nodelay=True)
             data_products.append('color_2d_image')
             self.color_img_thread = threading.Thread(target=self.runColorImgThread)
             self.color_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
@@ -293,16 +295,23 @@ class ROSIDXSensorIF:
             has_subscribers = (self.color_img_pub.get_num_connections() > 0)
             if (has_subscribers is True) or (saving_is_enabled is True):
                 acquiring = True
-                status, msg, cv_img = self.getColor2DImgCb()
+                status, msg, cv_img, ros_timestamp = self.getColor2DImgCb()
                 if (status is False):
                     rospy.logerr_throttle(1, msg)
                     continue
 
                 if (has_subscribers is True):
                     # Convert cv to ros and publish
+                    start = time.time()
                     ros_img = self.cv_bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
+                    ros_img.header.stamp = ros_timestamp
+                    ros_img.header.frame_id = self.camera_frame_id
+                    stop = time.time()
+                    #print('CV2Img: ', stop-start)
                     self.color_img_pub.publish(ros_img)
-                
+                    next_stop = time.time()
+                    #print('Pub: ', next_stop-stop)
+
                 if (self.save_data_if.data_product_should_save('color_2d_image') is True):
                     full_path_filename = self.save_data_if.get_full_path_filename(self.save_data_if.get_timestamp_string(), 
                                                                                   self.sensor_name + '_color_2d_img', 'png')
@@ -327,7 +336,7 @@ class ROSIDXSensorIF:
             saving_is_enabled = self.save_data_if.data_product_saving_enabled('bw_2d_image')
             has_subscribers = (self.grayscale_img_pub.get_num_connections() > 0)
             if (has_subscribers is True) or (saving_is_enabled is True):
-                status, msg, cv_img = self.getGrayscale2DImgCb()
+                status, msg, cv_img, ros_timestamp = self.getGrayscale2DImgCb()
                 if (status is False):
                     rospy.logerr_throttle(1, msg)
                     continue
@@ -337,6 +346,8 @@ class ROSIDXSensorIF:
                 if (has_subscribers is True):
                     # Convert cv to ros and publish
                     ros_img = self.cv_bridge.cv2_to_imgmsg(cv_img, encoding="mono8")
+                    ros_img.header.stamp = ros_timestamp
+                    ros_img.header.frame_id = self.camera_frame_id
                     self.grayscale_img_pub.publish(ros_img)
 
                 if (self.save_data_if.data_product_should_save('bw_2d_image') is True):
