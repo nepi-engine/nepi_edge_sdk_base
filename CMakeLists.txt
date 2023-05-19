@@ -241,6 +241,7 @@ catkin_install_python(PROGRAMS
   scripts/network_mgr.py
   scripts/image_color_converter.py
   scripts/rui_config_mgr.py
+  scripts/sequential_image_mux.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

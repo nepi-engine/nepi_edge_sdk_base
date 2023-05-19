@@ -14,6 +14,7 @@
   <arg name="run_nav_pose" default="true" />
   <arg name="run_onvif_nodes" default="true" />
   <arg name="run_automation_mgr" default="true" />
+  <arg name="run_sequential_image_mux" default="true" />
   
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
@@ -46,6 +47,12 @@
       <node name="web_video_server" pkg="web_video_server" type="web_video_server" output="$(arg output_destination)">
         <param name="port" value="9091"/>
       </node>
+    </group>
+
+    <!-- Sequential Image Mux -->
+    <group if="$(arg run_sequential_image_mux)" >
+      <rosparam command="load" file="$(arg config_file_root)/sequential_image_mux/sequential_image_mux.yaml" ns="sequential_image_mux" />
+      <node name="sequential_image_mux" pkg="nepi_edge_sdk_base" type="sequential_image_mux.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- NEPI Darknet Mgr -->

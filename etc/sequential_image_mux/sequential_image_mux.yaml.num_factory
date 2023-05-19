@@ -1,0 +1,23 @@
+mux_sequences:
+    test_sequence:
+        enabled: True
+        output_topic: '/nepi/s2x_prototype/roundrobin_ai_img'
+        output_img_width_pixels: 416
+        output_img_height_pixels: 416
+        #'subscribe_lookahead': 0, # TODO: 0 to stay subscribed to all topics, non-zero for a time or input_index to pre-subscribe for slow-connecting devices.
+        inputs:
+            - topic: '/nepi/s2x_prototype/econ_routecam/idx/color_2d_image'
+              min_frame_count: 5
+              max_frame_count: 50
+              min_duration_s: 5.0
+              max_duration_s: 15.0
+            - topic: '/nepi/s2x_prototype/onwote_hd_poe/idx/color_2d_image'
+              min_frame_count: 5
+              max_frame_count: 50
+              min_duration_s: 5.0
+              max_duration_s: 15.0
+            - topic: '/nepi/s2x_prototype/sidus_ss400/idx/color_2d_image'
+              min_frame_count: 5
+              max_frame_count: 50
+              min_duration_s: 5.0
+              max_duration_s: 15.0
