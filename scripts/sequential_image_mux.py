@@ -39,7 +39,8 @@ class SequentialImageMux(object):
 
     def updateToParamServer(self):
         # Create the dictionary of dictionaries
-        mux_seqs = OrderedDict()
+        #mux_seqs = OrderedDict() -- set_param() can't handle ordered dictionaries
+        mux_seqs = {}
 
         for seq_id, seq in self.mux_sequences.items():
             config_seq = {}
@@ -62,7 +63,7 @@ class SequentialImageMux(object):
         rospy.set_param("~mux_sequences", mux_seqs)
 
     def updateFromParamServer(self):
-        configured_mux_sequences = rospy.get_param("~mux_sequences")
+        configured_mux_sequences = rospy.get_param("~mux_sequences", {})
 
         for seq_id, config_seq in configured_mux_sequences.items():
             self.addUpdateMuxSequenceFromParams(seq_id, config_seq)
