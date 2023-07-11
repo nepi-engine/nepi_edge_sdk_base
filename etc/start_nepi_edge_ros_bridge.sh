@@ -6,7 +6,7 @@
 
 # Must source the ROS setup first, as it overwrites important messages
 source /opt/nepi/ros/setup.sh
-source /opt/nepi/nepi/nepi-edge-sdk/setup.bash
+source /opt/nepi/nepi_edge_sdk_link/setup.bash
 
 SYS_ENV_FILE=/opt/nepi/sys_env.bash
 
