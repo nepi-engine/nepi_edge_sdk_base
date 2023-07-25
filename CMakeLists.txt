@@ -242,6 +242,7 @@ catkin_install_python(PROGRAMS
   scripts/image_color_converter.py
   scripts/rui_config_mgr.py
   scripts/sequential_image_mux.py
+  scripts/idx_sensor_mgr.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
