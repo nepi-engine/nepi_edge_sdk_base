@@ -7,9 +7,10 @@ import subprocess
 import collections
 import os
 from datetime import datetime
+import threading
 
 from std_msgs.msg import String, Bool, Empty, Int32
-from nepi_ros_interfaces.msg import Reset
+from nepi_ros_interfaces.msg import Reset, WifiCredentials
 from nepi_ros_interfaces.srv import IPAddrQuery, FileReset, BandwidthUsageQuery, WifiQuery
 
 class NetworkMgr:
@@ -34,11 +35,20 @@ class NetworkMgr:
     ROSLAUNCH_FILE = "/opt/nepi/ros/etc/roslaunch.sh"
     REMOTE_ROS_NODE_ENV_LOADER_FILES = ["numurus@num-sb1-zynq:/opt/nepi/ros/etc/env_loader.sh"]
 
-    # Following support WiFi setup
-    WIFI_IFACE = "wlan0"
+    # Following support WiFi AP setup
     CREATE_AP_CALL = "/opt/nepi/ros/share/create_ap/create_ap"
-    DEFAULT_WIFI_AP_NAME = "nepi_device_ap"
-    DEFAULT_WIFI_AP_PASSWORD = "nepi_device_ap"
+    DEFAULT_WIFI_AP_SSID = "nepi_device_ap"
+    DEFAULT_WIFI_AP_PASSPHRASE = "nepi_device_ap"
+
+    # Following support WiFi Client setup
+    ENABLE_DISABLE_WIFI_ADAPTER_PRE = ["ip", "link", "set"]
+    ENABLE_WIFI_ADAPTER_POST = ["up"]
+    DISABLE_WIFI_ADAPTER_POST = ["down"]
+    WPA_SUPPLICANT_CONF_PATH = "/opt/nepi/ros/etc/network_mgr/nepi_wpa_supplicant.conf"
+    WPA_START_SUPPLICANT_CMD_PRE = ["wpa_supplicant", "-B" ,"-i"]
+    WPA_START_SUPPLICANT_CMD_POST = ["-c", WPA_SUPPLICANT_CONF_PATH]
+    WPA_GENERATE_SUPPLICANT_CONF_CMD = "wpa_passphrase"
+    STOP_WPA_SUPPLICANT_CMD = ['killall', 'wpa_supplicant']
 
     store_params_publisher = None
 
@@ -227,8 +237,11 @@ class NetworkMgr:
 
         # Wifi settings are stored in the ROS config file
         rospy.set_param('~wifi/enable_access_point', self.wifi_ap_enabled)
-        rospy.set_param('~wifi/access_point_name', self.wifi_ap_name)
-        rospy.set_param('~wifi/access_point_password', self.wifi_ap_password)
+        rospy.set_param('~wifi/access_point_name', self.wifi_ap_ssid)
+        rospy.set_param('~wifi/access_point_passphrase', self.wifi_ap_passphrase)
+        rospy.set_param('~wifi/enable_client', self.wifi_client_enabled)
+        rospy.set_param('~wifi/client_ssid', self.wifi_client_ssid)
+        rospy.set_param('~wifi/client_passphrase', self.wifi_client_passphrase)
 
         self.store_params_publisher.publish(rospy.get_name())
 
@@ -349,40 +362,155 @@ class NetworkMgr:
             rospy.logerr("Unable to set upload bandwidth limit: " + str(e))
 
     def enable_wifi_ap_handler(self, enabled_msg):
-        if self.has_wifi is False:
-            rospy.logwarn("Cannot enable WiFi access point - system has no WiFi")
+        if self.wifi_iface is None:
+            rospy.logwarn("Cannot enable WiFi access point - system has no WiFi adapter")
             return
         
         # Just set the param and let the ...from_params() function handle the rest
         rospy.set_param("~wifi/enable_access_point", enabled_msg.data)
-        self.set_wifi_from_params()
+        self.set_wifi_ap_from_params()
 
-    def set_wifi_from_params(self):
+    def set_wifi_ap_credentials_handler(self, msg):
+        # Just set the param and let the ...from_params() function handle the rest
+        rospy.set_param("~wifi/access_point_ssid", msg.ssid)
+        rospy.set_param("~wifi/access_point_passphrase", msg.passphrase)
+
+        self.set_wifi_ap_from_params()
+
+    def set_wifi_ap_from_params(self):
         self.wifi_ap_enabled = rospy.get_param('~wifi/enable_access_point', False)
-        self.wifi_ap_name = rospy.get_param('~wifi/access_point_name', self.DEFAULT_WIFI_AP_NAME)
-        self.wifi_ap_password = rospy.get_param('~wifi/access_point_password', self.DEFAULT_WIFI_AP_PASSWORD)
+        self.wifi_ap_ssid = rospy.get_param('~wifi/access_point_ssid', self.DEFAULT_WIFI_AP_SSID)
+        self.wifi_ap_passphrase = rospy.get_param('~wifi/access_point_passphrase', self.DEFAULT_WIFI_AP_PASSPHRASE)
         
         if self.wifi_ap_enabled is True:
-            if self.has_wifi is False:
-                rospy.logwarn("Cannot enable WiFi access point - system has no WiFi")
+            if self.wifi_iface is None:
+                rospy.logwarn("Cannot enable WiFi access point - system has no WiFi adapter")
                 return
             try:
+                # Kill any current access point -- no problem if one isn't already running; just returns immediately
+                subprocess.call([self.CREATE_AP_CALL, '--stop', self.wifi_iface])
+                rospy.sleep(1)
+
                 # Use the create_ap command line
                 subprocess.check_call([self.CREATE_AP_CALL, '-n', '--redirect-to-localhost', '--isolate-clients', '--daemon',
-                                       self.WIFI_IFACE, self.wifi_ap_name, self.wifi_ap_password])
-                rospy.loginfo("Started WiFi access point: " + self.wifi_ap_name)
+                                       self.wifi_iface, self.wifi_ap_ssid, self.wifi_ap_passphrase])
+                rospy.loginfo("Started WiFi access point: " + self.wifi_ap_ssid)
             except Exception as e:
                 rospy.logerr("Unable to start wifi access point with " + str(e))
         else:
             try:
-                subprocess.check_call([self.CREATE_AP_CALL, '--stop', self.WIFI_IFACE])
+                subprocess.check_call([self.CREATE_AP_CALL, '--stop', self.wifi_iface])
             except Exception as e:
                 rospy.logwarn("Unable to terminate wifi access point: " + str(e))
 
-        # TODO: Connect to external network if so configured. Because we don't typically run
-        # NetworkManager Linux util, the nmcli schemes for accomplishing this do not work. Instead, we must
-        # use wpa_supplicant. Can use wpa_passphrase to generate the input to wpa_supplicant as per
-        # https://wiki.archlinux.org/title/wpa_supplicant#Connecting_with_wpa_passphrase
+    def enable_wifi_client_handler(self, enabled_msg):
+        if self.wifi_iface is None:
+            rospy.logwarn("Cannot enable WiFi client - system has no WiFi adapter")
+            return
+        
+        if (enabled_msg.data):
+            rospy.loginfo("Enabling WiFi client")
+        else:
+            rospy.loginfo("Disabling WiFi client")
+
+        # Just set the param and let the ...from_params() function handle the rest
+        rospy.set_param("~wifi/enable_client", enabled_msg.data)
+        self.set_wifi_client_from_params()
+
+    def set_wifi_client_credentials_handler(self, msg):
+        rospy.loginfo("Updating WiFi client credentials (SSID: " + msg.ssid + ", Passphrase: " + msg.passphrase + ")")
+        # Just set the param and let the ...from_params() function handle the rest
+        rospy.set_param("~wifi/client_ssid", msg.ssid)
+        rospy.set_param("~wifi/client_passphrase", msg.passphrase)
+
+        self.set_wifi_client_from_params()
+
+    def set_wifi_client_from_params(self):
+        self.wifi_client_enabled = rospy.get_param('~wifi/enable_client', False)
+        self.wifi_client_ssid = rospy.get_param("~wifi/client_ssid", None)
+        self.wifi_client_passphrase = rospy.get_param("~wifi/client_passphrase", None)
+
+        if self.wifi_client_enabled is True:
+            if self.wifi_iface is None:
+                rospy.logwarn("Cannot enable WiFi client - system has no WiFi adapter")
+                return
+            try:
+                # First, enable the hardware (might be unnecessary, but no harm)
+                link_up_cmd = self.ENABLE_DISABLE_WIFI_ADAPTER_PRE + [self.wifi_iface] + self.ENABLE_WIFI_ADAPTER_POST
+                subprocess.check_call(link_up_cmd)
+
+                if (self.wifi_client_ssid):
+                    try:
+                        with open(self.WPA_SUPPLICANT_CONF_PATH, 'w') as f:
+
+                            if (self.wifi_client_passphrase):
+                                wpa_generate_supplicant_conf_cmd = [self.WPA_GENERATE_SUPPLICANT_CONF_CMD, self.wifi_client_ssid,
+                                                                    self.wifi_client_passphrase]
+                                subprocess.check_call(wpa_generate_supplicant_conf_cmd, stdout=f)
+                            else: # Open network
+                                # wpa_passphrase can't help us here, so generate the conf. manually
+                                f.write("network={\n\tssid=\"" + self.wifi_client_ssid + "\"\n\tkey_mgmt=NONE\n}")
+
+                        start_supplicant_cmd = self.WPA_START_SUPPLICANT_CMD_PRE + [self.wifi_iface] + self.WPA_START_SUPPLICANT_CMD_POST
+                        #rospy.logerr("DEBUG: Using command " + str(start_supplicant_cmd))
+                    
+                        subprocess.call(self.STOP_WPA_SUPPLICANT_CMD)
+                        self.wifi_client_connected = False
+                        rospy.sleep(1)
+                        subprocess.check_call(start_supplicant_cmd)
+                        # Wait a few seconds for it to connect
+                        rospy.sleep(5)
+                        connected_ssid = self.get_wifi_client_connected_ssid()
+                        if connected_ssid is None:
+                            raise Exception("Wifi client failed to connect")
+                            
+                        subprocess.check_call(['dhclient', '-nw', self.wifi_iface])
+                        rospy.loginfo("Connected to WiFi network " + connected_ssid)
+                    except Exception as e:
+                        rospy.logwarn("Failed to start WiFi client (SSID=" + self.wifi_client_ssid + " Passphrase=" + \
+                                        self.wifi_client_passphrase + "): " + str(e))
+                else:
+                    rospy.loginfo("Wifi client ready -- need SSID and passphrase to connect")
+                
+                # Run a refresh
+                self.refresh_available_networks_handler(None)
+                         
+            except Exception as e:
+                rospy.logwarn("Failed to start WiFi client as configured: " + str(e))
+
+        else:
+            # Stop the supplicant
+            subprocess.call(self.STOP_WPA_SUPPLICANT_CMD)
+            rospy.sleep(1)
+            # Bring down the interface
+            link_down_cmd = self.ENABLE_DISABLE_WIFI_ADAPTER_PRE + [self.wifi_iface] + self.DISABLE_WIFI_ADAPTER_POST
+            subprocess.call(link_down_cmd)
+
+            if self.wifi_scan_thread is not None:
+                self.wifi_scan_thread.join(1)
+                self.wifi_scan_thread = None
+
+            if (self.get_wifi_client_connected_ssid() is not None):
+                rospy.logwarn("Failed to disconnect from WiFi network")
+            else:
+                with self.available_wifi_networks_lock:
+                    self.available_wifi_networks = []
+
+    def get_wifi_client_connected_ssid(self):
+        if self.wifi_iface is None:
+            self.wifi_client_connected = False
+            return None
+
+        check_connection_cmd = ['iw', self.wifi_iface, 'link']
+        connection_status = subprocess.check_output(check_connection_cmd)
+        if connection_status.startswith('Connected'):
+           self.wifi_client_connected = True
+           for line in connection_status.splitlines():
+               if line.strip().startswith('SSID'):
+                   return line.strip().split()[1]
+        
+        self.wifi_client_connected = False
+        return None
 
     def monitor_bandwidth_usage(self, event):
         with open('/sys/class/net/' + self.NET_IFACE + '/statistics/tx_bytes', 'r') as f:
@@ -412,16 +540,61 @@ class NetworkMgr:
         return {'tx_rate_mbps':tx_rate_mbps, 'rx_rate_mbps':rx_rate_mbps, 'tx_limit_mbps': tx_rate_limit_mbps}
 
     def handle_wifi_query(self, req):
-        return {'has_wifi': self.has_wifi, 'wifi_ap_enabled': self.wifi_ap_enabled, 
-                'wifi_ap_name': self.wifi_ap_name, 'wifi_ap_password': self.wifi_ap_password}
+        with self.available_wifi_networks_lock:
+            available_networks = list(self.available_wifi_networks)
+        
+        return {'has_wifi': (self.wifi_iface is not None), 
+                'wifi_ap_enabled': self.wifi_ap_enabled,
+                'wifi_ap_ssid': self.wifi_ap_ssid, 
+                'wifi_ap_passphrase': self.wifi_ap_passphrase,
+                'wifi_client_enabled': self.wifi_client_enabled,
+                'wifi_client_connected': self.wifi_client_connected,
+                'wifi_client_ssid': self.wifi_client_ssid,
+                'wifi_client_passphrase': self.wifi_client_passphrase,
+                'available_networks': available_networks}
 
-    def isWifiPresent(self):
-        # Just check for the existence of the interface. Maybe more sophisticated in the future
+    def refresh_available_networks_handler(self, msg):
+        #if self.wifi_scan_thread is not None:
+        #    rospy.loginfo("Not refreshing available wifi networks because a refresh is already in progress")
+        #    return
+
+        # Clear the list, let the scan thread update it later
+        with self.available_wifi_networks_lock:
+            self.available_wifi_networks = []
+
+        self.wifi_scan_thread = threading.Thread(target=self.update_available_wifi_networks)
+        self.wifi_scan_thread.daemon = True
+        self.wifi_scan_thread.start()
+    
+    def update_available_wifi_networks(self):
+        #rospy.logwarn("Debugging: Scanning for available WiFi networks")
+        available_networks = []
+        network_scan_cmd = ['iw', self.wifi_iface, 'scan']
+        scan_result = ""
         try:
-            subprocess.check_call(['ip','addr','list','dev',self.WIFI_IFACE])
-            return True
-        except:
-            return False
+            scan_result = subprocess.check_output(network_scan_cmd)
+        except Exception as e:
+            rospy.logwarn("Failed to scan for available WiFi networks: " + str(e))
+        for scan_line in scan_result.splitlines():
+            if "SSID:" in scan_line:
+                network = scan_line.split(':')[1].strip()
+                # TODO: Need more checks to ensure this is a connectable network?
+                if network and (network not in available_networks):
+                    available_networks.append(network)
+
+        with self.available_wifi_networks_lock:
+            self.available_wifi_networks = list(available_networks)
+
+    def detectWifiDevice(self):
+        self.wifi_iface = None # Flag non-existence and then correct below as necessary
+
+        wifi_check_output = subprocess.check_output(['iw','dev'])
+        for line in wifi_check_output.splitlines():
+            # For now, just check for the existence of a single interface
+            if line.strip().startswith('Interface'):
+               self.wifi_iface = line.strip().split()[1]
+               return 
+
 
     def __init__(self):
         rospy.init_node(self.NODE_NAME)
@@ -432,12 +605,13 @@ class NetworkMgr:
         self.tx_byte_cnt_deque = collections.deque(maxlen=2)
         self.rx_byte_cnt_deque = collections.deque(maxlen=2)
         
-        self.has_wifi = self.isWifiPresent()
-        if self.has_wifi is True:
-            rospy.loginfo("Detected WiFi (interface queried = " + self.WIFI_IFACE + ")")
+        self.wifi_iface = None
+        self.detectWifiDevice()
+        if self.wifi_iface:
+            rospy.loginfo("Detected WiFi (interface queried = " + self.wifi_iface + ")")
             self.wifi_ap_enabled = False
-            self.wifi_ap_name = self.DEFAULT_WIFI_AP_NAME
-            self.wifi_ap_password = self.DEFAULT_WIFI_AP_PASSWORD
+            self.wifi_ap_ssid = self.DEFAULT_WIFI_AP_SSID
+            self.wifi_ap_passphrase = self.DEFAULT_WIFI_AP_PASSPHRASE
 
         # Initialize from the config file (which should be loaded ahead of this call)
         self.set_dhcp_from_params()
@@ -467,17 +641,30 @@ class NetworkMgr:
 
         # Wifi stuff -- only enabled if WiFi is present
         self.wifi_ap_enabled = False
-        self.wifi_ap_name = "n/a"
-        self.wifi_ap_password = "n/a"
+        self.wifi_ap_ssid = "n/a"
+        self.wifi_ap_passphrase = "n/a"
+        self.wifi_client_enabled = False
+        self.wifi_client_connected = False
+        self.wifi_client_ssid = ""
+        self.wifi_client_passphrase = ""
+        self.available_wifi_networks = []
+        self.wifi_scan_thread = None
+        self.available_wifi_networks_lock = threading.Lock()
         
-        self.has_wifi = self.isWifiPresent()
-        if self.has_wifi is True:
-            rospy.loginfo("Detected WiFi on " + self.WIFI_IFACE)
-            self.set_wifi_from_params()
+        if self.wifi_iface:
+            rospy.loginfo("Detected WiFi on " + self.wifi_iface)
+            self.set_wifi_ap_from_params()
+            self.set_wifi_client_from_params()
 
             rospy.Subscriber('enable_wifi_access_point', Bool, self.enable_wifi_ap_handler)
+            rospy.Subscriber('set_wifi_access_point_credentials', WifiCredentials, self.set_wifi_ap_credentials_handler)            
+            
+            rospy.Subscriber('enable_wifi_client', Bool, self.enable_wifi_client_handler)
+            rospy.Subscriber('set_wifi_client_credentials', WifiCredentials, self.set_wifi_client_credentials_handler)
+
+            rospy.Subscriber('refresh_available_wifi_networks', Empty, self.refresh_available_networks_handler)
         else:
-            rospy.loginfo("No WiFi detected (interface queried = " + self.WIFI_IFACE + ")")
+            rospy.loginfo("No WiFi detected")
                 
         self.run()
 
