@@ -31,6 +31,7 @@ find_package(
     std_msgs
     pcl_ros
     tf2_ros
+    nav_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -128,7 +129,8 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include include/drivers/generic_ahrs
+  INCLUDE_DIRS include 
+    #include/drivers/generic_ahrs
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS image_transport nepi_ros_interfaces
 
@@ -143,7 +145,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
    include
-   include/drivers/generic_ahrs
+   #include/drivers/generic_ahrs
    ${catkin_INCLUDE_DIRS}
 )
 
@@ -161,24 +163,24 @@ add_library(${PROJECT_NAME}
    src/drivers/ltc1669_dac.cpp
    src/drivers/vca8617.cpp
    src/drivers/ad9249_adc.cpp
-   src/drivers/generic_ahrs/ahrs_driver.cpp
-   src/drivers/generic_ahrs/lord_ahrs_driver.cpp
-   src/drivers/generic_ahrs/ros_ahrs_driver.cpp
+   #src/drivers/generic_ahrs/ahrs_driver.cpp
+   #src/drivers/generic_ahrs/lord_ahrs_driver.cpp
+   #src/drivers/generic_ahrs/ros_ahrs_driver.cpp
    src/algorithms/approx_moving_avg.cpp
    src/algorithms/underwater_img_enhancer.cpp
 )
 
 ## Lord AHRS ROS Wrapper Node
-add_executable(lord_ahrs_ros_wrapper
-  src/lord_ahrs_ros_wrapper)
+#add_executable(lord_ahrs_ros_wrapper
+#  src/lord_ahrs_ros_wrapper)
 
-add_dependencies(lord_ahrs_ros_wrapper
-  ${catkin_EXPORTED_TARGETS}
-  ${PROJECT_NAME})
+#add_dependencies(lord_ahrs_ros_wrapper
+#  ${catkin_EXPORTED_TARGETS}
+#  ${PROJECT_NAME})
 
-target_link_libraries(lord_ahrs_ros_wrapper
-  ${PROJECT_NAME}
-  ${catkin_LIBRARIES})
+#target_link_libraries(lord_ahrs_ros_wrapper
+#  ${PROJECT_NAME}
+#  ${catkin_LIBRARIES})
 
 ## Trigger Manager (No hardware support) Node
 add_executable(trigger_mgr_no_hardware
@@ -253,12 +255,12 @@ install(TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
-install(TARGETS lord_ahrs_ros_wrapper
-  lord_ahrs_ros_wrapper
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+#install(TARGETS lord_ahrs_ros_wrapper
+#  lord_ahrs_ros_wrapper
+#  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#)
 
 install(TARGETS trigger_mgr_no_hardware
   trigger_mgr_no_hardware
