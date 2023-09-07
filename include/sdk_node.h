@@ -79,6 +79,7 @@ public:
 	 * @brief      Conversion operator to allow a NodeParam to be implicitly converted to its template type
 	 */
 	operator T() {return _param_data;}
+	operator T() const {const T data = _param_data; return data;}
 
 	/**
 	 * @brief      Retrieves a parameter from the param server
