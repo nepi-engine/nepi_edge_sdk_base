@@ -104,7 +104,8 @@
     <!-- Hard-coded mavlink node: May be replaced by RBX manager with auto-detect later -->
     <group if="$(arg hardcode_launch_mavlink_node)" >
       <node name="mavlink" pkg="mavros" type="mavros_node" respawn="true" output="$(arg output_destination)" >
-        <param name="fcu_url" value="/dev/ttyTHS0:57600"/>
+        <!-- <param name="fcu_url" value="/dev/ttyTHS0:57600"/> -->
+        <param name="fcu_url" value="/dev/ttyUSB0:57600"/>
       </node>
     </group>
 
