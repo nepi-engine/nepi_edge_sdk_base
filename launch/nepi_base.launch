@@ -12,12 +12,12 @@
   <arg name="run_target_localizer" default="false" />
   <arg name="run_nepi_link" default="true" />
   <arg name="run_nav_pose" default="true" />
+  <arg name="run_nepi_autolauncher" default="true" />
   <arg name="run_idx_sensor_mgr" default="true" />
   <arg name="run_automation_mgr" default="true" />
   <arg name="run_sequential_image_mux" default="true" />
   <arg name="hardcode_launch_onvif_nodes" default="true" />
-  <arg name="hardcode_launch_mavlink_node" default="true" />
-  
+    
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
     <node name="config_mgr" pkg="nepi_edge_sdk_base" type="config_mgr.py" respawn="true" output="$(arg output_destination)" />
@@ -90,6 +90,11 @@
       <node name="gpsd_ros_client" pkg="nepi_edge_sdk_nav_pose" type="gpsd_ros_client_node" respawn="true" output="$(arg output_destination)" />
     </group>
 
+    <group if="$(arg run_nepi_autolauncher)" >
+      <rosparam command="load" file="$(arg config_file_root)/nepi_autolauncher/nepi_autolauncher.yaml" ns="nepi_autolauncher" />
+      <node name="nepi_autolauncher" pkg="nepi_edge_sdk_base" type="nepi_autolauncher.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
     <!-- IDX Sensor Manager -->
     <group if="$(arg run_idx_sensor_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/idx_sensor_mgr/idx_sensor_mgr.yaml" ns="idx_sensor_mgr" />
@@ -99,14 +104,6 @@
       <group if="$(arg hardcode_launch_onvif_nodes)" >
         <include file="$(find nepi_edge_sdk_onvif)/launch/nepi_onvif_demo.launch" pass_all_args="true"/>
       </group>
-    </group>
-
-    <!-- Hard-coded mavlink node: May be replaced by RBX manager with auto-detect later -->
-    <group if="$(arg hardcode_launch_mavlink_node)" >
-      <node name="mavlink" pkg="mavros" type="mavros_node" respawn="true" output="$(arg output_destination)" >
-        <!-- <param name="fcu_url" value="/dev/ttyTHS0:57600"/> -->
-        <param name="fcu_url" value="/dev/ttyUSB0:57600"/>
-      </node>
     </group>
 
     <!-- Automation Mgr -->

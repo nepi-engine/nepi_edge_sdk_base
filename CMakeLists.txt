@@ -245,6 +245,7 @@ catkin_install_python(PROGRAMS
   scripts/rui_config_mgr.py
   scripts/sequential_image_mux.py
   scripts/idx_sensor_mgr.py
+  scripts/nepi_autolauncher.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
