@@ -13,6 +13,8 @@ class IDXSensorMgr:
   NEPI_IDX_SENSOR_PARAM_PATH = '/opt/nepi/ros/etc/idx_sensors/'
   V4L2_SENSOR_CHECK_INTERVAL_S = 3.0
 
+  DEFAULT_EXCLUDED_V4L2_DEVICES = ['msm_vidc_vdec'] # RB5 issue work-around for now
+
   def __init__(self):
     # Launch the ROS node
     rospy.loginfo("Starting " + self.DEFAULT_NODE_NAME)
@@ -20,6 +22,7 @@ class IDXSensorMgr:
     self.node_name = rospy.get_name().split('/')[-1]
 
     self.sensorList = []
+    self.excludedV4L2Devices = rospy.get_param('~excluded_v4l2_devices', self.DEFAULT_EXCLUDED_V4L2_DEVICES)
 
     rospy.Timer(rospy.Duration(self.V4L2_SENSOR_CHECK_INTERVAL_S), self.detectAndManageV4L2Sensors)
     rospy.spin()
@@ -41,8 +44,38 @@ class IDXSensorMgr:
       line = out[i].strip()
       if line.endswith(':'):
         tmp_device_type = line.split('(')[0].strip()
+        # Some v4l2-ctl outputs have an additional ':'
+        tmp_device_type = tmp_device_type.split(':')[0]
+
+        # Honor the exclusion list
+        if tmp_device_type in self.excludedV4L2Devices:
+          #rospy.logerr("Debug: Excluding " + tmp_device_type)
+          tmp_device_type = None
+          continue
+
       elif (tmp_device_type != None) and (line.startswith('/dev/video')):
         tmp_device_path = line
+
+        # Make sure this is a legitimate Video Capture device, not a Metadata Capture device, etc.
+        is_video_cap_device = False
+        p = subprocess.Popen(['v4l2-ctl', '-d', tmp_device_path, '--all'],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout,_ = p.communicate()
+        all_out = stdout.splitlines()
+        in_device_caps = False
+        for all_line in all_out:
+          if ('Device Caps' in all_line):
+            in_device_caps = True
+          elif in_device_caps:
+            if ('Video Capture' in all_line):
+              is_video_cap_device = True
+            break
+          elif ':' in all_line:
+            in_device_caps = False
+        
+        if not is_video_cap_device:
+          continue
+
         active_paths.append(tmp_device_path) # To check later that the sensor list has no entries for paths that have disappeared
         known_sensor = False
         # Check if this sensor is already known and launched
