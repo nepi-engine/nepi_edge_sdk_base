@@ -592,6 +592,9 @@ class NetworkMgr:
         for line in wifi_check_output.splitlines():
             # For now, just check for the existence of a single interface
             if line.strip().startswith('Interface'):
+               if 'p2p' in line: # Peer-to-peer/WiFi Direct: NEPI does not support
+                   rospy.logwarn("Ignoring P2P WiFi Direct interface " + line.strip().split()[1])
+                   continue
                self.wifi_iface = line.strip().split()[1]
                return 
 
