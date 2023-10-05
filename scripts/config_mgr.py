@@ -12,14 +12,15 @@ import rosparam
 import os
 import errno
 
-from std_msgs.msg import String
+from std_msgs.msg import String, Empty
 from nepi_ros_interfaces.srv import FileReset
 
+CFG_PATH = '/opt/nepi/ros/etc/'
 CFG_SUFFIX = '.yaml'
 FACTORY_SUFFIX = '.num_factory'
-USER_SUFFIX = '.user'
 
-CFG_PATH = '/opt/nepi/ros/etc/'
+USER_CFG_PATH = '/mnt/nepi_storage/user_cfg'
+USER_SUFFIX = '.user'
 
 pending_nodes = {}
 
@@ -57,6 +58,11 @@ def get_cfg_pathname(qualified_node_name):
     cfg_pathname = CFG_PATH + node_name  + '/' + node_name + CFG_SUFFIX
     return cfg_pathname
 
+def get_user_cfg_pathname(qualified_node_name):
+    node_name = separate_node_name_in_msg(qualified_node_name)
+    user_cfg_pathname = USER_CFG_PATH + '/' + node_name + CFG_SUFFIX + USER_SUFFIX
+    return user_cfg_pathname
+
 def user_reset(req):
     qualified_node_name = req.node_name
     cfg_pathname = get_cfg_pathname(qualified_node_name)
@@ -78,15 +84,26 @@ def factory_reset(req):
 
 def store_params(msg):
     qualified_node_name = msg.data
-    cfg_pathname = get_cfg_pathname(qualified_node_name)
-    user_cfg_pathname = cfg_pathname + USER_SUFFIX
-
+    user_cfg_pathname = get_user_cfg_pathname(qualified_node_name)
+    
     # First, write to the user file
     rosparam.dump_params(user_cfg_pathname, qualified_node_name)
 
     # Now, ensure the link points to the correct file
+    cfg_pathname = get_cfg_pathname(qualified_node_name)
     if (False == symlink_force(user_cfg_pathname, cfg_pathname)):
         rospy.logerr("Unable to update the cfg. file link")
+
+def restore_user_cfgs(msg):
+    for root, dirs, files in os.walk(CFG_PATH):
+        for name in files:
+            full_name = os.path.join(root, name)
+            if full_name.endswith(CFG_SUFFIX) and os.path.islink(full_name):
+                user_cfg_name = os.path.join(USER_CFG_PATH, name + USER_SUFFIX)
+                if os.path.exists(user_cfg_name): # Restrict to those with present user configs
+                    link_name = os.path.join(root, name.replace(FACTORY_SUFFIX, ''))
+                    rospy.loginfo("Updating " + link_name + " to user config")
+                    symlink_force(user_cfg_name, link_name)
 
 def config_mgr():
     rospy.init_node('config_mgr')
@@ -94,6 +111,8 @@ def config_mgr():
     rospy.loginfo('Starting the config. mgr node')
 
     rospy.Subscriber('store_params', String, store_params)
+    rospy.Subscriber('full_user_restore', Empty, restore_user_cfgs)
+
     rospy.Service('factory_reset', FileReset, factory_reset)
     rospy.Service('user_reset', FileReset, user_reset)
 

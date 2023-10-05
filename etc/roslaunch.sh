@@ -40,4 +40,8 @@ if grep -q "G" <<< "$ROS_LOG_SIZE"; then
 	yes | rosclean purge
 fi
 
+# Check for and restore any broken config files, since that will cause roslaunch to fail
+echo "Running pre-launch config file checks"
+python /opt/nepi/ros/etc/fix_broken_cfg_file_links.py
+
 roslaunch ${ROS1_PACKAGE} ${ROS1_LAUNCH_FILE}
