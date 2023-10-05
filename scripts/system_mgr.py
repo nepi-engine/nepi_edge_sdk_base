@@ -38,7 +38,7 @@ class SystemMgrNode():
 
     storage_uid = 1000 # default to nepi
     storage_gid = 130 # default to "sambashare" # TODO This is very fragile
-    REQD_STORAGE_SUBDIRS = ["ai_models", "automation_scripts", "data", "nepi_full_img", "nepi_full_img_archive", "logs"]
+    REQD_STORAGE_SUBDIRS = ["ai_models", "automation_scripts", "data", "nepi_full_img", "nepi_full_img_archive", "logs", "license", "user_cfg"]
 
     # disk_usage_deque = deque(maxlen=10)
     # Shorter period for more responsive updates
@@ -243,9 +243,12 @@ class SystemMgrNode():
             if not os.path.isdir(full_path_subdir):
                 rospy.logwarn("Required storage subdir " + subdir + " not present... will create")
                 os.makedirs(full_path_subdir)
-                # And set the owner:group
-                # TODO: Different owner:group for different folders?
-                os.chown(full_path_subdir, self.storage_uid, self.storage_gid)
+            
+            # And set the owner:group and permissions. Do this every time to fix bad settings e.g., during SSD setup
+            # TODO: Different owner:group for different folders?
+            os.system('chown -R ' + str(self.storage_uid) + ':' + str(self.storage_gid) + ' ' + full_path_subdir) # Use os.system instead of os.chown to have a recursive option
+            #os.chown(full_path_subdir, self.storage_uid, self.storage_gid)
+            os.system('chmod -R 0775 ' + full_path_subdir)
             self.storage_subdirs[subdir] = full_path_subdir
 
         return True
