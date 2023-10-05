@@ -13,7 +13,10 @@ class IDXSensorMgr:
   NEPI_IDX_SENSOR_PARAM_PATH = '/opt/nepi/ros/etc/idx_sensors/'
   V4L2_SENSOR_CHECK_INTERVAL_S = 3.0
 
-  DEFAULT_EXCLUDED_V4L2_DEVICES = ['msm_vidc_vdec'] # RB5 issue work-around for now
+  # Not all "v4l2-ctl --list-devices" reported devices are desirable
+  DEFAULT_EXCLUDED_V4L2_DEVICES = ['msm_vidc_vdec', # RB5 issue work-around for now
+                                   'ZED 2',         # Don't treat ZED as V4L2 device - use its own SDK instead
+                                   'ZED-M']         # TODO: Not sure this is how Zed mini is identified by v4l2-ctl... need to test when hardware available 
 
   def __init__(self):
     # Launch the ROS node
@@ -46,10 +49,9 @@ class IDXSensorMgr:
         tmp_device_type = line.split('(')[0].strip()
         # Some v4l2-ctl outputs have an additional ':'
         tmp_device_type = tmp_device_type.split(':')[0]
-
+        
         # Honor the exclusion list
         if tmp_device_type in self.excludedV4L2Devices:
-          #rospy.logerr("Debug: Excluding " + tmp_device_type)
           tmp_device_type = None
           continue
 
