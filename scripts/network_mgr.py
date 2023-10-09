@@ -425,6 +425,10 @@ class NetworkMgr:
 
         self.set_wifi_client_from_params()
 
+    def auto_retry_wifi_client_connect(self, event):
+        rospy.loginfo("Automatically retrying wifi client setup")
+        self.set_wifi_client_from_params()
+
     def set_wifi_client_from_params(self):
         self.wifi_client_enabled = rospy.get_param('~wifi/enable_client', False)
         self.wifi_client_ssid = rospy.get_param("~wifi/client_ssid", None)
@@ -438,7 +442,7 @@ class NetworkMgr:
                 # First, enable the hardware (might be unnecessary, but no harm)
                 link_up_cmd = self.ENABLE_DISABLE_WIFI_ADAPTER_PRE + [self.wifi_iface] + self.ENABLE_WIFI_ADAPTER_POST
                 subprocess.check_call(link_up_cmd)
-
+                
                 if (self.wifi_client_ssid):
                     try:
                         with open(self.WPA_SUPPLICANT_CONF_PATH, 'w') as f:
@@ -469,8 +473,12 @@ class NetworkMgr:
                     except Exception as e:
                         rospy.logwarn("Failed to start WiFi client (SSID=" + self.wifi_client_ssid + " Passphrase=" + \
                                         self.wifi_client_passphrase + "): " + str(e))
+                        # Auto retry in 3 seconds
+                        rospy.loginfo("Automatically retrying Wifi connect in 3 seconds")
+                        self.retry_wifi_timer = rospy.Timer(rospy.Duration(3), self.auto_retry_wifi_client_connect, oneshot=True)
                 else:
                     rospy.loginfo("Wifi client ready -- need SSID and passphrase to connect")
+                    self.retry_wifi_timer = None
                 
                 # Run a refresh
                 self.refresh_available_networks_handler(None)
