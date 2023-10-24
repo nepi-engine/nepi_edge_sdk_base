@@ -198,7 +198,7 @@ def handle_time_status_query(req):
             rospy.logwarn_throttle(300, "Unable to parse /sys/class/pps/pps0/assert");
     else: # Failed to find the assert file - just return no PPS
         time_status.last_pps = rospy.Time(0)
-        rospy.logwarn_once("Unable to find /sys/class/pps/pps0/assert... PPS unavailable");
+        #rospy.logwarn_once("Unable to find /sys/class/pps/pps0/assert... PPS unavailable");
 
     ntp_status = gather_ntp_status()
     for status_entry in ntp_status:
