@@ -257,6 +257,7 @@ class SequentialImageMux(object):
         
         if seq['output_pub'] is None:
             rospy.logwarn_throttle(5.0, self.node_name + " Publiser for sequence " + seq_id + " is not defined... skipping image processing")
+            return
         
         # Process the input image into the correct output size
         cv_bridge = seq['cv_bridge']
@@ -273,12 +274,13 @@ class SequentialImageMux(object):
         # Debugging
         #rospy.logwarn("Debugging: Input hdr = " + str(msg.header) + "\nOutput hdr = " + str(ros_img.header))
         
-        # Publish it
-        seq['output_pub'].publish(ros_img)
+        # Publish it -- double check that publisher is still active, since it can be closed asynchronously during image conversion
+        if seq['output_pub'] is not None:
+            seq['output_pub'].publish(ros_img)
 
-        # Update frame count for this step
-        seq['curr_step_frame_count'] += 1
-        seq['total_frame_count'] += 1
+            # Update frame count for this step
+            seq['curr_step_frame_count'] += 1
+            seq['total_frame_count'] += 1
 
 
 if __name__ == '__main__':
