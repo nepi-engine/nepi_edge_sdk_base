@@ -5,8 +5,8 @@ from collections import OrderedDict
 import rospy
 from sensor_msgs.msg import Image
 
+import cv2 # Must come before cv_bridge on Jetson Ubuntu 20.04 for some reason!
 from cv_bridge import CvBridge
-import cv2
 
 from std_msgs.msg import String
 from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF

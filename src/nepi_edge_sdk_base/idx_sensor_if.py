@@ -111,17 +111,17 @@ class ROSIDXSensorIF:
     def updateFromParamServer(self):
         param_dict = rospy.get_param('~idx')
         #rospy.logwarn("Debugging: param_dict = " + str(param_dict))
-        if (self.setResolutionModeCb is not None and param_dict.has_key('resolution_mode')):
+        if (self.setResolutionModeCb is not None and 'resolution_mode' in param_dict):
             self.setResolutionModeCb(param_dict['resolution_mode'])
-        if (self.setFramerateModeCb is not None and param_dict.has_key('framerate_mode')):
+        if (self.setFramerateModeCb is not None and 'framerate_mode' in param_dict):
             self.setFramerateModeCb(param_dict['framerate_mode'])
-        if (self.setContrastCb is not None and param_dict.has_key('contrast')):
+        if (self.setContrastCb is not None and 'contrast' in param_dict):
             self.setContrastCb(param_dict['contrast'])
-        if (self.setBrightnessCb is not None and param_dict.has_key('brightness')):
+        if (self.setBrightnessCb is not None and 'brightness' in param_dict):
             self.setBrightnessCb(param_dict['brightness'])        
-        if (self.setThresholdingCb is not None and param_dict.has_key('thresholding')):
+        if (self.setThresholdingCb is not None and 'thresholding' in param_dict):
             self.setThresholdingCb(param_dict['thresholding'])
-        if (self.setRangeCb is not None and param_dict.has_key('start_range') and param_dict.has_key('stop_range')):
+        if (self.setRangeCb is not None and 'start_range' in param_dict and 'stop_range' in param_dict):
             self.setRangeCb(param_dict['start_range'], param_dict['stop_range'])
 
         self.updateAndPublishStatus()

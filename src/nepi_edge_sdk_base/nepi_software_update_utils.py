@@ -149,7 +149,7 @@ def getRootfsABStatus(first_stage_rootfs_device):
 
     command = shlex.split("env -i bash -c 'source " +
                           custom_env_pathname + " && env'")
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, text=True)
     for line in proc.stdout:
         (key, _, value) = line.partition("=")
         if key == ACTIVE_PARTITION_ENV_VAR_NAME:
@@ -182,7 +182,7 @@ def getRootfsABStatus(first_stage_rootfs_device):
     return True, "Success", rootfs_ab_status_dict
 
 def getPartitionByteCount(partition_device):
-    return int(subprocess.check_output(["blockdev", "--getsize64", partition_device]))
+    return int(subprocess.check_output(["blockdev", "--getsize64", partition_device], text=True))
 
 def getPartitionFreeByteCount(partition_device):
     # Have to mount it to compute free size
@@ -228,7 +228,7 @@ def writeImage(new_img_staging_device, uncompressed_img_filename, inactive_parti
         dd_param_array.append("bs=32M")
     #print("DEBUG: dd cmd: " + str(dd_param_array))
 
-    dd_proc = subprocess.Popen(dd_param_array, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    dd_proc = subprocess.Popen(dd_param_array, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, text=True)
     if progress_cb is not None:
         while dd_proc.poll() is None:
             line = dd_proc.stdout.readline()
@@ -348,7 +348,7 @@ def archiveInactiveToStaging(inactive_partition_device, staging_device, archive_
         dd_param_array.append("bs=32M")
     #print("DEBUG: dd cmd: " + str(dd_param_array))
 
-    dd_proc = subprocess.Popen(dd_param_array, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    dd_proc = subprocess.Popen(dd_param_array, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, text=True)
     if progress_cb is not None:
         while dd_proc.poll() is None:
             line = dd_proc.stdout.readline()

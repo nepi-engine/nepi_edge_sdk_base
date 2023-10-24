@@ -3,8 +3,8 @@
 import sys
 import rospy
 from sensor_msgs.msg import Image, CameraInfo
+import cv2 # Must come before cv_bridge on Jetson Ubuntu 20.04 for some reason!
 from cv_bridge import CvBridge
-import cv2
 
 """
 Color Encoding Transformer

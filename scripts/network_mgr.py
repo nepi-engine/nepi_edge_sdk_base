@@ -71,7 +71,7 @@ class NetworkMgr:
     def get_current_ip_addrs(self):
         primary_ip = self.get_primary_ip_addr()
         ip_addrs = [primary_ip]
-        addr_list_output = subprocess.check_output(['ip','addr','list','dev',self.NET_IFACE])
+        addr_list_output = subprocess.check_output(['ip','addr','list','dev',self.NET_IFACE], text=True)
         tokens = addr_list_output.split()
         for i, t in enumerate(tokens):
             if (t == 'inet'):
@@ -510,7 +510,7 @@ class NetworkMgr:
             return None
 
         check_connection_cmd = ['iw', self.wifi_iface, 'link']
-        connection_status = subprocess.check_output(check_connection_cmd)
+        connection_status = subprocess.check_output(check_connection_cmd, text=True)
         if connection_status.startswith('Connected'):
            self.wifi_client_connected = True
            for line in connection_status.splitlines():
@@ -580,7 +580,7 @@ class NetworkMgr:
         network_scan_cmd = ['iw', self.wifi_iface, 'scan']
         scan_result = ""
         try:
-            scan_result = subprocess.check_output(network_scan_cmd)
+            scan_result = subprocess.check_output(network_scan_cmd, text=True)
         except Exception as e:
             rospy.logwarn("Failed to scan for available WiFi networks: " + str(e))
         for scan_line in scan_result.splitlines():
@@ -596,7 +596,7 @@ class NetworkMgr:
     def detectWifiDevice(self):
         self.wifi_iface = None # Flag non-existence and then correct below as necessary
 
-        wifi_check_output = subprocess.check_output(['iw','dev'])
+        wifi_check_output = subprocess.check_output(['iw','dev'], text=True)
         for line in wifi_check_output.splitlines():
             # For now, just check for the existence of a single interface
             if line.strip().startswith('Interface'):

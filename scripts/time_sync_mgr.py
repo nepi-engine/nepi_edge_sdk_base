@@ -32,13 +32,15 @@ g_ntp_status_check_timer = None
 def symlink_force(target, link_name):
     try:
         os.symlink(target, link_name)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.EEXIST:
             os.remove(link_name)
             os.symlink(target, link_name)
         else:
             rospy.logerr("Unable to create symlink %s for %s", link_name, target)
             return False
+    
+    return True
 
 def ensure_user_conf():
     userconf_path = CHRONY_CFG_BASENAME + USER_CFG_SUFFIX
@@ -160,7 +162,7 @@ def gather_ntp_status():
 
     #rospy.logwarn("Debug: gather_ntp_status running (first time sync = " + str(g_ntp_first_sync_time) + ")")
 
-    chronyc_sources = subprocess.check_output(["chronyc", "sources"]).splitlines()
+    chronyc_sources = subprocess.check_output(["chronyc", "sources"], text=True).splitlines()
     ntp_status = [] # List of lists
     for line in chronyc_sources[1:]:
         if re.search('^\^|#', line): # Find sources lines by their leading "Mode" indicator
@@ -178,7 +180,6 @@ def gather_ntp_status():
                 # inform the rest of the system about the time update?
                 g_ntp_status_check_timer.shutdown()
 
-
     return ntp_status
 
 def handle_time_status_query(req):
@@ -189,7 +190,7 @@ def handle_time_status_query(req):
     #pps_exists = os.path.isfile('/sys/class/pps/pps0/assert')
     pps_exists = False # Hard code if for now, since Jetson isn't defining /sys/class/pps -- we may never actually use PPS
     if pps_exists:
-        pps_string = subprocess.check_output(["cat", "/sys/class/pps/pps0/assert"])
+        pps_string = subprocess.check_output(["cat", "/sys/class/pps/pps0/assert"], text=True)
         pps_tokens = pps_string.split('#')
         if (len(pps_tokens) >= 2):
             time_status.last_pps = rospy.Time(float(pps_string.split('#')[0]))
@@ -219,7 +220,7 @@ def set_time(msg):
     subprocess.call(["date", "-s", timestring])
     global g_last_set_time
     g_last_set_time = msg.data
-    new_date = subprocess.check_output(["date"])
+    new_date = subprocess.check_output(["date"], text=True)
     rospy.loginfo("Updated date: %s", new_date)
 
     # And tell the rest of the system

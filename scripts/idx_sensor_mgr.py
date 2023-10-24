@@ -33,7 +33,7 @@ class IDXSensorMgr:
   def detectAndManageV4L2Sensors(self, _): # Extra arg since this is a rospy Timer callback
     # First grab the current list of known V4L2 devices
     p = subprocess.Popen(['v4l2-ctl', '--list-devices'],
-                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     stdout,_ = p.communicate()
     #if p.returncode != 0:  # This can happen because there are no longer any video devices connected, so v4l2-ctl returns error
       #raise Exception("Failed to list v4l2 devices: " + stdout)
@@ -61,7 +61,7 @@ class IDXSensorMgr:
         # Make sure this is a legitimate Video Capture device, not a Metadata Capture device, etc.
         is_video_cap_device = False
         p = subprocess.Popen(['v4l2-ctl', '-d', tmp_device_path, '--all'],
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         stdout,_ = p.communicate()
         all_out = stdout.splitlines()
         in_device_caps = False
