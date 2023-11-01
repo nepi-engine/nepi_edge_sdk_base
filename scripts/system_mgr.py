@@ -38,7 +38,8 @@ class SystemMgrNode():
 
     storage_uid = 1000 # default to nepi
     storage_gid = 130 # default to "sambashare" # TODO This is very fragile
-    REQD_STORAGE_SUBDIRS = ["ai_models", "automation_scripts", "data", "nepi_full_img", "nepi_full_img_archive", "logs", "license", "user_cfg"]
+    REQD_STORAGE_SUBDIRS = ["ai_models", "automation_scripts", "data", "nepi_full_img", 
+                            "nepi_full_img_archive", "logs", "logs/automation_script_logs", "license", "user_cfg"]
 
     # disk_usage_deque = deque(maxlen=10)
     # Shorter period for more responsive updates
