@@ -168,9 +168,10 @@ def gather_ntp_status():
         if re.search('^\^|#', line): # Find sources lines by their leading "Mode" indicator
             tokens = line.split()
             source = tokens[1]
+            currently_syncd = ('*' in tokens[0]) or ('+' in tokens[0])
             last_sync = tokens[5]
             current_offset = tokens[6].split('[')[0] # The string has two parts
-            ntp_status.append((source, last_sync, current_offset))
+            ntp_status.append((source, currently_syncd, last_sync, current_offset))
             if (g_ntp_first_sync_time is None) and (last_sync != "10y"):
                 rospy.loginfo("NTP sync first detected... publishing on sys_time_update")
                 g_ntp_first_sync_time = rospy.get_rostime()
@@ -204,8 +205,10 @@ def handle_time_status_query(req):
     ntp_status = gather_ntp_status()
     for status_entry in ntp_status:
         time_status.ntp_sources.append(status_entry[0])
-        time_status.last_ntp_sync.append(status_entry[1])
-        time_status.current_offset.append(status_entry[2]) # The string has two parts
+        time_status.currently_syncd.append(status_entry[1])
+        time_status.last_ntp_sync.append(status_entry[2])
+        time_status.current_offset.append(status_entry[3])
+
 
     # Last set time (cheater clock sync method)
     time_status.last_set_time = g_last_set_time
