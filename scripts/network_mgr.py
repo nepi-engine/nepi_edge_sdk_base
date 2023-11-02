@@ -50,6 +50,10 @@ class NetworkMgr:
     WPA_GENERATE_SUPPLICANT_CONF_CMD = "wpa_passphrase"
     STOP_WPA_SUPPLICANT_CMD = ['killall', 'wpa_supplicant']
 
+    # Internet check
+    INTERNET_CHECK_CMD = ['nc', '-zw1', 'google.com', '443']
+    INTERNET_CHECK_INTERVAL_S = 3.0
+
     store_params_publisher = None
 
     def run(self):
@@ -528,6 +532,28 @@ class NetworkMgr:
             rx_bytes = int(f.read())
             self.rx_byte_cnt_deque.append(rx_bytes)
 
+    def internet_check(self, event):
+        with self.internet_connected_lock:
+            prev_connected = self.internet_connected
+        
+        connected = False
+
+        try:
+            subprocess.check_call(self.INTERNET_CHECK_CMD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if prev_connected is False:
+                rospy.loginfo("Detected new internet connection")
+            connected = True
+        except Exception as e:
+            if prev_connected is True:
+                rospy.loginfo("Detected internet connection dropped")
+            connected = False
+
+        if prev_connected != connected:
+            with self.internet_connected_lock:
+                self.internet_connected = connected
+
+        rospy.Timer(rospy.Duration(self.INTERNET_CHECK_INTERVAL_S), self.internet_check, oneshot = True)
+
     def handle_ip_addr_query(self, req):
         ips = self.get_current_ip_addrs()
         return {'ip_addrs':ips, 'dhcp_enabled': self.dhcp_enabled}
@@ -550,6 +576,9 @@ class NetworkMgr:
     def handle_wifi_query(self, req):
         with self.available_wifi_networks_lock:
             available_networks = list(self.available_wifi_networks)
+
+        with self.internet_connected_lock:
+            internet_connected = self.internet_connected
         
         return {'has_wifi': (self.wifi_iface is not None), 
                 'wifi_ap_enabled': self.wifi_ap_enabled,
@@ -559,7 +588,8 @@ class NetworkMgr:
                 'wifi_client_connected': self.wifi_client_connected,
                 'wifi_client_ssid': self.wifi_client_ssid,
                 'wifi_client_passphrase': self.wifi_client_passphrase,
-                'available_networks': available_networks}
+                'available_networks': available_networks,
+                'internet_connected': internet_connected}
 
     def refresh_available_networks_handler(self, msg):
         #if self.wifi_scan_thread is not None:
@@ -648,6 +678,9 @@ class NetworkMgr:
 
         rospy.Timer(rospy.Duration(self.BANDWIDTH_MONITOR_PERIOD_S), self.monitor_bandwidth_usage)
 
+        # Long duration internet check -- do oneshot and reschedule from within the callback
+        rospy.Timer(rospy.Duration(self.INTERNET_CHECK_INTERVAL_S), self.internet_check, oneshot = True)
+
         self.store_params_publisher = rospy.Publisher('store_params', String, queue_size=1)
 
         # Wifi stuff -- only enabled if WiFi is present
@@ -661,6 +694,8 @@ class NetworkMgr:
         self.available_wifi_networks = []
         self.wifi_scan_thread = None
         self.available_wifi_networks_lock = threading.Lock()
+        self.internet_connected = False
+        self.internet_connected_lock = threading.Lock()
         
         if self.wifi_iface:
             rospy.loginfo("Detected WiFi on " + self.wifi_iface)
@@ -676,7 +711,7 @@ class NetworkMgr:
             rospy.Subscriber('refresh_available_wifi_networks', Empty, self.refresh_available_networks_handler)
         else:
             rospy.loginfo("No WiFi detected")
-                
+
         self.run()
 
 if __name__ == "__main__":
