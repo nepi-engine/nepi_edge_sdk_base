@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# This script cleans up a working system ahead of a release archive (e.g., via l4t flash.sh)
-# It is intended to run locally on a Numurus system (3DX, S2X, etc)
+# This script cleans up a working system ahead of a release archive
+# It is intended to run locally on a NEPI device (S2X, etc)
 # It must be run under sudo or as root
-DATA_CONTENTS=/mnt/nepi_storage/data/*
-NUMURUS_ROS_LOG_CONTENTS=/home/numurus/.ros/log/*
-ROOT_ROS_LOG_CONTENTS=/root/.ros/log/*
+TMP_FOLDER=/home/nepi/tmp
+NEPI_ROS_FOLDER=/opt/nepi/ros
+NUID_FOLDER=/opt/nepi/nepi_link/nepi-bot/devinfo
 
-NUMURUS_ROS_FOLDER=/opt/nepi/ros
-
-NEPI_LOG_CONTENTS=/opt/nepi/nepi/nepi-bot/log/*
-NEPI_DB_CONTENTS=/opt/nepi/nepi/nepi-bot/db/nepibot.db
-NEPI_HB_CONTENTS=/opt/nepi/nepi/nepi-bot/hb/*
-NEPI_LB_CONTENTS=/opt/nepi/nepi/nepi-bot/lb/*
+NEPI_BOT_FOLDER=/opt/nepi/nepi_link/nepi-bot
+NEPI_BOT_LOG_CONTENTS=${NEPI_BOT_FOLDER}/log/*
+NEPI_BOT_DB_CONTENTS=${NEPI_BOT_FOLDER}/db/nepibot.db
+NEPI_BOT_HB_CONTENTS=${NEPI_BOT_FOLDER}/hb/*
+NEPI_BOT_LB_CONTENTS=${NEPI_BOT_FOLDER}/lb/*
+NEPI_BOT_NUID_FILE=${NEPI_BOT_FOLDER}/devinfo/devnuid.txt
 
 if [ "$EUID" -ne 0 ]
 then
@@ -20,43 +20,40 @@ then
   exit
 fi
 
-echo "Shutting down ROS to close current logs"
-systemctl stop roslaunch
+# Safety check
+echo 'This script will make permanent changes to your NEPI filesystem'
+echo 'It is intended to be run only in order to prepare a generic archive of a NEPI filesystem'
+read -p 'Are you sure you want to continue (y/n)?' response
+if [ "$response" != "y" ]; then
+  echo "Exiting due to response $response"
+  exit 1
+fi
 
-echo "Cleaning out the data folder"
-rm -rf $DATA_CONTENTS
-echo "... done"
-
-echo "Cleaning out the ROS logs"
-rm -rf $NUMURUS_ROS_LOG_CONTENTS $ROOT_ROS_LOG_CONTENTS
-echo "... done"
-
-echo "Checking for user-custom config settings and reverting interactively"
-USER_CFG_ARRAY=($(find $NUMURUS_ROS_FOLDER | grep -F .user))
-
-for i in "${USER_CFG_ARRAY[@]}"
-do
-  CFG_FILE=$(basename "$i" .user)
-  CFG_PATH=$(dirname "$i")
-  echo "Should we revert $CFG_FILE to factory settings? (y or n)"
-  read should_revert
-  if [ $should_revert == y ]
-  then
-    echo "Ok... reverting $CFG_FILE"
-    ln -sf ${CFG_PATH}/${CFG_FILE}.num_factory ${CFG_PATH}/${CFG_FILE}
-    rm ${CFG_PATH}/${CFG_FILE}.user
-  else
-    echo "Ok... skipping $USER_FILE"
+# Another safety check
+FW_REV=`cat $NEPI_ROS_FOLDER/etc/fw_version.txt`
+if grep -q "dirty" <<< "$FW_REV"; then
+  echo "This version of software, $FW_REV, does not appear to be release-ready"
+  read -p 'Are you sure you want to continue (y,n)?' response
+  if [ "$response" != "y" ]; then
+    echo "Exiting"
+    exit 1
   fi
-done
+fi
+
+echo "Cleaning out the tmp folder"
+rm -rf $TMP_FOLDER/*
 echo "... done"
 
-echo "Clearing out NEPI temporary files"
-rm -rf $NEPI_LOG_CONTENTS $NEPI_DB_CONTENTS $NEPI_HB_CONTENTS $NEPI_LB_CONTENTS
+echo "Reverting to factory settings"
+source NEPI_ROS_FOLDER/setup.bash
+rostopic pub -1 /nepi/s2x/reset nepi_ros_interfaces/Reset "reset_type: 1" 
+
+echo "Clearing out NEPI-Bot temporary files"
+rm -rf $NEPI_BOT_LOG_CONTENTS $NEPI_BOT_DB_CONTENTS $NEPI_BOT_HB_CONTENTS $NEPI_BOT_LB_CONTENTS
 echo "... done"
 
-# TODO: Clear out the ~ (home folder) of source code etc. Need to identify what
-# is required in that home folder first to make image detection labels work properly
-# and ideally fix the catkin installation so this is no longer needed.
+echo "Resetting NUID and Connect SSH key to UNSET"
+cd /opt/nepi/nepi_link/nepi-bot/devinfo
+python ./change_identity.py -n UNSET
 
 echo "Filesystem prep complete... can proceed to archive this filesystem for release"
