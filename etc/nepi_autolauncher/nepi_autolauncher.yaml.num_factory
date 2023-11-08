@@ -1,0 +1,22 @@
+path_device_list:
+- path: /dev/iqr_pan_tilt                                         # If path exists on filesystem, launch this node
+  ros_package: nepi_edge_sdk_ptx                                  # ROS package for node
+  ros_node_type: iqr_ros_pan_tilt_node                            # ROS node type from package
+  ros_node_basename: iqr_pan_tilt                                 # ROS node basename
+  ros_params: []                                                  # Params to pass to the node via rosrun
+  config_file_list: []                                            # List of config files ordered lowest to highest priority. Can be relative or absolute paths
+  
+- path: /dev/ttyUSB0
+  ros_package: mavros
+  ros_node_type: mavros_node
+  ros_node_basename: mavlink
+  ros_params:
+  - _fcu_url:=/dev/ttyUSB0:57600
+  config_file_list:
+  - /opt/ros/noetic/share/mavros/launch/apm_pluginlists.yaml
+  - /opt/ros/noetic/share/mavros/launch/apm_config.yaml
+  
+  
+  
+  
+  

@@ -28,9 +28,9 @@ class NEPIAutolauncher:
       'path': '/dev/ttyUSB0',
       'ros_package': 'mavros',
       'ros_node_type': 'mavros_node',
-      'ros_node_basename': 'pixhawk_mavlink',
+      'ros_node_basename': 'mavlink',
       'ros_params': ['_fcu_url:=/dev/ttyUSB0:57600'],
-      'config_file_list': []
+      'config_file_list': ['/opt/ros/noetic/share/mavros/launch/apm_pluginlists.yaml', '/opt/ros/noetic/share/mavros/launch/apm_config.yaml']
     }
   ]
 
