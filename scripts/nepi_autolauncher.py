@@ -96,8 +96,11 @@ class NEPIAutolauncher:
         if ros_node_name != ros_node_basename:
           config_files.append(os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, ros_node_basename, ros_node_name + ".yaml")) # /opt/nepi/ros/etc/example_node/example_node_0.yaml
         if 'config_file_list' in potential:
-          for cfg in potential['config_file_list']: 
-            config_files.append(os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, ros_node_basename, cfg)) # /opt/nepi/ros/etc/example_node/my_config.yaml
+          for cfg in potential['config_file_list']:
+            if cfg.startswith('/'): # Assume absolute path, so don't append any path
+              config_files.append(cfg) # /my/abs/path/my_config.yaml
+            else:
+              config_files.append(os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, ros_node_basename, cfg)) # /opt/nepi/ros/etc/example_node/my_config.yaml
             if specifier != "": # Also add specifier-defined config files to check
               cfg_base, cfg_extension = os.path.splittext(cfg)
               specifier_cfg = cfg_base + specifier + cfg_extension
@@ -174,15 +177,23 @@ class NEPIAutolauncher:
   
   def checkLoadConfigFile(self, fname_specifier_list, fully_qualified_node_name):
     config_file = None
-    for fname in fname_specifier_list:
+    for fname in fname_specifier_list: # Check/Load highest priority last for overrides
       # Try to find this file at various paths
-      #   1. Top-level config path
+      #   1. As specified
+      #   2. With NEPI config file path prepended
+      #   3. TODO?
+      current_config = None
       if os.path.exists(fname):
-        config_file = os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, fname)
-        # Load highest priority last for overrides
+        current_config = fname
+      elif os.path.exists(os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, fname)):
+        current_config = os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, fname)
+      
+      # Now load whatever we found
+      if current_config is not None:
+        config_file = current_config
         rospy.loginfo(self.node_name + ": Loading parameters from " + config_file + " for " + fully_qualified_node_name)
         rosparam.load_file(filename = config_file, default_namespace = fully_qualified_node_name)
-
+    
     if config_file is None:
       rospy.logwarn(self.node_name + ": No eligible config file found for " + fully_qualified_node_name + " from " + str(fname_specifier_list))
     
