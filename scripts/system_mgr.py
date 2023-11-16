@@ -352,8 +352,14 @@ class SystemMgrNode():
 
         # Do automatic rootfs switch if so configured
         if self.auto_switch_rootfs_on_new_img_install:
-            status, err_msg = sw_update_utils.switchActiveAndInactivePartitions(
-                self.first_stage_rootfs_device)
+            if self.rootfs_ab_scheme == 'nepi':
+                status, err_msg = sw_update_utils.switchActiveAndInactivePartitions(self.first_stage_rootfs_device)
+            elif self.rootfs_ab_scheme == 'jetson':
+                status, err_msg = sw_update_utils.switchActiveAndInactivePartitionsJetson()
+            else:
+                err_msg = "Unknown ROOTFS A/B Scheme"
+                status = False
+                
             if status is False:
                 rospy.logwarn("Automatic rootfs active/inactive switch failed: " + err_msg)
             else:
@@ -362,8 +368,14 @@ class SystemMgrNode():
                 self.status_msg.sys_img_update_status = 'complete - needs reboot'
     
     def handle_switch_active_inactive_rootfs(self, msg):
-        status, err_msg = sw_update_utils.switchActiveAndInactivePartitions(
-            self.first_stage_rootfs_device)
+        if self.rootfs_ab_scheme == 'nepi':
+            status, err_msg = sw_update_utils.switchActiveAndInactivePartitions(self.first_stage_rootfs_device)
+        elif self.rootfs_ab_scheme == 'jetson':
+            status, err_msg = sw_update_utils.switchActiveAndInactivePartitionsJetson()
+        else:
+            err_msg = "Unknown ROOTFS A/B Scheme"
+            status = False
+            
         if status is False:
             rospy.logwarn("Failed to switch active/inactive rootfs: " + err_msg)
             return
@@ -453,11 +465,18 @@ class SystemMgrNode():
         self.system_defs_msg.disk_capacity = statvfs.f_frsize * statvfs.f_blocks / \
             BYTES_PER_MEGABYTE     # Size of data filesystem in Megabytes
 
-        self.system_defs_msg.first_stage_rootfs_device = self.get_device_friendly_name(self.first_stage_rootfs_device)
-        
         # Gather some info about ROOTFS A/B configuration
-        (status, err_msg, rootfs_ab_settings_dict) = sw_update_utils.getRootfsABStatus(
-            self.first_stage_rootfs_device)
+        status = False
+        if self.rootfs_ab_scheme == 'nepi':
+            self.system_defs_msg.first_stage_rootfs_device = self.get_device_friendly_name(self.first_stage_rootfs_device)
+            (status, err_msg, rootfs_ab_settings_dict) = sw_update_utils.getRootfsABStatus(
+                self.first_stage_rootfs_device)
+        elif self.rootfs_ab_scheme == 'jetson':
+            self.system_defs_msg.first_stage_rootfs_device = 'N/A'
+            (status, err_msg, rootfs_ab_settings_dict) = sw_update_utils.getRootfsABStatusJetson()
+        else:
+            rospy.logerr("Failed to identify the ROOTFS A/B Scheme... cannot update A/B info and status")
+
         if status is True:
             self.system_defs_msg.active_rootfs_device = self.get_device_friendly_name(rootfs_ab_settings_dict[
                 'active_part_device'])
@@ -544,10 +563,11 @@ class SystemMgrNode():
         # Reset the A/B rootfs boot fail counter -- if this node is running, pretty safe bet that we've booted successfully
         # This should be redundant, as we need a non-ROS reset mechanism, too, in case e.g., ROS nodes are delayed waiting
         # for a remote ROS master to start. That could be done in roslaunch.sh or a separate start-up script.
-        status, err_msg = sw_update_utils.resetBootFailCounter(
-            self.first_stage_rootfs_device)
-        if status is False:
-            rospy.logerr("Failed to reset boot fail counter: " + err_msg)
+        if self.rootfs_ab_scheme == 'nepi': # The 'jetson' scheme handles this itself
+            status, err_msg = sw_update_utils.resetBootFailCounter(
+                self.first_stage_rootfs_device)
+            if status is False:
+                rospy.logerr("Failed to reset boot fail counter: " + err_msg)
 
         rospy.Timer(rospy.Duration(self.STATUS_PERIOD),
                     self.publish_periodic_status)
@@ -616,6 +636,9 @@ class SystemMgrNode():
             "~storage_mountpoint", self.storage_mountpoint)
         self.first_stage_rootfs_device = rospy.get_param(
             "~first_stage_rootfs_device", self.first_stage_rootfs_device)
+        
+        # Need to identify the rootfs scheme because it is used in init_msgs()
+        self.rootfs_ab_scheme = sw_update_utils.identifyRootfsABScheme()
 
         self.init_msgs()
 

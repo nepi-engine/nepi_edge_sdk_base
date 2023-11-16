@@ -38,6 +38,10 @@ TMP_PARTITION_ENV_VAR_NAME = "TMP_PARTITION"
 MAX_BOOT_FAILURE_ENV_VAR_NAME = "MAX_BOOT_FAILURE_COUNT"
 ###################################################################################################
 
+# Alternative Jetson+NEPI A/B Scheme: Used for Orin-NX and probably others going forward
+###################################################################################################
+JETSON_ROOTFS_AB_DEVICES = {'A': '/dev/nvme0n1p1', 'B': '/dev/nvme0n1p2'}
+
 
 def mountPartition(part_device_pathname, part_mountpoint):
     # Might already be mounted
@@ -52,7 +56,7 @@ def mountPartition(part_device_pathname, part_mountpoint):
 
     mount_rc = subprocess.call(
         ["mount", part_device_pathname, part_mountpoint])
-    if mount_rc is 0:
+    if mount_rc == 0:
         return True, "Success"
     else:
         return False, "Failed to mount"
@@ -64,7 +68,7 @@ def unmountPartition(part_mountpoint):
         return True, "Already unmounted"
 
     unmount_rc = subprocess.call(["umount", part_mountpoint])
-    if unmount_rc is 0:
+    if unmount_rc == 0:
         return True, "Success"
     else:
         return False, "Failed to unmount"
@@ -181,6 +185,57 @@ def getRootfsABStatus(first_stage_rootfs_device):
 
     return True, "Success", rootfs_ab_status_dict
 
+def getRootfsABStatusJetson():
+    rootfs_ab_status_dict = {}
+
+    command = ['nvbootctrl', '-t', 'rootfs', 'dump-slots-info']
+    slots_info = subprocess.check_output(command, text=True)
+    current_rootfs_slot = None
+    for line in slots_info.splitlines():
+        tokens = line.split(':')
+        if tokens[0] == 'Current rootfs slot': # NEPI defines "active" to be the current, Jetson defines "current" to be the current
+            current_rootfs_slot = tokens[1].strip()
+            inactive_rootfs_slot = 'B' if current_rootfs_slot == 'A' else 'A'
+            rootfs_ab_status_dict["active_part_device"] = JETSON_ROOTFS_AB_DEVICES[current_rootfs_slot]
+            rootfs_ab_status_dict["inactive_part_device"] = JETSON_ROOTFS_AB_DEVICES[inactive_rootfs_slot]
+        elif tokens[0] == 'Active rootfs slot': # NEPI defines "next active" to be the next one, Jetson defines that as "active"
+            next_rootfs_slot = tokens[1].strip()
+            rootfs_ab_status_dict["next_active_part_device"] = JETSON_ROOTFS_AB_DEVICES[next_rootfs_slot]
+        elif tokens[0] == 'slot':
+            slot_val = tokens[1].strip()[0] # First character of the comma-delineated line
+            if (current_rootfs_slot == 'A' and slot_val == '0') or (current_rootfs_slot == 'B' and slot_val == '1'):
+                rootfs_ab_status_dict["max_boot_fail_count"] = int(tokens[2].strip()[0])
+
+    # Validate
+    if ('active_part_device' not in rootfs_ab_status_dict) or \
+       ('inactive_part_device' not in rootfs_ab_status_dict) or \
+       ('max_boot_fail_count' not in rootfs_ab_status_dict):
+        return False, "nvbootctrl call or parse failure", rootfs_ab_status_dict
+    
+    # Now grab the fw_version for the inactive partition
+    inactive_part_fw_version_pathname = os.path.join(INACTIVE_PARTITION_MOUNTPOINT, NEPI_FULL_IMG_FW_VERSION_PATH)
+    status, err_msg = mountPartition(
+        rootfs_ab_status_dict["inactive_part_device"], INACTIVE_PARTITION_MOUNTPOINT)
+    if status is False or not os.path.isfile(inactive_part_fw_version_pathname):
+        rootfs_ab_status_dict["inactive_part_fw_version"] = "unknown"
+    else:
+        with open(inactive_part_fw_version_pathname, 'r') as f:
+           rootfs_ab_status_dict["inactive_part_fw_version"] = f.read().strip() 
+    unmountPartition(INACTIVE_PARTITION_MOUNTPOINT)
+
+    return True, "Success", rootfs_ab_status_dict
+
+def identifyRootfsABScheme():
+    try:
+        slot_count = int(subprocess.check_output(['nvbootctrl', '-t', 'rootfs', 'get-number-slots']))
+        if slot_count == 2:
+            return 'jetson'
+    except:
+        pass
+
+    # Default to 'nepi'
+    return 'nepi'
+
 def getPartitionByteCount(partition_device):
     return int(subprocess.check_output(["blockdev", "--getsize64", partition_device], text=True))
 
@@ -241,7 +296,7 @@ def writeImage(new_img_staging_device, uncompressed_img_filename, inactive_parti
     
     unmountPartition(STAGING_MOUNTPOINT)
 
-    if dd_proc.returncode is 0:
+    if dd_proc.returncode == 0:
         return True, "Success"
     else:
         return False, "Failed (dd error: " + str(dd_proc.returncode) + ": " + dd_final_out + ")"
@@ -271,7 +326,6 @@ def resetBootFailCounter(first_stage_rootfs_device):
     unmountPartition(FLASH_ROOTFS_MOUNTPOINT)
     return True, "Success"
 
-
 def switchActiveAndInactivePartitions(first_stage_rootfs_device):
     # First, mount the FLASH partition where the current ACTIVE/INACTIVE device info is stored
     status, err_msg = mountPartition(
@@ -300,6 +354,13 @@ def switchActiveAndInactivePartitions(first_stage_rootfs_device):
         f.write(data)
 
     unmountPartition(FLASH_ROOTFS_MOUNTPOINT)
+    return True, "Success"
+
+def switchActiveAndInactivePartitionsJetson():
+    current_slot_num = int(subprocess.check_output(['nvbootctrl', '-t', 'rootfs', 'get-current-slot'], text=True))
+    new_slot_num = '1' if current_slot_num == 0 else '0'
+
+    subprocess.call(['nvbootctrl', '-t', 'rootfs', 'set-active-boot-slot', new_slot_num], text=True)
     return True, "Success"
 
 def archiveInactiveToStaging(inactive_partition_device, staging_device, archive_file_basename, do_slow_transfer, progress_cb=None):
@@ -362,7 +423,7 @@ def archiveInactiveToStaging(inactive_partition_device, staging_device, archive_
     
     unmountPartition(STAGING_MOUNTPOINT)
 
-    if dd_proc.returncode is 0:
+    if dd_proc.returncode == 0:
         return True, "Success"
     else:
         return False, "Failed (dd error: " + str(dd_proc.returncode) + ": " + dd_final_out + ")"
