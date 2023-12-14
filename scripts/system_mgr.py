@@ -534,6 +534,30 @@ class SystemMgrNode():
 	    # TODO: Should this be queried somehow e.g., from the param server
         self.status_msg.save_all_enabled = False
 
+    def getNEPIStorageDevice(self):
+        # Try to read the NEPI storage device out of /etc/fstab
+        if os.path.exists('/etc/fstab'):
+            with open('/etc/fstab', 'r') as fstab:
+                lines = fstab.readlines()
+                for line in lines:
+                    if self.storage_mountpoint in line and not line.startswith('#'):
+                        candidate = line.split()[0] # First token is the device
+                        if candidate.startswith('/dev/'):
+                            self.nepi_storage_device = candidate
+                            rospy.loginfo('Identified NEPI storage device ' + self.nepi_storage_device + ' from /etc/fstab')
+                            return
+                        else:
+                            rospy.logwarn('Candidate NEPI storage device from /etc/fstab is of unexpected form: ' + candidate)
+            
+        # If we get here, failed to get the storage device from /etc/fstab
+        rospy.logwarn('Failed to get NEPI storage device from /etc/fstab -- falling back to system_mgr config file')
+        if not rospy.has_param("~nepi_storage_device"):
+            rospy.logerr("Parameter nepi_storage_device not available -- falling back to hard-coded " + self.nepi_storage_device)
+        else:
+            self.nepi_storage_device = rospy.get_param(
+                "~nepi_storage_device", self.nepi_storage_device)
+            rospy.loginfo("Identified NEPI storage device " + self.nepi_storage_device + ' from config file')
+    
     def updateFromParamServer(self):
         op_env = rospy.get_param(
             "~op_environment", OpEnvironmentQueryResponse.OP_ENV_AIR)
@@ -547,10 +571,9 @@ class SystemMgrNode():
             "~first_stage_rootfs_device", self.first_stage_rootfs_device
         )
 
-        self.nepi_storage_device = rospy.get_param(
-            "~nepi_storage_device", self.nepi_storage_device
-        )
-
+        # nepi_storage_device has some additional logic
+        self.getNEPIStorageDevice()
+        
         self.new_img_staging_device = rospy.get_param(
             "~new_img_staging_device", self.new_img_staging_device
         )
