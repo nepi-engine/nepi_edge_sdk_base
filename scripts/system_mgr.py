@@ -564,9 +564,14 @@ class SystemMgrNode():
         # Publish it to all subscribers (which includes this node) to ensure the parameter is applied
         self.set_op_env_pub.publish(String(op_env))
 
+        # Now gather all the params and set members appropriately
         self.storage_mountpoint = rospy.get_param(
             "~storage_mountpoint", self.storage_mountpoint)
         
+        self.auto_switch_rootfs_on_new_img_install = rospy.get_param(
+            "~auto_switch_rootfs_on_new_img_install", self.auto_switch_rootfs_on_new_img_install
+        )
+
         self.first_stage_rootfs_device = rospy.get_param(
             "~first_stage_rootfs_device", self.first_stage_rootfs_device
         )
@@ -596,10 +601,6 @@ class SystemMgrNode():
 
         self.ssd_device = rospy.get_param(
             "~ssd_device", self.ssd_device
-        )
-
-        self.auto_switch_rootfs_on_new_img_install = rospy.get_param(
-            "~auto_switch_rootfs_on_new_img_install", self.auto_switch_rootfs_on_new_img_install
         )
     
     def run(self):

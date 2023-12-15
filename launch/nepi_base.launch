@@ -3,6 +3,7 @@
   <arg name="device_ns" value="$(env ROOTNAME)/$(env DEVICE_ID)" />
   <arg name="output_destination" value="screen" />
   <arg name="config_file_root" value="/opt/nepi/ros/etc" />
+  <arg name="partition_layout_file" default="s2x_xavier_nx_nepi_partition_layout.yaml" />
   <arg name="nepi_edge_sdk_link_libpath" value="/opt/nepi/nepi_link/nepi_edge_sdk_link/lib" />
 
   <!-- Args. to run or not run specific nodes -->
@@ -23,6 +24,8 @@
     <node name="config_mgr" pkg="nepi_edge_sdk_base" type="config_mgr.py" respawn="true" output="$(arg output_destination)" />
 
     <rosparam command="load" file="$(arg config_file_root)/system_mgr/system_mgr.yaml" ns="system_mgr" />
+    <!-- Partition layout depends on system type. Should be passed in from specialized launch file -->
+    <rosparam command="load" file="$(arg config_file_root)/system_mgr/$(arg partition_layout_file)" ns="system_mgr" />
     <node name="system_mgr" pkg="nepi_edge_sdk_base" type="system_mgr.py" respawn="true" output="$(arg output_destination)" />
 
     <!-- TimeSyncMgr has no NEPI/ROS yaml config; just the chrony.conf symlinks in /etc/chrony -->

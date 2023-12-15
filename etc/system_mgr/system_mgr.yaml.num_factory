@@ -24,13 +24,5 @@
 ##
 op_environment: air                                      # "air" or "water". Controls the ZED camera calibration selected at start-up.
 storage_mountpoint: /mnt/nepi_storage                    # Specifies where the NEPI user partition is/should be mounted
-first_stage_rootfs_device: /dev/mmcblk0p1                # Specifies the device and partition for the NEPI first-stage/INIT rootfs. EMMC partition 1 by default
-nepi_storage_device: /dev/nvme0n1p3                      # Specifies the device and partition for NEPI user partition; /etc/fstab takes precedent, however. SSD partition 3 by default
-new_img_staging_device: /dev/nvme0n1p3                   # Specifies the device and partition for new image staging. SSD partition 3 by default
-new_img_staging_device_removable: false                  # Specifies whether or not the new image staging media is removable (e.g., USB stick)
-usb_device: /dev/sda                                     # Device for USB storage. Can be "None" if not present
-sd_card_device: /dev/mmcblk1p                            # Device for SD card storage. Can be "None" if not present
-emmc_device: /dev/mmcblk0p                               # Device for EMMC storage. Can be "None" if not present
-ssd_device: /dev/nvme0n1p                                # Device for SSD storage. Can be "None" if not present
 auto_switch_rootfs_on_new_img_install: true              # Specifies whether or not to automatically switch active/inactive rootfs definitions on successful image install
 
