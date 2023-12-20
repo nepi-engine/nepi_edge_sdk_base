@@ -75,15 +75,6 @@ Node3DX::Node3DX():
 	stitched_cloud_max_save_rate_hz{"stitched_cloud/max_save_rate_hz", 0.5f, this},
 	save_data_buffer{SAVE_DATA_BUFFER_SIZE}
 {
-	#ifndef NDEBUG // CMake-supplied indicator of Debug build
-	  /* Debug */
-	  #warning "Compiling with DEBUG verbosity enabled for node_3dx"
-	  #include <ros/console.h>
-	  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
-	     ros::console::notifyLoggerLevelsChanged();
-	  }
-	#endif
-
 	nepi_ros_interfaces::Status3DX status_3dx;
 	status_flags.resize(status_3dx.flags.max_size(), false); // std::vector sized from boost::array
 	status_flags[nepi_ros_interfaces::Status3DX::DEVICE_STARTING] = true;
