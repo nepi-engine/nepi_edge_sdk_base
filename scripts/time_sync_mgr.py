@@ -195,10 +195,15 @@ def gather_ntp_status():
             last_sync = tokens[5]
             current_offset = tokens[6].split('[')[0] # The string has two parts
             ntp_status.append((source, currently_syncd, last_sync, current_offset))
-            if (g_ntp_first_sync_time is None) and (last_sync != "10y"):
+            if (g_ntp_first_sync_time is None) and (currently_syncd is True):
                 rospy.loginfo("NTP sync first detected... publishing on sys_time_update")
                 g_ntp_first_sync_time = rospy.get_rostime()
                 g_sys_time_updated_pub.publish(Empty())
+
+                # Update the RTC with this "better" clock source
+                rospy.loginfo("Updating hardware clock with NTP time")
+                subprocess.call(['hwclock', '-w'])
+
                 # No longer need to run the timer
                 # TODO: Should we continue to run timer to monitor for big changes, additional syncs, etc. to
                 # inform the rest of the system about the time update?
@@ -248,6 +253,10 @@ def set_time(msg):
     g_last_set_time = msg.data
     new_date = subprocess.check_output(["date"], text=True)
     rospy.loginfo("Updated date: %s", new_date)
+
+    # Update the hardware clock from this "better" clock source; helps with RTC drift
+    rospy.loginfo("Updating hardware clock from set_time value")
+    subprocess.call(['hwclock', '-w'])
 
     # And tell the rest of the system
     global g_sys_time_updated_pub
@@ -307,6 +316,14 @@ def time_sync_mgr():
 
     global g_sys_time_updated_pub
     g_sys_time_updated_pub = rospy.Publisher('sys_time_updated', Empty, queue_size=3)
+
+    # Initialize the system clock from the RTC if so configured
+    # RTC will be updated whenever a "good" clock source is detected; that will control drift
+    init_from_rtc = rospy.get_param("~init_time_from_rtc", True)
+    if init_from_rtc is True:
+        rospy.loginfo("Initializing system clock from hardware clock")
+        subprocess.call(['hwclock', '-s'])
+        g_sys_time_updated_pub.publish() # Make sure to inform the rest of the nodes that the system clock was updated
 
     # Set up a periodic timer to check for NTP sync so we can inform the rest of the system when first sync detected
     global g_ntp_status_check_timer
