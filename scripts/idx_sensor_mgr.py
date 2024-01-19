@@ -31,16 +31,21 @@ import roslaunch
 import rosparam
 import rospy
 
+# Needed for GenICam auto-detect
+from harvesters.core import Harvester
+
 class IDXSensorMgr:
   DEFAULT_NODE_NAME = "idx_sensor_mgr"
 
   NEPI_IDX_SENSOR_PARAM_PATH = '/opt/nepi/ros/etc/idx_sensors/'
   V4L2_SENSOR_CHECK_INTERVAL_S = 3.0
+  GENICAM_SENSOR_CHECK_INTERVAL_S = 3.0
 
   # Not all "v4l2-ctl --list-devices" reported devices are desirable
   DEFAULT_EXCLUDED_V4L2_DEVICES = ['msm_vidc_vdec', # RB5 issue work-around for now
                                    'ZED 2',         # Don't treat ZED as V4L2 device - use its own SDK instead
                                    'ZED-M']         # TODO: Not sure this is how Zed mini is identified by v4l2-ctl... need to test when hardware available 
+  DEFAULT_EXCLUDED_GENICAM_DEVICES = []  # TODO?
 
   def __init__(self):
     # Launch the ROS node
@@ -50,10 +55,40 @@ class IDXSensorMgr:
 
     self.sensorList = []
     self.excludedV4L2Devices = rospy.get_param('~excluded_v4l2_devices', self.DEFAULT_EXCLUDED_V4L2_DEVICES)
+    self.excludedGenicamDevices = rospy.get_param('~excluded_genicam_devices', self.DEFAULT_EXCLUDED_GENICAM_DEVICES)
+
+    self.genicam_harvester = Harvester()
+    # FIXME: get these paths from config?
+    self.genicam_harvester.add_file("/home/nepi/Downloads/Baumer_GAPI_SDK_2.14.1_lin_aarch64_cpp/lib/libbgapi2_gige.cti.2.14.1")
+    self.genicam_harvester.add_file("/home/nepi/Downloads/Baumer_GAPI_SDK_2.14.1_lin_aarch64_cpp/lib/libbgapi2_usb.cti.2.14.1")
 
     rospy.Timer(rospy.Duration(self.V4L2_SENSOR_CHECK_INTERVAL_S), self.detectAndManageV4L2Sensors)
+    rospy.Timer(rospy.Duration(self.GENICAM_SENSOR_CHECK_INTERVAL_S), self.detectAndManageGenicamSensors)
     rospy.spin()
-    
+
+  def detectAndManageGenicamSensors(self, _):
+      self.genicam_harvester.update()
+      for device in self.genicam_harvester.device_info_list:
+        model = device.model
+        sn = device.serial_number
+        device_is_known = False
+        for known_device in self.sensorList:
+          try:
+              stdo, stde = known_device["node_subprocess"].communicate(timeout=0.1)
+              rospy.logerr(f'{known_device["node_name"]} exited')
+              rospy.logerr(f"stdout: {stdo}")
+              rospy.logerr(f"stderr: {stde}")
+          except subprocess.TimeoutExpired:
+              pass
+          if known_device["sensor_class"] != "genicam":
+            continue
+          device_is_known = (device_is_known or (known_device["model"] == device.model and\
+                  known_device["serial_number"] == device.serial_number))
+          if device_is_known:
+            break
+        if not device_is_known:
+          self.startGenicamSensorNode(model=model, serial_number=sn)
+
   def detectAndManageV4L2Sensors(self, _): # Extra arg since this is a rospy Timer callback
     # First grab the current list of known V4L2 devices
     p = subprocess.Popen(['v4l2-ctl', '--list-devices'],
@@ -136,6 +171,25 @@ class IDXSensorMgr:
         rospy.logwarn(self.node_name + ': ' + sensor['node_namespace'] + ' path ' + sensor['device_path'] + ' no longer exists... sensor disconnected?')
         self.stopAndPurgeSensorNode(sensor['node_namespace'])
 
+  def startGenicamSensorNode(self, model, serial_number):
+    # FIXME: OK to distinguish just based on s/n?
+    sensor_node_name = f'genicam_{serial_number}'
+    sensor_node_namespace = rospy.get_namespace() + sensor_node_name
+    rospy.loginfo(f"{self.node_name}: Initiating new Genicam node {sensor_node_namespace}")
+
+    # TODO: checkLoadConfigFile?
+
+    # NOTE: have to make serial_number look like a string by prefixing with "sn", otherwise ROS
+    #       treats it as an int param and it causes an overflow. Better way to handle this?
+    sensor_node_run_cmd = ["rosrun", "nepi_edge_sdk_genicam", "genicam_camera_node.py",
+        f"__name:={sensor_node_name}", f"_model:={model}", f"_serial_number:=sn{serial_number}"]
+    p = subprocess.Popen(sensor_node_run_cmd)
+    if p.poll() is not None:
+      rospy.logerr(f'Failed to start {sensor_node_name} via {" ".join(x for x in sensor_node_run_cmd)} (rc = {p.returncode})')
+    else:
+        self.sensorList.append({"sensor_class": "genicam", "model": model, "serial_number": serial_number,
+          "device_type": model, "node_name": sensor_node_name, "node_namespace": sensor_node_namespace,
+          "node_subprocess": p})
 
   def startV4L2SensorNode(self, type, path):
     # First, get a unique name
