@@ -193,12 +193,16 @@ class IDXSensorMgr:
         self.stopAndPurgeSensorNode(sensor['node_namespace'])
 
   def startGenicamSensorNode(self, model, serial_number):
-    # FIXME: OK to distinguish just based on s/n?
-    sensor_node_name = f'genicam_{serial_number}'
+    # TODO: fair to assume uniqueness of device serial numbers?
+    root_name = f'genicam_{serial_number}'
+    sensor_node_name = root_name
     sensor_node_namespace = rospy.get_namespace() + sensor_node_name
     rospy.loginfo(f"{self.node_name}: Initiating new Genicam node {sensor_node_namespace}")
 
-    # TODO: checkLoadConfigFile?
+    self.checkLoadConfigFile(fname_specifier_list=[sensor_node_name,
+                                                   root_name,
+                                                   "genicam_generic"],
+                             node_namespace=sensor_node_namespace)
 
     # NOTE: have to make serial_number look like a string by prefixing with "sn", otherwise ROS
     #       treats it as an int param and it causes an overflow. Better way to handle this?
