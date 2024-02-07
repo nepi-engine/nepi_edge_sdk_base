@@ -67,27 +67,48 @@ class IDXSensorMgr:
     rospy.spin()
 
   def detectAndManageGenicamSensors(self, _):
-      self.genicam_harvester.update()
-      for device in self.genicam_harvester.device_info_list:
-        model = device.model
-        sn = device.serial_number
-        device_is_known = False
-        for known_device in self.sensorList:
-          try:
-              stdo, stde = known_device["node_subprocess"].communicate(timeout=0.1)
-              rospy.logerr(f'{known_device["node_name"]} exited')
-              rospy.logerr(f"stdout: {stdo}")
-              rospy.logerr(f"stderr: {stde}")
-          except subprocess.TimeoutExpired:
-              pass
-          if known_device["sensor_class"] != "genicam":
-            continue
-          device_is_known = (device_is_known or (known_device["model"] == device.model and\
-                  known_device["serial_number"] == device.serial_number))
-          if device_is_known:
-            break
-        if not device_is_known:
-          self.startGenicamSensorNode(model=model, serial_number=sn)
+    # Make sure our genicam harvesters context is up to date.
+    self.genicam_harvester.update()
+
+    # Take note of any genicam nodes currently running. If they are not found
+    # in the current genicam harvesters context, we must assume that they have
+    # been disconnected and stop the corresponding node(s).
+    active_devices = {d["node_namespace"]: False for d in self.sensorList\
+                                                 if d["sensor_class"] == "genicam"}
+
+    # Iterate through each device in the current context.
+    for device in self.genicam_harvester.device_info_list:
+      model = device.model
+      sn = device.serial_number
+      device_is_known = False
+
+      # Look to see if this device has already been launched as a node. If it
+      # has, do nothing. If it hasn't, spin up a new node.
+      for known_device in self.sensorList:
+        if known_device["sensor_class"] != "genicam":
+          continue
+        try:
+          # The call to communicate() will timeout if the node is still running.
+          # If the node has exited, we log the corresponding stdout and stderr
+          # and allow it to be restarted.
+          stdo, stde = known_device["node_subprocess"].communicate(timeout=0.1)
+          rospy.logerr(f'{known_device["node_name"]} exited')
+          rospy.logerr(f"stdout: {stdo}")
+          rospy.logerr(f"stderr: {stde}")
+        except subprocess.TimeoutExpired:
+          pass
+        device_is_known = (device_is_known or (known_device["model"] == device.model and\
+                known_device["serial_number"] == device.serial_number))
+        if device_is_known:
+          active_devices[known_device["node_namespace"]] = True
+          break
+      if not device_is_known:
+        self.startGenicamSensorNode(model=model, serial_number=sn)
+
+    # Stop any nodes associated with devices that have disappeared.
+    for node_namespace, running in active_devices.items():
+      if not running:
+        self.stopAndPurgeSensorNode(node_namespace)
 
   def detectAndManageV4L2Sensors(self, _): # Extra arg since this is a rospy Timer callback
     # First grab the current list of known V4L2 devices
@@ -187,9 +208,13 @@ class IDXSensorMgr:
     if p.poll() is not None:
       rospy.logerr(f'Failed to start {sensor_node_name} via {" ".join(x for x in sensor_node_run_cmd)} (rc = {p.returncode})')
     else:
-        self.sensorList.append({"sensor_class": "genicam", "model": model, "serial_number": serial_number,
-          "device_type": model, "node_name": sensor_node_name, "node_namespace": sensor_node_namespace,
-          "node_subprocess": p})
+      self.sensorList.append({"sensor_class": "genicam",
+                              "model": model,
+                              "serial_number": serial_number,
+                              "device_type": model,
+                              "node_name": sensor_node_name,
+                              "node_namespace": sensor_node_namespace,
+                              "node_subprocess": p})
 
   def startV4L2SensorNode(self, type, path):
     # First, get a unique name
