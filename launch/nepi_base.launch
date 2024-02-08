@@ -17,8 +17,8 @@
   <arg name="run_idx_sensor_mgr" default="true" />
   <arg name="run_automation_mgr" default="true" />
   <arg name="run_sequential_image_mux" default="true" />
-  <arg name="hardcode_launch_onvif_nodes" default="true" />
-    
+  <arg name="run_onvif_mgr" default="true" />
+      
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
     <node name="config_mgr" pkg="nepi_edge_sdk_base" type="config_mgr.py" respawn="true" output="$(arg output_destination)" />
@@ -102,11 +102,12 @@
     <group if="$(arg run_idx_sensor_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/idx_sensor_mgr/idx_sensor_mgr.yaml" ns="idx_sensor_mgr" />
       <node name="idx_sensor_mgr" pkg="nepi_edge_sdk_base" type="idx_sensor_mgr.py" respawn="true" output="$(arg output_destination)" />
+    </group>
 
-      <!-- ONVIF nodes: To be replaced by Sensor Manager when auto-detect is working -->
-      <group if="$(arg hardcode_launch_onvif_nodes)" >
-        <include file="$(find nepi_edge_sdk_onvif)/launch/nepi_onvif_demo.launch" pass_all_args="true"/>
-      </group>
+    <!-- OVIF Manager (IDX and PTX) -->
+    <group if="$(arg run_onvif_mgr)" >
+      <rosparam command="load" file="$(arg config_file_root)/onvif_mgr/onvif_mgr.yaml" ns="onvif_mgr" />
+      <node name="onvif_mgr" pkg="nepi_edge_sdk_onvif" type="onvif_mgr.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- Automation Mgr -->
