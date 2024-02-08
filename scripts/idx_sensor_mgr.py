@@ -23,11 +23,9 @@
 # - mailto:nepi@numurus.com
 #
 #
-import sys
 import os
 import subprocess
 import time
-import roslaunch
 import rosparam
 import rospy
 
@@ -45,7 +43,10 @@ class IDXSensorMgr:
   DEFAULT_EXCLUDED_V4L2_DEVICES = ['msm_vidc_vdec', # RB5 issue work-around for now
                                    'ZED 2',         # Don't treat ZED as V4L2 device - use its own SDK instead
                                    'ZED-M']         # TODO: Not sure this is how Zed mini is identified by v4l2-ctl... need to test when hardware available 
-  DEFAULT_EXCLUDED_GENICAM_DEVICES = []  # TODO?
+  DEFAULT_EXCLUDED_GENICAM_DEVICES = []  # None at present
+
+  DEFAULT_GENTL_PRODUCER_USB = '/opt/baumer/gentl_producers/libbgapi2_usb.cti.2.14.1'
+  DEFAULT_GENTL_PRODUCER_GIGE = '/opt/baumer/gentl_producers/libbgapi2_gige.cti.2.14.1'
 
   def __init__(self):
     # Launch the ROS node
@@ -58,9 +59,9 @@ class IDXSensorMgr:
     self.excludedGenicamDevices = rospy.get_param('~excluded_genicam_devices', self.DEFAULT_EXCLUDED_GENICAM_DEVICES)
 
     self.genicam_harvester = Harvester()
-    # FIXME: get these paths from config?
-    self.genicam_harvester.add_file("/home/nepi/Downloads/Baumer_GAPI_SDK_2.14.1_lin_aarch64_cpp/lib/libbgapi2_gige.cti.2.14.1")
-    self.genicam_harvester.add_file("/home/nepi/Downloads/Baumer_GAPI_SDK_2.14.1_lin_aarch64_cpp/lib/libbgapi2_usb.cti.2.14.1")
+    
+    self.genicam_harvester.add_file(self.DEFAULT_GENTL_PRODUCER_GIGE)
+    self.genicam_harvester.add_file(self.DEFAULT_GENTL_PRODUCER_USB)
 
     rospy.Timer(rospy.Duration(self.V4L2_SENSOR_CHECK_INTERVAL_S), self.detectAndManageV4L2Sensors)
     rospy.Timer(rospy.Duration(self.GENICAM_SENSOR_CHECK_INTERVAL_S), self.detectAndManageGenicamSensors)
