@@ -133,7 +133,7 @@ class ROSIDXSensorIF:
         pass # We only use the param server, no member variables to apply to param server
 
     def updateFromParamServer(self):
-        param_dict = rospy.get_param('~idx')
+        param_dict = rospy.get_param('~idx', {})
         #rospy.logwarn("Debugging: param_dict = " + str(param_dict))
         if (self.setResolutionModeCb is not None and 'resolution_mode' in param_dict):
             self.setResolutionModeCb(param_dict['resolution_mode'])
