@@ -35,7 +35,7 @@ from harvesters.core import Harvester
 class IDXSensorMgr:
   DEFAULT_NODE_NAME = "idx_sensor_mgr"
 
-  NEPI_IDX_SENSOR_PARAM_PATH = '/opt/nepi/ros/etc/idx_sensors/'
+  NEPI_DEFAULT_CFG_PATH = '/opt/nepi/ros/etc/'
   V4L2_SENSOR_CHECK_INTERVAL_S = 3.0
   GENICAM_SENSOR_CHECK_INTERVAL_S = 3.0
 
@@ -211,10 +211,9 @@ class IDXSensorMgr:
     sensor_node_namespace = rospy.get_namespace() + sensor_node_name
     rospy.loginfo(f"{self.node_name}: Initiating new Genicam node {sensor_node_namespace}")
 
-    self.checkLoadConfigFile(fname_specifier_list=[sensor_node_name,
-                                                   root_name,
-                                                   "genicam_generic"],
-                             node_namespace=sensor_node_namespace)
+    self.checkLoadConfigFile(node_name=sensor_node_name)
+
+    rospy.loginfo(f"{self.node_name}: Starting {sensor_node_name} via rosrun")
 
     # NOTE: have to make serial_number look like a string by prefixing with "sn", otherwise ROS
     #       treats it as an int param and it causes an overflow. Better way to handle this?
@@ -297,17 +296,24 @@ class IDXSensorMgr:
     rospy.logwarn(self.node_name + ": cannot check run status of unknown node " + node_namespace)
     return False
   
-  def checkLoadConfigFile(self, fname_specifier_list, node_namespace):
-    config_file = None
-    for name in fname_specifier_list:
-      if os.path.exists(os.path.join(self.NEPI_IDX_SENSOR_PARAM_PATH, name + ".yaml")):
-        config_file = os.path.join(self.NEPI_IDX_SENSOR_PARAM_PATH, name + ".yaml")
-
-    if config_file:
-      rospy.loginfo(self.node_name + ": Loading parameters from " + config_file + " for " + node_namespace)
-      rosparam.load_file(filename = config_file, default_namespace = node_namespace)
+  def checkLoadConfigFile(self, node_name):
+    config_folder = os.path.join(self.NEPI_DEFAULT_CFG_PATH, node_name)
+    if not os.path.isdir(config_folder):
+      rospy.logwarn(self.node_name + ': No config folder found for %s... creating one at %s', node_name, config_folder)
+      os.makedirs(name = config_folder, mode = 0o775)
+      return
+    
+    config_file = os.path.join(config_folder, node_name + ".yaml")
+    node_namespace = rospy.get_namespace() + node_name
+    if os.path.exists(config_file):
+      rospy.loginfo(self.node_name + ": Loading parameters from " + config_file + " to " + node_namespace)
+      #rosparam.load_file(filename = config_file, default_namespace = node_namespace)
+      #rosparam.load_file(filename = config_file, default_namespace = node_name)
+      # Seems programmatic rosparam.load_file is not working at all, so use the command-line version instead
+      rosparam_load_cmd = ['rosparam', 'load', config_file, node_namespace]
+      subprocess.run(rosparam_load_cmd)
     else:
-      rospy.logwarn(self.node_name + ": No eligible config file found for " + node_namespace + " in " + self.NEPI_IDX_SENSOR_PARAM_PATH)
+      rospy.logwarn(self.node_name + ": No config file found for " + node_name + " in " + self.NEPI_DEFAULT_CFG_PATH)
     
 if __name__ == '__main__':
   node = IDXSensorMgr()            
