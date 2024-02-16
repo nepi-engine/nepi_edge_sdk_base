@@ -35,7 +35,7 @@ from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
 class NEPIAutolauncher:
   DEFAULT_NODE_NAME = "nepi_autolauncher"
 
-  DEFAULT_NEPI_CONFIG_PATH = '/opt/nepi/ros/etc/'
+  NEPI_DEFAULT_CFG_PATH = '/opt/nepi/ros/etc/'
   DEVICE_CHECK_INTERVAL_S = 3.0
 
   # TODO: This is just for testing -- should replace or remove entirely
@@ -109,28 +109,7 @@ class NEPIAutolauncher:
         specifier = "_" + str(i) if (len(path_match_list) > 1) else ""
         ros_node_name = ros_node_basename + specifier
           
-        ros_node_namespace = rospy.get_namespace() + ros_node_name
-
-        # Define a list of potential config files in priority/override order (low to high): 
-        #   1. Fixed values based on node name (without specifier, then with)
-        #   2. User overrides (without specifier and then with)
-        config_files = [
-          os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, ros_node_basename, ros_node_basename + ".yaml") # /opt/nepi/ros/etc/example_node/example_node.yaml
-        ]
-        if ros_node_name != ros_node_basename:
-          config_files.append(os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, ros_node_basename, ros_node_name + ".yaml")) # /opt/nepi/ros/etc/example_node/example_node_0.yaml
-        if 'config_file_list' in potential:
-          for cfg in potential['config_file_list']:
-            if cfg.startswith('/'): # Assume absolute path, so don't append any path
-              config_files.append(cfg) # /my/abs/path/my_config.yaml
-            else:
-              config_files.append(os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, ros_node_basename, cfg)) # /opt/nepi/ros/etc/example_node/my_config.yaml
-            if specifier != "": # Also add specifier-defined config files to check
-              cfg_base, cfg_extension = os.path.splittext(cfg)
-              specifier_cfg = cfg_base + specifier + cfg_extension
-              config_files.append(os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, ros_node_basename, specifier_cfg)) # /opt/nepi/ros/etc/example_node/my_config_0.yaml
-        
-        self.checkLoadConfigFile(fname_specifier_list=config_files, fully_qualified_node_name=ros_node_namespace + '/' + ros_node_name)
+        self.checkLoadConfigFile(node_name=ros_node_name)
         
         # And try to launch the node
         ros_params = [] if 'ros_params' not in potential else potential['ros_params']
@@ -199,27 +178,24 @@ class NEPIAutolauncher:
     rospy.logwarn(self.node_name + ": cannot check run status of unknown node " + node_name)
     return False
   
-  def checkLoadConfigFile(self, fname_specifier_list, fully_qualified_node_name):
-    config_file = None
-    for fname in fname_specifier_list: # Check/Load highest priority last for overrides
-      # Try to find this file at various paths
-      #   1. As specified
-      #   2. With NEPI config file path prepended
-      #   3. TODO?
-      current_config = None
-      if os.path.exists(fname):
-        current_config = fname
-      elif os.path.exists(os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, fname)):
-        current_config = os.path.join(self.DEFAULT_NEPI_CONFIG_PATH, fname)
-      
-      # Now load whatever we found
-      if current_config is not None:
-        config_file = current_config
-        rospy.loginfo(self.node_name + ": Loading parameters from " + config_file + " for " + fully_qualified_node_name)
-        rosparam.load_file(filename = config_file, default_namespace = fully_qualified_node_name)
+  def checkLoadConfigFile(self, node_name):
+    config_folder = os.path.join(self.NEPI_DEFAULT_CFG_PATH, node_name)
+    if not os.path.isdir(config_folder):
+      rospy.logwarn(self.node_name + ': No config folder found for %s... creating one at %s', node_name, config_folder)
+      os.makedirs(name = config_folder, mode = 0o775)
+      return
     
-    if config_file is None:
-      rospy.logwarn(self.node_name + ": No eligible config file found for " + fully_qualified_node_name + " from " + str(fname_specifier_list))
+    config_file = os.path.join(config_folder, node_name + ".yaml")
+    node_namespace = rospy.get_namespace() + node_name
+    if os.path.exists(config_file):
+      rospy.loginfo(self.node_name + ": Loading parameters from " + config_file + " to " + node_namespace)
+      #rosparam.load_file(filename = config_file, default_namespace = node_namespace)
+      #rosparam.load_file(filename = config_file, default_namespace = node_name)
+      # Seems programmatic rosparam.load_file is not working at all, so use the command-line version instead
+      rosparam_load_cmd = ['rosparam', 'load', config_file, node_namespace]
+      subprocess.run(rosparam_load_cmd)
+    else:
+      rospy.logwarn(self.node_name + ": No config file found for " + node_name + " in " + self.NEPI_DEFAULT_CFG_PATH)
     
 if __name__ == '__main__':
   node = NEPIAutolauncher()            
