@@ -397,7 +397,7 @@ class ROSIDXSensorIF:
             self.status_msg.resolution_mode = idx_params['resolution_mode'] if 'resolution_mode' in idx_params else 0
             self.status_msg.framerate_mode = idx_params['framerate_mode'] if 'framerate_mode' in idx_params else 0
             self.status_msg.contrast = idx_params['contrast'] if 'contrast' in idx_params else 0
-            self.status_msg.brightness = idx_params['brightness'] if 'contrast' in idx_params else 0
+            self.status_msg.brightness = idx_params['brightness'] if 'brightness' in idx_params else 0
             self.status_msg.thresholding = idx_params['thresholding'] if 'thresholding' in idx_params else 0
             self.status_msg.range_window.start_range = idx_params['range_window']['start_range'] if 'range_window' in idx_params else 0
             self.status_msg.range_window.stop_range = idx_params['range_window']['stop_range'] if 'range_window' in idx_params else 0
