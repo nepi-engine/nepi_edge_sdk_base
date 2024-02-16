@@ -40,9 +40,11 @@ class IDXSensorMgr:
   GENICAM_SENSOR_CHECK_INTERVAL_S = 3.0
 
   # Not all "v4l2-ctl --list-devices" reported devices are desirable
-  DEFAULT_EXCLUDED_V4L2_DEVICES = ['msm_vidc_vdec', # RB5 issue work-around for now
-                                   'ZED 2',         # Don't treat ZED as V4L2 device - use its own SDK instead
-                                   'ZED-M']         # TODO: Not sure this is how Zed mini is identified by v4l2-ctl... need to test when hardware available 
+  DEFAULT_EXCLUDED_V4L2_DEVICES = ['msm_vidc_vdec'] # RB5 issue work-around for now
+
+  DEFAULT_ZED_V4L2_DEVICES = ['ZED 2',         # Don't treat ZED as V4L2 device - use its own SDK instead
+                              'ZED-M']         # TODO: Not sure this is how Zed mini is identified by v4l2-ctl... need to test when hardware available ]
+  
   DEFAULT_EXCLUDED_GENICAM_DEVICES = []  # None at present
 
   DEFAULT_GENTL_PRODUCER_USB = '/opt/baumer/gentl_producers/libbgapi2_usb.cti.2.14.1'
@@ -57,6 +59,7 @@ class IDXSensorMgr:
     self.sensorList = []
     self.excludedV4L2Devices = rospy.get_param('~excluded_v4l2_devices', self.DEFAULT_EXCLUDED_V4L2_DEVICES)
     self.excludedGenicamDevices = rospy.get_param('~excluded_genicam_devices', self.DEFAULT_EXCLUDED_GENICAM_DEVICES)
+    self.zedV4L2Devices = rospy.get_param('~zed_v4l2_devices', self.DEFAULT_ZED_V4L2_DEVICES)
 
     self.genicam_harvester = Harvester()
     
@@ -233,7 +236,11 @@ class IDXSensorMgr:
 
   def startV4L2SensorNode(self, type, path):
     # First, get a unique name
-    root_name = type.replace(' ','_').lower()
+    if type not in self.zedV4L2Devices:
+      root_name = type.replace(' ','_').lower()
+    else:
+      root_name = type.replace('-','').replace(' ','').lower() # e.g., ZED 2 ==> zed2 (important that it matches an existing Zed ROS Wrapper launch file)
+
     same_type_count = 0
     for sensor in self.sensorList:
       if sensor['device_type'] == type:
@@ -246,11 +253,15 @@ class IDXSensorMgr:
     sensor_node_namespace = rospy.get_namespace() + sensor_node_name
     rospy.loginfo(self.node_name + ": Initiating new V4L2 node " + sensor_node_namespace)
 
-    self.checkLoadConfigFile(fname_specifier_list = [sensor_node_name, root_name, 'v4l2_generic'], node_namespace = sensor_node_namespace)
+    self.checkLoadConfigFile(node_name = sensor_node_name)
 
     # Now start the node via rosrun
     # rosrun nepi_edge_sdk_v4l2 v4l2_camera_node.py __name:=usb_cam_1 _device_path:=/dev/video0
-    sensor_node_run_cmd = ['rosrun', 'nepi_edge_sdk_v4l2', 'v4l2_camera_node.py', '__name:=' + sensor_node_name, '_device_path:='+path]
+    if type not in self.zedV4L2Devices:
+      sensor_node_run_cmd = ['rosrun', 'nepi_edge_sdk_v4l2', 'v4l2_camera_node.py', '__name:=' + sensor_node_name, '_device_path:='+path]
+    else:
+      sensor_node_run_cmd = ['rosrun', 'nepi_edge_sdk_v4l2', 'zed_camera_node.py', '__name:=' + sensor_node_name, '_zed_type:=' + root_name]
+
     p = subprocess.Popen(sensor_node_run_cmd)
     if p.poll() is not None:
       rospy.logerr("Failed to start " + sensor_node_name + " via " + " ".join(x for x in sensor_node_run_cmd) + " (rc =" + str(p.returncode) + ")")
