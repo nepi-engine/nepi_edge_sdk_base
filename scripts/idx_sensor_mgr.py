@@ -81,6 +81,7 @@ class IDXSensorMgr:
     for device in self.genicam_harvester.device_info_list:
       model = device.model
       sn = device.serial_number
+      vendor = device.vendor
       device_is_known = False
 
       # Look to see if this device has already been launched as a node. If it
@@ -104,7 +105,7 @@ class IDXSensorMgr:
           active_devices[known_device["node_namespace"]] = True
           break
       if not device_is_known:
-        self.startGenicamSensorNode(model=model, serial_number=sn)
+        self.startGenicamSensorNode(vendor=vendor, model=model, serial_number=sn)
 
     # Stop any nodes associated with devices that have disappeared.
     for node_namespace, running in active_devices.items():
@@ -193,10 +194,20 @@ class IDXSensorMgr:
         rospy.logwarn(self.node_name + ': ' + sensor['node_namespace'] + ' path ' + sensor['device_path'] + ' no longer exists... sensor disconnected?')
         self.stopAndPurgeSensorNode(sensor['node_namespace'])
 
-  def startGenicamSensorNode(self, model, serial_number):
+  def startGenicamSensorNode(self, vendor, model, serial_number):
     # TODO: fair to assume uniqueness of device serial numbers?
-    root_name = f'genicam_{serial_number}'
-    sensor_node_name = root_name
+    vendor_ros = vendor.split()[0].replace('-', '_').lower() # Some vendors have really long strings, so just use the part to the first space
+    model_ros = model.replace('-', '_').replace(' ', '_').lower()
+    serial_number_ros = serial_number.replace('-', '_').replace(' ', '_').lower()
+    # TODO: Validate that the resulting rootname is a legal ROS identifier
+    root_name = f'{vendor_ros}_{model_ros}'
+    unique_root_name = root_name + '_' + serial_number
+    node_needs_serial_number = False
+    for sensor in self.sensorList:
+      if sensor['device_type'] == model:
+        node_needs_serial_number = True
+        break
+    sensor_node_name = root_name if not node_needs_serial_number else unique_root_name
     sensor_node_namespace = rospy.get_namespace() + sensor_node_name
     rospy.loginfo(f"{self.node_name}: Initiating new Genicam node {sensor_node_namespace}")
 
