@@ -43,6 +43,7 @@ class IDXSensorMgr:
   DEFAULT_EXCLUDED_V4L2_DEVICES = ['msm_vidc_vdec'] # RB5 issue work-around for now
 
   DEFAULT_ZED_V4L2_DEVICES = ['ZED 2',         # Don't treat ZED as V4L2 device - use its own SDK instead
+                              'ZED 2i',
                               'ZED-M']         # TODO: Not sure this is how Zed mini is identified by v4l2-ctl... need to test when hardware available ]
   
   DEFAULT_EXCLUDED_GENICAM_DEVICES = []  # None at present
