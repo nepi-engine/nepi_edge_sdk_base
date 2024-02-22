@@ -223,7 +223,7 @@ class ROSIDXSensorIF:
 
         self.setRangeCb = setRangeCb
         if (self.setRangeCb is not None):        
-            rospy.Subscriber('~idx/set_range', RangeWindow, self.setRange, queue_size=1)
+            rospy.Subscriber('~idx/set_range_window', RangeWindow, self.setRange, queue_size=1)
             init_start_range = rospy.get_param('~idx/range_window/start_range', 0.0)
             rospy.set_param('~idx/range_window/start_range', init_start_range)
             init_stop_range = rospy.get_param('~idx/range_window/stop_range', 1.0)
