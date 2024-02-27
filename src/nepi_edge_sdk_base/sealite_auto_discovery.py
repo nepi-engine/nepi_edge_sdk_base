@@ -51,7 +51,7 @@ def sealite_discover(active_port_list):
   global sealite_subproc_list
   global sealite_port_list
 
-  node_name = rospy.get_name().split('/')[-1]
+  node_name = rospy.get_name().split('/')[-1] + '/sealite_auto_discovery'
   base_namespace = rospy.get_namespace()
   # Find serial ports
   rospy.logdebug(node_name + ": Looking for serial ports on device")
@@ -89,10 +89,14 @@ def sealite_discover(active_port_list):
           #print("Sending serial message: " + ser_msg)
           b=bytearray()
           b.extend(map(ord, ser_str))
-          serial_port.write(b)
-          #print("Waiting for response")
-          rospy.sleep(.005)
-          bs = serial_port.readline()
+          try:
+            serial_port.write(b)
+            #print("Waiting for response")
+            rospy.sleep(.005)
+            bs = serial_port.readline()
+          except Exception as e:
+            rospy.logerr('%s: Got a serial read/write error (%s)', node_name, str(e))
+            break
           response = bs.decode()
           if len(response) > 2:
             rospy.loginfo(node_name + ": Got response: " + response)
