@@ -49,7 +49,7 @@ def mavlink_discover(active_port_list):
   global mavlink_subproc_list
   global mavlink_port_list
 
-  node_name = rospy.get_name().split('/')[-1]
+  node_name = rospy.get_name().split('/')[-1] + '/mavlink_auto_discovery'
   # Find serial ports
   rospy.logdebug(node_name + ": Looking for serial ports on device")
   port_list = []
@@ -128,6 +128,9 @@ def mavlink_discover(active_port_list):
 
           rosparam_load_cmd = ['rosparam', 'load', '/opt/ros/noetic/share/mavros/launch/apm_config.yaml', mavlink_node_namespace]
           subprocess.run(rosparam_load_cmd)
+
+          # Adjust the timesync_rate to cut down on log noise
+          rospy.set_param(mavlink_node_namespace + '/conn/timesync_rate', 1.0)
         
           fcu_url = port_str + ':' + str(baud_int)
           node_run_cmd = ['rosrun', 'mavros', 'mavros_node', '__name:=' + mavlink_node_name, '_fcu_url:=' + fcu_url] 
