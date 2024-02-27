@@ -18,8 +18,7 @@
   <arg name="run_automation_mgr" default="true" />
   <arg name="run_sequential_image_mux" default="true" />
   <arg name="run_onvif_mgr" default="true" />
-  <arg name="run_sealite_lsx_discovery" default="true" />
-      
+        
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
     <node name="config_mgr" pkg="nepi_edge_sdk_base" type="config_mgr.py" respawn="true" output="$(arg output_destination)" />
@@ -109,13 +108,6 @@
     <group if="$(arg run_onvif_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/onvif_mgr/onvif_mgr.yaml" ns="onvif_mgr" />
       <node name="onvif_mgr" pkg="nepi_edge_sdk_onvif" type="onvif_mgr.py" respawn="true" output="$(arg output_destination)" />
-    </group>
-
-    <!-- Sealite Auto Discovery: will migrate to nepi_autolauncher eventually -->
-    
-    <group if="$(arg run_sealite_lsx_discovery)" >
-      <!-- No config file for this node at present -->
-      <node name="sealite_lsx_detector" pkg="nepi_edge_sdk_lsx" type="sealite_lsx_auto_discovery_script.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- Automation Mgr -->
