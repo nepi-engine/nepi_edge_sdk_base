@@ -74,10 +74,16 @@ def mavlink_discover(active_port_list):
         for i in range(0,64): # Read up to 64 packets waiting for heartbeat
           try:
             #serial_port.read_until(b'\xFE', 255) # This is the MAVLINK_1 magic number
-            serial_port.read_until(b'\xFD', 255) # MAVLINK_2 packet start magic number
+            bytes_read = serial_port.read_until(b'\xFD', 280) # MAVLINK_2 packet start magic number, up to MAVLINK_2 max bytes in packet
+            bytes_read_count = len(bytes_read)
           except Exception as e:
-            print("read_until() failed (" + str(e) + ")")
+            rospy.logwarn("%s: read_until() failed (%s)", node_name, str(e))
             continue
+
+          if bytes_read_count == 0 or bytes_read_count == 255: # Timed out or read the max mavlink bytes in a packet
+            rospy.logdebug('%s: read %d bytes without finding the mavlink packet delimiter... assuming there is no mavlink on this port/baud combo', node_name, bytes_read_count)
+            break
+
           try:
             pkt_hdr = serial_port.read(9) # MAVLINK_2 packet header length
           except Exception as e:
