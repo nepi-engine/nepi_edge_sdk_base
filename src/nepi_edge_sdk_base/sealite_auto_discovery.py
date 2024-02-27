@@ -118,9 +118,9 @@ def sealite_discover(active_port_list):
           sealite_node_name = "sealite_" + port_str_short + "_" + addr_str
           sealite_node_namespace = base_namespace + sealite_node_name
           
-          rospy.set_param(sealite_node_namespace + sealite_node_name + '/port_str', port_str)
-          rospy.set_param(sealite_node_namespace + sealite_node_name + '/baud_int', baud_int)
-          rospy.set_param(sealite_node_namespace + sealite_node_name + '/addr_str', addr_str)
+          rospy.set_param(sealite_node_namespace + '/port_str', port_str)
+          rospy.set_param(sealite_node_namespace + '/baud_int', baud_int)
+          rospy.set_param(sealite_node_namespace + '/addr_str', addr_str)
           rospy.sleep(2)
           # Pass the name as a regular cmd-line arg since we can't rosrun this new node as it is not currently installed in ROS path
           node_run_cmd = ['rosrun', 'nepi_edge_sdk_lsx', 'sealite_lsx_driver_script.py', '__name:=' + sealite_node_name] 
