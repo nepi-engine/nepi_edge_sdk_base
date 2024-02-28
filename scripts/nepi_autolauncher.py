@@ -197,14 +197,22 @@ class NEPIAutolauncher:
         node_dict['node_subprocess'].kill()
         time.sleep(1)
     else:
-      rospy.logwarn(self.node_name + ": " + node_dict['node_name'] + " is not running")    
+      rospy.logwarn(self.node_name + ": " + node_dict['node_name'] + " is not running")
+
+    # Turns out that is not always enough to get the node out of the ros system, so we use rosnode cleanup, too
+    rospy.sleep(10) # Long enough for process to die and rosnode cleanup to see the node as disconnected
+    cleanup_proc = subprocess.Popen(['rosnode', 'cleanup'], stdin=subprocess.PIPE)
+    try:
+      cleanup_proc.communicate(input=bytes("y\r\n", 'utf-8'), timeout=10)
+      cleanup_proc.wait(timeout=10) 
+    except Exception as e:
+      rospy.logwarn('%s: rosnode cleanup of %s failed (%s)', self.node_name, node_dict['node_name'], str(e))    
         
     # And remove it from the member variables
     for path in node_dict['paths']:
-      if path not in self.active_path_list:
-        rospy.logwarn("%s: Device path %s unexpectedly already marked inactive", self.node_name, path)
-      else:
+      if path in self.active_path_list:
         self.active_path_list.remove(path)
+    
     self.launchedPathDevices.pop(node_index)
      
     return

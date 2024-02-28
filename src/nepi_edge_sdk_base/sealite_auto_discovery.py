@@ -113,7 +113,7 @@ def sealite_discover(active_port_list):
                 rospy.logwarn(node_name + ": Returned device message not valid (" + str(a) + ")")
           
         # Clean up the serial port
-        rospy.loginfo(node_name + ": Closing serial port " + port_str)
+        rospy.logdebug(node_name + ": Closing serial port " + port_str)
         serial_port.close()
         
         # If this is a sealite, load params and launch the mavros node
@@ -181,15 +181,26 @@ def sealite_discover(active_port_list):
 
     if purge_node:
       rospy.logwarn('%s: Purging node %s', node_name, node)
+
+      if node_port in active_port_list:
+        rospy.logwarn('%s: Removing port %s from active list as part of node purging', node_name, node_port)
+        active_port_list.remove(node_port)
+
+      if node_subproc.poll() is None: # Still alive
+        rospy.logwarn('%s: Issuing sigterm to process for %s as part of node purging', node_name, node)
+        node_subproc.kill() # Hard kill
+        # Turns out that is not always enough to get the node out of the ros system, so we use rosnode cleanup, too
+        rospy.sleep(10) # Long enough for process to die and rosnode cleanup to see the node as disconnected
+        cleanup_proc = subprocess.Popen(['rosnode', 'cleanup'], stdin=subprocess.PIPE)
+        try:
+          cleanup_proc.communicate(input=bytes("y\r\n", 'utf-8'), timeout=10)
+          cleanup_proc.wait(timeout=10) 
+        except Exception as e:
+          rospy.logwarn('%s: rosnode cleanup failed (%s)', node_name, str(e))
+
       # Clean up the globals  
       del sealite_port_list[i]
       del sealite_node_list[i]
       del sealite_subproc_list[i]
-
-      if node_port in active_port_list:
-        active_port_list.remove(node_port)
-
-      if node_subproc.poll() is not None: # Still alive
-        node_subproc.terminate() # Hard kill
  
   return active_port_list
