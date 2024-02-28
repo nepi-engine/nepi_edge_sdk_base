@@ -31,6 +31,8 @@ import serial
 import serial.tools.list_ports
 import subprocess
 
+from nepi_ros_interfaces.srv import LSXCapabilitiesQuery
+
 #Define Discovery Search Parameters
 #Define Discovery Search Parameters
 BAUDRATE_LIST = [9600,19200,57600] # Three supported baud rates
@@ -67,10 +69,10 @@ def sealite_discover(active_port_list):
       for baud_int in BAUDRATE_LIST:
         if found_sealite:
           break # No need to search more baud rates
-        rospy.loginfo(node_name + ": Connecting to serial port " + port_str + " with baudrate: " + str(baud_int))
+        rospy.logdebug(node_name + ": Connecting to serial port " + port_str + " with baudrate: " + str(baud_int))
         try:
           # Try and open serial port
-          rospy.loginfo(node_name + ": Opening serial port " + port_str + " with baudrate: " + str(baud_int))
+          rospy.logdebug(node_name + ": Opening serial port " + port_str + " with baudrate: " + str(baud_int))
           serial_port = serial.Serial(port_str,baud_int,timeout = 1)
         except Exception as e:
           rospy.logwarn(node_name + ": Unable to open serial port " + port_str + " with baudrate: " + str(baud_int) + "(" + str(e) + ")")
@@ -132,32 +134,62 @@ def sealite_discover(active_port_list):
           # Pass the name as a regular cmd-line arg since we can't rosrun this new node as it is not currently installed in ROS path
           node_run_cmd = ['rosrun', 'nepi_edge_sdk_lsx', 'sealite_lsx_driver_script.py', '__name:=' + sealite_node_name] 
           p = subprocess.Popen(node_run_cmd)
-          sealite_node_list.append(sealite_node_name)
-          sealite_subproc_list.append(p)
-          sealite_port_list.append(port_str)
-          active_port_list.append(port_str) # Add a new entry for the parent's master list
-          break # Don't check any more baud rates since this one was already successful
+
+          # And make sure it actually starts up fully by waiting for a guaranteed service
+          capabilities_service_name = sealite_node_namespace + '/lsx/capabilities_query'
+          try:
+            rospy.wait_for_service(capabilities_service_name, timeout=10) # TODO: 10 seconds always sufficient for the driver?
+
+            # No exception, all good
+            sealite_node_list.append(sealite_node_name)
+            sealite_subproc_list.append(p)
+            sealite_port_list.append(port_str)
+            active_port_list.append(port_str) # Add a new entry for the parent's master list
+            break # Don't check any more baud rates since this one was already successful
+          except:
+            rospy.logerr("%s: Failed to start %s", node_name, sealite_node_name)
   
-  # Finally check for and purge any nodes no longer running
+  # Finally check for and purge any nodes no longer running or nodes associated with detached hardware
   topic_list=rospy.get_published_topics(namespace='/')
   for i,node in enumerate(sealite_node_list):
+    purge_node = False
+
     full_node_name = base_namespace + node
-    check_topic_name = (full_node_name + "/lsx/active")
-    rospy.logdebug(node_name + ": Checking for topic name: " + check_topic_name)
-    
-    node_exists = False
-    for topic_entry in topic_list:
-      if topic_entry[0].find(check_topic_name) == -1:
-        rospy.logwarn(node + ": sealite node no longer responding on \"active\" topic... cleaning up resources")
-        port_to_free = sealite_port_list(i)
-        if port_to_free not in active_port_list:
-          rospy.logwarn(node + ": port " + port + " unexpectedly already inactivated")
-        else:
-          active_port_list.remove(port_to_free)
-        
-        # Clean up the globals  
-        del sealite_port_list[i]
-        del sealite_node_list[i]
-        del sealite_subproc_list[i]
-  
+    node_port = sealite_port_list[i]
+    node_subproc = sealite_subproc_list[i]
+    # Check that the node process is still running
+    if node_subproc.poll() is not None: # process dead
+      rospy.logwarn('%s: Node process for %s is no longer running... purging from managed list', node_name, node)
+      purge_node = True
+    # Check that the node's port still exists
+    elif node_port not in active_port_list:
+      rospy.logwarn('%s: Port %s associated with node %s no longer detected', node_name, node_port, node)
+      purge_node = True
+    else:
+      # Now check that the node is actually responsive
+      # Use a service call so that we can provide are assured of synchronous response
+      capabilities_service_name = full_node_name + '/lsx/capabilities_query'
+      capabilities_query = rospy.ServiceProxy(capabilities_service_name, LSXCapabilitiesQuery)
+      try:
+        # We don't actually care about the contents of the response at this point, but we might in the future for
+        # additional aliveness check logic:
+        #response = capability_service()
+        capabilities_query()
+      except: # Any exception indicates that the service call failed
+        rospy.logwarn('%s: Node %s is no longer responding to capabilities queries')
+        purge_node = True
+
+    if purge_node:
+      rospy.logwarn('%s: Purging node %s', node_name, node)
+      # Clean up the globals  
+      del sealite_port_list[i]
+      del sealite_node_list[i]
+      del sealite_subproc_list[i]
+
+      if node_port in active_port_list:
+        active_port_list.remove(node_port)
+
+      if node_subproc.poll() is not None: # Still alive
+        node_subproc.terminate() # Hard kill
+ 
   return active_port_list
