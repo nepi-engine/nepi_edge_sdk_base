@@ -120,14 +120,27 @@ class NEPIAutolauncher:
         self.stopAndPurgeNode(node_index=i)
     
   def detectAndManageDevices(self, _): # Extra arg since this is a rospy Timer callback
+    # First, check over all active paths and make sure they still exist. If not, remove them.
+    # This should be used as a signal that hardware is detached in the custom detectors
+    for i,path in enumerate(self.active_path_list):
+      if not os.path.exists(path):
+        del self.active_path_list[i]
+    
     # "Path devices" are fully handled within this class
     self.detectAndManagePathDevices()
 
     # Others leverage custom detectors -- these detectors must take in the active_path_list to avoid
     # manipulating those paths (e.g., serial port settings) and then return a modified list that includes
     # any paths that they are leveraging so that others won't try to manipulate those
-    self.active_path_list = mavlink_discover(self.active_path_list)
-    self.active_path_list = sealite_discover(self.active_path_list)
+    try:
+      self.active_path_list = mavlink_discover(self.active_path_list)
+    except Exception as e:
+      rospy.logwarn("%s: Mavlink discovery threw an exception (%s)", self.node_name, str(e))
+
+    try:
+      self.active_path_list = sealite_discover(self.active_path_list)
+    except Exception as e:
+      rospy.logwarn("%s: Sealite discovery threw an exception (%s)", self.node_name, str(e))
 
   def startNode(self, package, node_type, node_name, dev_path, params=[]):
     node_namespace = rospy.get_namespace() + node_name
