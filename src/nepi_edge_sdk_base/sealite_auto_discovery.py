@@ -190,7 +190,11 @@ def sealite_discover(active_port_list):
         rospy.logwarn('%s: Issuing sigterm to process for %s as part of node purging', node_name, node)
         node_subproc.kill() # Hard kill
         # Turns out that is not always enough to get the node out of the ros system, so we use rosnode cleanup, too
-        rospy.sleep(10) # Long enough for process to die and rosnode cleanup to see the node as disconnected
+        # rosnode cleanup won't find the disconnected node until the process is fully terminated
+        try:
+          node_subproc.wait(timeout=10)
+        except:
+          pass
         cleanup_proc = subprocess.Popen(['rosnode', 'cleanup'], stdin=subprocess.PIPE)
         try:
           cleanup_proc.communicate(input=bytes("y\r\n", 'utf-8'), timeout=10)

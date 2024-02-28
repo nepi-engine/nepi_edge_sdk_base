@@ -200,7 +200,13 @@ class NEPIAutolauncher:
       rospy.logwarn(self.node_name + ": " + node_dict['node_name'] + " is not running")
 
     # Turns out that is not always enough to get the node out of the ros system, so we use rosnode cleanup, too
-    rospy.sleep(10) # Long enough for process to die and rosnode cleanup to see the node as disconnected
+    # rosnode cleanup won't find the disconnected node until the process is fully terminated
+    try:
+      node_dict['node_subprocess'].wait(timeout=10)
+    except:
+      pass
+
+    #rospy.sleep(10) # Long enough for process to die and rosnode cleanup to see the node as disconnected
     cleanup_proc = subprocess.Popen(['rosnode', 'cleanup'], stdin=subprocess.PIPE)
     try:
       cleanup_proc.communicate(input=bytes("y\r\n", 'utf-8'), timeout=10)
