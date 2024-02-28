@@ -117,6 +117,9 @@ def sealite_discover(active_port_list):
         # If this is a sealite, load params and launch the mavros node
         if found_sealite:
           addr_str = str(addr_int)
+          zero_prefix_len = 3-len(addr_str)
+          for z in range(zero_prefix_len):
+            addr_str = ('0' + addr_str)
           rospy.loginfo("%s: Found sealite device %s at %s:%d", node_name, addr_str, port_str, baud_int)
           port_str_short = port_str.split('/')[-1]
           sealite_node_name = "sealite_" + port_str_short + "_" + addr_str
