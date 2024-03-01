@@ -139,6 +139,12 @@ def mavlink_discover(active_port_list):
 
           # Adjust the timesync_rate to cut down on log noise
           rospy.set_param(mavlink_node_namespace + '/conn/timesync_rate', 1.0)
+
+          # Allow the HIL plugin. Disabled in apm configs for some reason
+          plugin_blacklist = rospy.get_param(mavlink_node_namespace + '/plugin_blacklist')
+          if 'hil' in plugin_blacklist:
+            plugin_blacklist.remove('hil')
+            rospy.set_param(mavlink_node_namespace + '/plugin_blacklist', plugin_blacklist)
         
           fcu_url = port_str + ':' + str(baud_int)
           node_run_cmd = ['rosrun', 'mavros', 'mavros_node', '__name:=' + mavlink_node_name, '_fcu_url:=' + fcu_url] 
