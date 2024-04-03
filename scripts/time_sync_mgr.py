@@ -18,6 +18,7 @@ import sys
 import rospy
 
 from std_msgs.msg import String, Empty, Time
+from std_srvs.srv import Empty as EmptySrv
 
 from nepi_ros_interfaces.msg import Reset
 from nepi_ros_interfaces.msg import TimeStatus
@@ -164,7 +165,6 @@ def gather_ntp_status_timer_cb(event):
 
 def gather_ntp_status():
     global g_ntp_first_sync_time
-    global g_sys_time_updated_pub
     global g_ntp_status_check_timer
 
     #rospy.logwarn("Debug: gather_ntp_status running (first time sync = " + str(g_ntp_first_sync_time) + ")")
@@ -182,7 +182,7 @@ def gather_ntp_status():
             if (g_ntp_first_sync_time is None) and (currently_syncd is True):
                 rospy.loginfo("NTP sync first detected... publishing on sys_time_update")
                 g_ntp_first_sync_time = rospy.get_rostime()
-                g_sys_time_updated_pub.publish(Empty())
+                informClockUpdate()
 
                 # Update the RTC with this "better" clock source
                 rospy.loginfo("Updating hardware clock with NTP time")
@@ -243,8 +243,7 @@ def set_time(msg):
     subprocess.call(['hwclock', '-w'])
 
     # And tell the rest of the system
-    global g_sys_time_updated_pub
-    g_sys_time_updated_pub.publish(Empty())
+    informClockUpdate()
 
     # TODO: Should we use this CTypes call into librt instead?
 #    import ctypes
@@ -307,7 +306,7 @@ def time_sync_mgr():
     if init_from_rtc is True:
         rospy.loginfo("Initializing system clock from hardware clock")
         subprocess.call(['hwclock', '-s'])
-        g_sys_time_updated_pub.publish() # Make sure to inform the rest of the nodes that the system clock was updated
+        informClockUpdate() 
 
     # Set up a periodic timer to check for NTP sync so we can inform the rest of the system when first sync detected
     global g_ntp_status_check_timer
@@ -315,6 +314,18 @@ def time_sync_mgr():
     g_ntp_status_check_timer.run()
 
     rospy.spin()
+
+def informClockUpdate():
+    global g_sys_time_updated_pub
+    g_sys_time_updated_pub.publish() # Make sure to inform the rest of the nodes that the system clock was updated
+
+    # For onvif_mgr, must use a service rather than the system_time_updated topic due to limitation with onvif_mgr message subscriptions
+    try:
+        rospy.wait_for_service('onvif_mgr/resync_onvif_device_clocks', timeout=0.1)
+        resync_srv = rospy.ServiceProxy('onvif_mgr/resync_onvif_device_clocks', EmptySrv)
+        resync_srv()
+    except Exception as e:
+        pass
 
 if __name__ == '__main__':
     time_sync_mgr()
