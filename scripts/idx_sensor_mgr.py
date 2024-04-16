@@ -10,7 +10,6 @@
 import os
 import subprocess
 import time
-import rosparam
 import rospy
 
 # Needed for GenICam auto-detect
@@ -85,6 +84,8 @@ class IDXSensorMgr:
           rospy.logerr(f'{known_device["node_name"]} exited')
           rospy.logerr(f"stdout: {stdo}")
           rospy.logerr(f"stderr: {stde}")
+          self.stopAndPurgeSensorNode(known_device["node_namespace"])
+          continue
         except subprocess.TimeoutExpired:
           pass
         device_is_known = (device_is_known or (known_device["model"] == device.model and\
@@ -98,6 +99,7 @@ class IDXSensorMgr:
     # Stop any nodes associated with devices that have disappeared.
     for node_namespace, running in active_devices.items():
       if not running:
+        rospy.logwarn(f'{node_namespace} is no longer responding to discovery')
         self.stopAndPurgeSensorNode(node_namespace)
 
   def detectAndManageV4L2Sensors(self, _): # Extra arg since this is a rospy Timer callback
