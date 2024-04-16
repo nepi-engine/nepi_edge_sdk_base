@@ -52,4 +52,8 @@ fi
 echo "Running pre-launch config file checks"
 python /opt/nepi/ros/etc/fix_broken_cfg_file_links.py
 
+# Tune ethernet interfaces for fast sensor throughput (especially important for genicam)
+echo "Running pre-launch ethernet interface tuning"
+python /opt/nepi/ros/etc/tune_ethernet_interfaces.py
+
 roslaunch ${ROS1_PACKAGE} ${ROS1_LAUNCH_FILE}
