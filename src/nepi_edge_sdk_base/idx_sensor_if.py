@@ -385,6 +385,8 @@ class ROSIDXSensorIF:
             self.status_msg.thresholding = idx_params['thresholding'] if 'thresholding' in idx_params else 0
             self.status_msg.range_window.start_range = idx_params['range_window']['start_range'] if 'range_window' in idx_params else 0
             self.status_msg.range_window.stop_range = idx_params['range_window']['stop_range'] if 'range_window' in idx_params else 0
+            self.status_msg.min_range_m = idx_params['range_limits']['min_range_m'] if 'range_limits' in idx_params else 0
+            self.status_msg.max_range_m = idx_params['range_limits']['max_range_m'] if 'range_limits' in idx_params else 0
         
             # The transfer frame into which 3D data (pointclouds) are transformed for the pointcloud data topic
             self.status_msg.frame_3d = idx_params['frame_3d'] if 'frame_3d' in idx_params else "nepi_center_frame"
