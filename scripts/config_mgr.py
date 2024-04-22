@@ -151,7 +151,7 @@ def restore_user_cfgs(msg):
 
     # Now handle non-ROS user system configs.        
     for name in SYS_CFGS_TO_PRESERVE:
-        full_name = os.path.join(USER_CFG_PATH, name)
+        full_name = os.path.join(USER_CFG_PATH, 'sys', name)
         if os.path.exists(full_name):
             if os.path.isdir(full_name):
                 full_name = os.path.join(full_name,'*') # Wildcard avoids copying source folder into target folder as a subdirectory
