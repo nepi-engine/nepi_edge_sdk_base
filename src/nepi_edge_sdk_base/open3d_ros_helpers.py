@@ -25,14 +25,12 @@
 
 import ros_numpy
 import open3d
-import numpy as np
 import tf.transformations as t
 import rospy
 import copy
 import cv2
-from std_msgs.msg import Header
 from sensor_msgs.msg import PointCloud2, PointField
-from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion, Transform, TransformStamped, Vector3
+from geometry_msgs.msg import Pose, PoseStamped, Transform, TransformStamped
 import numpy as np
 import numpy.matlib as npm
 
@@ -532,4 +530,23 @@ def ppf_icp_registration(source_cloud, target_cloud, n_points=3000, n_iter=100, 
         return None, 10000
     else:
         return pose, residual
+    
+def rosimg_to_o3dimg(rosimg_msg):
+    np_array = ros_numpy.image.image_to_numpy(rosimg_msg)  
+    o3d_img = open3d.geometry.Image(np_array)
+    return o3d_img
+
+def o3dimg_to_rosimg(o3dimg):
+    np_array = np.asarray(o3dimg)
+    rosimg = ros_numpy.image.numpy_to_image(np_array, "bgr8")
+    return rosimg
+
+def o3dimg_to_cv2mat(o3dimg):
+    np_array = np.asarray(o3dimg)
+    return np_array # cv2 images are just numpy arrays
+
+def cv2mat_to_o3dimg(cv2mat):
+    np_array = np.asarray(cv2mat[:,:])
+    o3d_img = open3d.geometry.Image(np_array)
+    return o3d_img    
 
