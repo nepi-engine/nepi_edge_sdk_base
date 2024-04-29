@@ -19,7 +19,7 @@ import rosnode
 import time
 import sys
 
-
+from datetime import datetime
 from std_msgs.msg import Empty, Float32
 from std_srvs.srv import Empty, EmptyRequest, Trigger
 from nepi_ros_interfaces.srv import GetScriptsQuery,GetRunningScriptsQuery ,LaunchScript, StopScript
@@ -94,7 +94,7 @@ def find_topic(topic_name):
   #rospy.loginfo(topic_list)
   for topic_entry in topic_list:
     #rospy.loginfo(topic_entry[0])
-    if topic_entry[0].find(topic_name) != -1:
+    if topic_entry[0].find(topic_name) != -1 and topic_entry[0].find(topic_name+"_") == -1:
       topic = topic_entry[0]
       break
   return topic
@@ -268,7 +268,35 @@ def stop_scripts(script_list,stop_script_service,get_installed_scripts_service,g
     rospy.loginfo("Failed to get installed and running script list")
   #running_scripts = get_running_scripts()
   #rospy.loginfo(running_scripts)
-    
+
+#########################
+### Misc Helper Functions
+def get_datetime_str_now():
+  date_str=datetime.utcnow().strftime('%Y-%m-%d')
+  time_str=datetime.utcnow().strftime('%H%M%S')
+  ms_str =datetime.utcnow().strftime('%f')[:-3]
+  dt_str = (date_str + "T" + time_str + "." + ms_str)
+  return dt_str
+
+def get_datetime_str_from_stamp(ros_stamp_msg):
+  tm=time.gmtime(ros_stamp_msg.secs)
+  year_str = tm_2_str(tm.tm_year)
+  mon_str = tm_2_str(tm.tm_mon)
+  day_str = tm_2_str(tm.tm_mday)
+  hr_str = tm_2_str(tm.tm_hour)
+  min_str = tm_2_str(tm.tm_min)
+  sec_str = tm_2_str(tm.tm_sec)
+  date_str=(year_str + '-' + mon_str + '-' + day_str)
+  time_str = (hr_str + min_str + sec_str)
+  ms_str= str(ros_stamp_msg.nsecs)[0:3]
+  dt_str = (date_str + "T" + time_str + "." + ms_str)
+  return dt_str
+
+def tm_2_str(tm_val):
+  tm_str = str(tm_val)
+  if len(tm_str) == 1:
+    tm_str = ('0'+ tm_str)
+  return tm_str
 
 ### Function for checking if val in list
 def val_in_list(val2check,list2check):

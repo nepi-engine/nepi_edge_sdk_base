@@ -24,7 +24,7 @@
 # Updated for use in NEPI Engine
 
 import ros_numpy
-import open3d
+import open3d as o3d
 import tf.transformations as t
 import rospy
 import copy
@@ -33,6 +33,7 @@ from sensor_msgs.msg import PointCloud2, PointField
 from geometry_msgs.msg import Pose, PoseStamped, Transform, TransformStamped
 import numpy as np
 import numpy.matlib as npm
+
 
 
 def pose_to_pq(pose):
@@ -278,7 +279,7 @@ def rospc_to_o3dpc(rospc, remove_nans=False):
         remove_nans (bool): If true, ignore the NaN points
     
     Returns: 
-        o3dpc (open3d.geometry.PointCloud): Open3D PointCloud
+        o3dpc (o3d.geometry.PointCloud): Open3D PointCloud
     """
     cloud_array = ros_numpy.point_cloud2.pointcloud2_to_array(rospc).ravel()
 
@@ -290,11 +291,11 @@ def rospc_to_o3dpc(rospc, remove_nans=False):
         cloud_array = cloud_array[mask]
 
     # Initialize Open3D PointCloud
-    o3dpc = open3d.geometry.PointCloud()
+    o3dpc = o3d.geometry.PointCloud()
 
     # Assign points to Open3d PCD
     # Vector3dVector is optimized for numpy array with float64 datatype using memory mapping.
-    o3dpc.points = open3d.utility.Vector3dVector(np.c_[cloud_array['x'], 
+    o3dpc.points = o3d.utility.Vector3dVector(np.c_[cloud_array['x'], 
                                                        cloud_array['y'], 
                                                        cloud_array['z']].astype(np.float64))  
 
@@ -302,7 +303,7 @@ def rospc_to_o3dpc(rospc, remove_nans=False):
     if 'rgb' in cloud_array.dtype.names:
         # Extract RGB values
         rgb_npy = cloud_array['rgb'].view(dtype=np.uint32)
-        o3dpc.colors = open3d.utility.Vector3dVector(np.c_[(rgb_npy >> 16) & 255,        # Red
+        o3dpc.colors = o3d.utility.Vector3dVector(np.c_[(rgb_npy >> 16) & 255,        # Red
                                                            (rgb_npy >> 8) & 255,         # Green
                                                            (rgb_npy & 255)               # Blue
                                                            ].astype(np.float64) / 255.)
@@ -312,10 +313,10 @@ def rospc_to_o3dpc(rospc, remove_nans=False):
 BIT_MOVE_16 = 2**16
 BIT_MOVE_8 = 2**8
 
-def o3dpc_to_rospc(o3dpc, frame_id=None, stamp=None):
+def o3dpc_to_rospc(o3dpc, stamp=None, frame_id=None):
     """ convert open3d point cloud to ros point cloud
     Args:
-        o3dpc (open3d.geometry.PointCloud): open3d point cloud
+        o3dpc (o3d.geometry.PointCloud): open3d point cloud
         frame_id (string): frame id of ros point cloud header
         stamp (rospy.Time): time stamp of ros point cloud header
     Returns:
@@ -352,13 +353,18 @@ def o3dpc_to_rospc(o3dpc, frame_id=None, stamp=None):
         data['rgb'] = rgb_npy
 
     rospc = ros_numpy.msgify(PointCloud2, data)
-    if frame_id is not None:
-        rospc.header.frame_id = frame_id
 
     if stamp is None:
         rospc.header.stamp = rospy.Time.now()
     else:
         rospc.header.stamp = stamp
+    
+    if frame_id is not None:
+        rospc.header.frame_id = frame_id
+    else:
+        rospc.header.frame_id="map"
+
+
     rospc.height = 1
     rospc.width = n_points
     rospc.fields = []
@@ -393,10 +399,10 @@ def do_transform_point(o3dpc, transform_stamped):
     """ transform a input cloud with respect to the specific frame
         open3d version of tf2_geometry_msgs.do_transform_point
     Args: 
-        o3dpc (open3d.geometry.PointCloud): open3d point cloud
+        o3dpc (o3d.geometry.PointCloud): open3d point cloud
         transform_stamped (geometry_msgs.msgs.TransformStamped): transform to be applied 
     Returns:
-        o3dpc (open3d.geometry.PointCloud): transformed open3d point cloud
+        o3dpc (o3d.geometry.PointCloud): transformed open3d point cloud
     """
     H = msg_to_se3(transform_stamped)
     o3dpc = copy.deepcopy(o3dpc)
@@ -406,12 +412,12 @@ def do_transform_point(o3dpc, transform_stamped):
 def apply_pass_through_filter(o3dpc, x_range, y_range, z_range):
     """ apply 3D pass through filter to the open3d point cloud
     Args:
-        o3dpc (open3d.geometry.PointCloud): open3d point cloud
+        o3dpc (o3d.geometry.PointCloud): open3d point cloud
         x_range (list): list of [x_min, x_maz]
         y_range (list): list of [y_min, y_maz]
         z_range (list): list of [z_min, z_max]
     Returns:
-        o3dpc (open3d.geometry.PointCloud): filtered open3d point cloud
+        o3dpc (o3d.geometry.PointCloud): filtered open3d point cloud
     some codes from https://github.com/powersimmani/example_3d_pass_through-filter_guide
     """
     o3dpc = copy.deepcopy(o3dpc)
@@ -420,22 +426,22 @@ def apply_pass_through_filter(o3dpc, x_range, y_range, z_range):
     y_range = np.logical_and(cloud_npy[:, 1] >= y_range[0], cloud_npy[:, 1] <= y_range[1])
     z_range = np.logical_and(cloud_npy[:, 2] >= z_range[0], cloud_npy[:, 2] <= z_range[1])
     pass_through_filter = np.logical_and(x_range, np.logical_and(y_range, z_range))
-    o3dpc.points = open3d.utility.Vector3dVector(cloud_npy[pass_through_filter])
+    o3dpc.points = o3d.utility.Vector3dVector(cloud_npy[pass_through_filter])
     
     colors = np.asarray(o3dpc.colors)
     if len(colors) > 0:
-        o3dpc.colors = open3d.utility.Vector3dVector(colors[pass_through_filter])
+        o3dpc.colors = o3d.utility.Vector3dVector(colors[pass_through_filter])
     return o3dpc
 
 def crop_with_2dmask(o3dpc, mask, K=None):
     """ crop open3d point cloud with given 2d binary mask
     Args: 
-        o3dpc (open3d.geometry.PointCloud): open3d point cloud
+        o3dpc (o3d.geometry.PointCloud): open3d point cloud
         mask (np.array): binary mask aligned with the point cloud frame shape of [H, W]
         K (np.array): intrinsic matrix of camera shape of (4x4)
         if K is not given, point cloud should be ordered
     Returns:
-        o3dpc (open3d.geometry.PointCloud): filtered open3d point cloud
+        o3dpc (o3d.geometry.PointCloud): filtered open3d point cloud
     """
     o3dpc = copy.deepcopy(o3dpc)
     cloud_npy = np.asarray(o3dpc.points)
@@ -443,8 +449,8 @@ def crop_with_2dmask(o3dpc, mask, K=None):
     if K is None:
         mask = np.resize(mask, cloud_npy.shape[0])
         cloud_npy = cloud_npy[mask!=0]
-        o3dpc = open3d.geometry.PointCloud()
-        o3dpc.points = open3d.utility.Vector3dVector(cloud_npy)
+        o3dpc = o3d.geometry.PointCloud()
+        o3dpc.points = o3d.utility.Vector3dVector(cloud_npy)
     else:
         # project 3D points to 2D pixel
         cloud_npy = np.asarray(o3dpc.points)  
@@ -461,18 +467,18 @@ def crop_with_2dmask(o3dpc, mask, K=None):
         cloud_npy = cloud_npy[image_indices]
         mask_indices = mask[(py[image_indices], px[image_indices])]
         mask_indices = np.where(mask_indices != 0)[0]
-        o3dpc.points = open3d.utility.Vector3dVector(cloud_npy[mask_indices])
+        o3dpc.points = o3d.utility.Vector3dVector(cloud_npy[mask_indices])
     return o3dpc
 
 def p2p_icp_registration(source_cloud, target_cloud, n_points=100, threshold=0.02, \
     relative_fitness=1e-10, relative_rmse=1e-8, max_iteration=500, max_correspondence_distance=500):
     """ align the source cloud to the target cloud using point-to-point ICP registration algorithm
     Args: 
-        source_cloud (open3d.geometry.PointCloud): source open3d point cloud
-        target_cloud (open3d.geometry.PointCloud): target open3d point cloud
-        for other parameter, go to http://www.open3d.org/docs/0.9.0/python_api/open3d.registration.registration_icp.html
+        source_cloud (o3d.geometry.PointCloud): source open3d point cloud
+        target_cloud (o3d.geometry.PointCloud): target open3d point cloud
+        for other parameter, go to http://www.o3d.org/docs/0.9.0/python_api/o3d.registration.registration_icp.html
     Returns:
-        icp_result (open3d.registration.RegistrationResult): registration result
+        icp_result (o3d.registration.RegistrationResult): registration result
     """
     source_cloud = copy.deepcopy(source_cloud)
     target_cloud = copy.deepcopy(target_cloud)
@@ -484,12 +490,12 @@ def p2p_icp_registration(source_cloud, target_cloud, n_points=100, threshold=0.0
     source_cloud = source_cloud.select_down_sample(source_idxes)
     target_cloud = target_cloud.select_down_sample(target_idxes)
     trans_init = np.eye(4)
-    evaluation = open3d.registration.evaluate_registration(source_cloud, target_cloud, threshold, trans_init)
-    icp_result = open3d.registration.registration_icp(
+    evaluation = o3d.registration.evaluate_registration(source_cloud, target_cloud, threshold, trans_init)
+    icp_result = o3d.registration.registration_icp(
         source = source_cloud, target = target_cloud, max_correspondence_distance=max_correspondence_distance, # unit in millimeter
         init = np.eye(4),  
-        estimation_method = open3d.registration.TransformationEstimationPointToPoint(), 
-        criteria = open3d.registration.ICPConvergenceCriteria(
+        estimation_method = o3d.registration.TransformationEstimationPointToPoint(), 
+        criteria = o3d.registration.ICPConvergenceCriteria(
                                             relative_fitness=relative_fitness,
                                             relative_rmse=relative_rmse,
                                             max_iteration=max_iteration))                                               
@@ -498,8 +504,8 @@ def p2p_icp_registration(source_cloud, target_cloud, n_points=100, threshold=0.0
 def ppf_icp_registration(source_cloud, target_cloud, n_points=3000, n_iter=100, tolerance=0.001, num_levels=5, scale=0.001):
     """ align the source cloud to the target cloud using point pair feature (PPF) match
     Args: 
-        source_cloud (open3d.geometry.PointCloud): source open3d point cloud
-        target_cloud (open3d.geometry.PointCloud): target open3d point cloud
+        source_cloud (o3d.geometry.PointCloud): source open3d point cloud
+        target_cloud (o3d.geometry.PointCloud): target open3d point cloud
         for other parameter, go to https://docs.opencv.org/master/dc/d9b/classcv_1_1ppf__match__3d_1_1ICP.html
     Returns:
         pose (np.array): 4x4 transformation between source and targe cloud
@@ -519,7 +525,7 @@ def ppf_icp_registration(source_cloud, target_cloud, n_points=3000, n_iter=100, 
     if n_target_points > n_points:
         target_idxes = np.random.choice(n_target_points, n_sample, replace=False)
         target_cloud = target_cloud.select_down_sample(target_idxes)
-    target_cloud.estimate_normals(search_param=open3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    target_cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
 
     source_np_cloud = np.concatenate([np.asarray(source_cloud.points), np.asarray(source_cloud.normals)], axis=1).astype(np.float32)
     target_np_cloud = np.concatenate([np.asarray(target_cloud.points), np.asarray(target_cloud.normals)], axis=1).astype(np.float32)
@@ -530,15 +536,26 @@ def ppf_icp_registration(source_cloud, target_cloud, n_points=3000, n_iter=100, 
         return None, 10000
     else:
         return pose, residual
+
     
 def rosimg_to_o3dimg(rosimg_msg):
     np_array = ros_numpy.image.image_to_numpy(rosimg_msg)  
-    o3d_img = open3d.geometry.Image(np_array)
+    o3d_img = o3d.geometry.Image(np_array)
     return o3d_img
 
-def o3dimg_to_rosimg(o3dimg):
+def o3dimg_to_rosimg(o3dimg, stamp=None, frame_id=None):
     np_array = np.asarray(o3dimg)
     rosimg = ros_numpy.image.numpy_to_image(np_array, "bgr8")
+
+    if stamp is None:
+        rosimg.header.stamp = rospy.Time.now()
+    else:
+        rosimg.header.stamp = stamp
+    
+    if frame_id is not None:
+        rosimg.header.frame_id = frame_id
+    else:
+        rosimg.header.frame_id="map"
     return rosimg
 
 def o3dimg_to_cv2mat(o3dimg):
@@ -547,6 +564,62 @@ def o3dimg_to_cv2mat(o3dimg):
 
 def cv2mat_to_o3dimg(cv2mat):
     np_array = np.asarray(cv2mat[:,:])
-    o3d_img = open3d.geometry.Image(np_array)
-    return o3d_img    
+    o3d_img = o3d.geometry.Image(np_array)
+    return o3d_img
+
+
+def range_clip(open3d_pcd, range_clip_min_range_m, range_clip_max_range_m):
+    open3d_pcd_points = np.asarray(open3d_pcd.points)
+    # Check if pointcloud has color
+    pcd_has_colors = open3d_pcd.colors
+    if pcd_has_colors:
+      has_colors = True
+      print("pcd has colors")
+      ### Need to Add color data as well if it has color data
+      open3d_pcd_colors = np.asarray(open3d_pcd.colors)
+      open3d_pcd_colors = open3d_pcd_colors[(open3d_pcd_points[:, 0] >= range_clip_min_range_m) & (open3d_pcd_points[:, 0] <= range_clip_max_range_m)]
+    open3d_pcd_points = open3d_pcd_points[(open3d_pcd_points[:, 0] >= range_clip_min_range_m) & (open3d_pcd_points[:, 0] <= range_clip_max_range_m)]
+    # Clear and create new pointcloud      
+    open3d_pcd = o3d.geometry.PointCloud()
+    open3d_pcd.points = o3d.utility.Vector3dVector(open3d_pcd_points)
+    if pcd_has_colors:
+      print("adding colors to new pcd")
+      open3d_pcd.colors = o3d.utility.Vector3dVector(open3d_pcd_colors)
+    return open3d_pcd
+
+def render_image(pcd,img_width,img_height,background,FOV,center,eye,up):
+    render = o3d.visualization.rendering.OffscreenRenderer(img_width, img_height)
+    # Set background color
+    render.scene.set_background(background)
+    # Show the original coordinate axes for comparison.
+    # X is red, Y is green and Z is blue.
+    render.scene.show_axes(True)
+    # Define a simple unlit Material.
+    # (The base color does not replace the arrows' own colors.)
+    mtl = o3d.visualization.rendering.MaterialRecord()  # or MaterialRecord(), for later versions of Open3D
+    mtl.base_color = [1.0, 1.0, 1.0, 1.0]  # RGBA
+    mtl.shader = "defaultUnlit"
+    render.scene.add_geometry('model',pcd, mtl)
+    # Set Lighting
+    render.scene.set_lighting(render.scene.LightingProfile.NO_SHADOWS, (0, 0, 0))
+    # Optionally set the camera field of view (to zoom in a bit)
+    vertical_field_of_view = FOV  
+    aspect_ratio = img_width / img_height  # azimuth over elevation
+    near_plane = 0.1
+    far_plane = 50.0
+    fov_type = o3d.visualization.rendering.Camera.FovType.Vertical
+    render.scene.camera.set_projection(vertical_field_of_view, aspect_ratio, near_plane, far_plane, fov_type)
+    # Look at the origin from the front (along the -Z direction, into the screen), with Y as Up.
+    render.scene.camera.look_at(center, eye, up)
+    # Render
+    img_o3d = render.render_to_image()
+    return img_o3d
+
+def save_pcd(open3d_pcd,filename):
+    ret = o3d.io.write_point_cloud(filename, open3d_pcd)
+    return ret
+
+def save_image(open3d_image,filename):
+    ret = o3d.io.write_image(filename, open3d_image)
+    return ret
 
