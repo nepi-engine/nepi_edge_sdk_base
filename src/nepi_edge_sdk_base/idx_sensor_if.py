@@ -21,42 +21,43 @@ from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
 from nepi_ros_interfaces.msg import IDXStatus, RangeWindow
 from nepi_ros_interfaces.srv import IDXCapabilitiesQuery, IDXCapabilitiesQueryResponse
 
+from nepi_edge_sdk_base import nepi_img
+
 class ROSIDXSensorIF:
+    # Default Factory Values
+    BRIGHTNESS_RATIO = 0.5
+    CONTRAST_RATIO =  0.5
+    THRESHOLD_RATIO =  0.0
     RESOLUTION_MODE_MAX = 3 # LOW, MED, HIGH, ULTRA
     FRAMERATE_MODE_MAX = 3 # LOW, MED, HIGH, ULTRA
 
-    def setResolutionMode(self, msg):
-        new_resolution = msg.data
-        if (new_resolution > self.RESOLUTION_MODE_MAX):
-            rospy.logerr("Resolution mode value out of bounds")
+    # Initialize Current Settings
+    brightness_ratio = BRIGHTNESS_RATIO
+    contrast_ratio = CONTRAST_RATIO
+    threshold_ratio = THRESHOLD_RATIO
+    resolution_mode =  RESOLUTION_MODE_MAX
+    framerate_mode = FRAMERATE_MODE_MAX
+
+
+
+    def setBrightness(self, msg):
+        new_brightness = msg.data
+        if (new_brightness < 0.0 or new_brightness > 1.0):
+            rospy.logerr("Brightness value out of bounds")
             self.updateAndPublishStatus(do_updates=False) # No change
             return
-
-        # Call the parent's method and update ROS param as necessary
-        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
-        status, err_str = self.setResolutionModeCb(new_resolution)
-        if status is True:
-            rospy.set_param('~idx/resolution_mode', new_resolution)
-            self.status_msg.resolution_mode = new_resolution
         else:
-            rospy.logerr("Failed to update resolution: " + err_str)
-        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+            self.brightness_ratio = new_brightness
+            self.status_msg.brightness = new_brightness
 
-    def setFramerateMode(self, msg):
-        new_framerate = msg.data
-        if (new_framerate > self.FRAMERATE_MODE_MAX):
-            rospy.logerr("Framerate mode value out of bounds")
-            self.updateAndPublishStatus(do_updates=False) # No change
-            return
-        
-        # Call the parent's method and update ROS param as necessary
-        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
-        status, err_str = self.setFramerateModeCb(new_framerate)
-        if status is True:
-            rospy.set_param('~idx/framerate_mode', new_framerate)
-            self.status_msg.framerate_mode = new_framerate
-        else:
-            rospy.logerr("Failed to update framerate: " + err_str)
+##        # Call the parent's method and update ROS param as necessary
+##        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
+##        status, err_str = self.setBrightnessCb(new_brightness)
+##        if status is True:
+##            rospy.set_param('~idx/brightness', new_brightness)
+##            self.status_msg.brightness = new_brightness
+##        else:
+##            rospy.logerr("Failed to update brightness: " + err_str)
         self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
     def setContrast(self, msg):
@@ -65,50 +66,83 @@ class ROSIDXSensorIF:
             rospy.logerr("Contrast value out of bounds")
             self.updateAndPublishStatus(do_updates=False) # No change
             return
-
-        # Call the parent's method and update ROS param as necessary
-        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
-        status, err_str = self.setContrastCb(new_contrast)
-        if status is True:
-            rospy.set_param('~idx/contrast', new_contrast)
+        else:
+            self.contrast_ratio = new_contrast
             self.status_msg.contrast = new_contrast
-        else:
-            rospy.logerr("Failed to update contrast: " + err_str)
+
+##        # Call the parent's method and update ROS param as necessary
+##        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
+##        status, err_str = self.setContrastCb(new_contrast)
+##        if status is True:
+##            rospy.set_param('~idx/contrast', new_contrast)
+##            self.status_msg.contrast = new_contrast
+##        else:
+##            rospy.logerr("Failed to update contrast: " + err_str)
         self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
-    def setBrightness(self, msg):
-        new_brightness = msg.data
-        if (new_brightness < 0.0 or new_brightness > 1.0):
-            rospy.logerr("Brightness value out of bounds")
-            self.updateAndPublishStatus(do_updates=False) # No change
-            return
-
-        # Call the parent's method and update ROS param as necessary
-        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
-        status, err_str = self.setBrightnessCb(new_brightness)
-        if status is True:
-            rospy.set_param('~idx/brightness', new_brightness)
-            self.status_msg.brightness = new_brightness
-        else:
-            rospy.logerr("Failed to update brightness: " + err_str)
-        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+ 
 
     def setThresholding(self, msg):
-        new_thresholding = msg.data
-        if (new_thresholding < 0.0 or new_thresholding > 1.0):
+        new_threshold = msg.data
+        if (new_thresholding < 0.0 or new_threshold > 1.0):
             rospy.logerr("Thresholding value out of bounds")
             self.updateAndPublishStatus(do_updates=False) # No change
             return
-
-        # Call the parent's method and update ROS param as necessary
-        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
-        status, err_str = self.setThresholdingCb(new_thresholding)
-        if status is True:
-            rospy.set_param('~idx/thresholding', new_thresholding)
-            self.status_msg.thresholding = new_thresholding
         else:
-            rospy.logerr("Failed to update thresholding: " + err_str)
+            self.threshold_ratio = new_threshold
+            self.status_msg.thresholding = new_threshold
+
+##        # Call the parent's method and update ROS param as necessary
+##        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
+##        status, err_str = self.setThresholdingCb(new_thresholding)
+##        if status is True:
+##            rospy.set_param('~idx/thresholding', new_thresholding)
+##            self.status_msg.thresholding = new_thresholding
+##        else:
+##            rospy.logerr("Failed to update thresholding: " + err_str)
         self.updateAndPublishStatus(do_updates=False) # Updated inline here
+
+    def setResolutionMode(self, msg):
+        new_resolution = msg.data
+        if (new_resolution < 0 or new_resolution > 3):
+            rospy.logerr("Resolution mode value out of bounds")
+            self.updateAndPublishStatus(do_updates=False) # No change
+            return
+        else:
+            self.resolution_mode = new_resolution
+            self.status_msg.resolution_mode = new_resolution
+##
+##        # Call the parent's method and update ROS param as necessary
+##        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
+##        status, err_str = self.setResolutionModeCb(new_resolution)
+##        if status is True:
+##            rospy.set_param('~idx/resolution_mode', new_resolution)
+##            self.status_msg.resolution_mode = new_resolution
+##        else:
+##            rospy.logerr("Failed to update resolution: " + err_str)
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+
+    def setFramerateMode(self, msg):
+        new_framerate = msg.data
+        if (new_framerate < 0 or new_framerate > 3):
+            rospy.logerr("Framerate mode value out of bounds")
+            self.updateAndPublishStatus(do_updates=False) # No change
+            return
+        else:
+            self.framerate_mode = new_framerate
+            self.status_msg.framerate_mode = new_framerate
+        
+##        # Call the parent's method and update ROS param as necessary
+##        # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
+##        status, err_str = self.setFramerateModeCb(new_framerate)
+##        if status is True:
+##            rospy.set_param('~idx/framerate_mode', new_framerate)
+##            self.status_msg.framerate_mode = new_framerate
+##        else:
+##            rospy.logerr("Failed to update framerate: " + err_str)
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+
+ 
 
     def setRange(self, msg):
         pass # TODO
@@ -303,7 +337,7 @@ class ROSIDXSensorIF:
             has_subscribers = (self.color_img_pub.get_num_connections() > 0)
             if (has_subscribers is True) or (saving_is_enabled is True):
                 acquiring = True
-                status, msg, cv_img, ros_timestamp = self.getColor2DImgCb()
+                status, msg, cv2_img, ros_timestamp = self.getColor2DImgCb()
                 if (status is False):
                     rospy.logerr_throttle(1, msg)
                     continue
@@ -311,10 +345,24 @@ class ROSIDXSensorIF:
                 if (has_subscribers is True):
                     # Convert cv to ros and publish
                     start = time.time()
-                    ros_img = self.cv_bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
+                    # Apply IDX Abstracted Controls
+                    resolution_ratio = self.resolution_mode/3
+                    [cv2_img,new_res] = nepi_img.adjust_resolution(cv2_img, resolution_ratio)
+                    cv2_img = nepi_img.adjust_brightness(cv2_img, self.brightness_ratio)
+                    cv2_img = nepi_img.adjust_contrast(cv2_img, self.contrast_ratio)
+                    cv2_img = nepi_img.adjust_sharpness(cv2_img, self.threshold_ratio)
+##  Need to get current framerate setting
+                    current_fps = 20
+##  Hard Coded for now
+                    framerate_ratio = self.framerate_mode/3
+                    [cv2_img,new_rate] = nepi_img.adjust_framerate(cv2_img, current_fps, framerate_ratio)
+                  
+                    ros_img = self.cv_bridge.cv2_to_imgmsg(cv2_img, encoding="bgr8")
                     ros_img.header.stamp = ros_timestamp
                     ros_img.header.frame_id = self.camera_frame_id
                     stop = time.time()
+
+                   
                     #print('CV2Img: ', stop-start)
                     self.color_img_pub.publish(ros_img)
                     next_stop = time.time()
@@ -324,7 +372,7 @@ class ROSIDXSensorIF:
                     full_path_filename = self.save_data_if.get_full_path_filename(self.save_data_if.get_timestamp_string(), 
                                                                                   self.sensor_name + '_color_2d_img', 'png')
                     #rospy.logwarn("Debugging: Time to save color_2d_img to " + full_path_filename)
-                    cv2.imwrite(full_path_filename, cv_img)
+                    cv2.imwrite(full_path_filename, cv2_img)
 
             elif acquiring is True:
                 if self.stopColor2DImgAcquisitionCb is not None:
@@ -344,7 +392,7 @@ class ROSIDXSensorIF:
             saving_is_enabled = self.save_data_if.data_product_saving_enabled('bw_2d_image')
             has_subscribers = (self.grayscale_img_pub.get_num_connections() > 0)
             if (has_subscribers is True) or (saving_is_enabled is True):
-                status, msg, cv_img, ros_timestamp = self.getGrayscale2DImgCb()
+                status, msg, cv2_img, ros_timestamp = self.getGrayscale2DImgCb()
                 if (status is False):
                     rospy.logerr_throttle(1, msg)
                     continue
@@ -353,7 +401,7 @@ class ROSIDXSensorIF:
                 
                 if (has_subscribers is True):
                     # Convert cv to ros and publish
-                    ros_img = self.cv_bridge.cv2_to_imgmsg(cv_img, encoding="mono8")
+                    ros_img = self.cv_bridge.cv2_to_imgmsg(cv2_img, encoding="mono8")
                     ros_img.header.stamp = ros_timestamp
                     ros_img.header.frame_id = self.camera_frame_id
                     self.grayscale_img_pub.publish(ros_img)
@@ -361,7 +409,7 @@ class ROSIDXSensorIF:
                 if (self.save_data_if.data_product_should_save('bw_2d_image') is True):
                     full_path_filename = self.save_data_if.get_full_path_filename(self.save_data_if.get_timestamp_string(), 
                                                                                   self.sensor_name + '_bw_2d_img', 'png')
-                    cv2.imwrite(full_path_filename, cv_img)
+                    cv2.imwrite(full_path_filename, cv2_img)
 
             elif acquiring is True:
                 if self.stopGrayscale2DImgCb is not None:

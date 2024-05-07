@@ -9,9 +9,11 @@
 #
 
 
-# NEPI utility script includes
-# 1) Topic Utility Functions
-# 2) Script Utility Functions
+# NEPI ros utility functions include
+# 1) ROS Node utility functions
+# 2) ROS Topic utility functions
+# 3) NEPI ROS Script utility functions
+# 4) Misc ROS and NEPI ROS utility functions
   
 
 import rospy
@@ -26,8 +28,8 @@ from nepi_ros_interfaces.srv import GetScriptsQuery,GetRunningScriptsQuery ,Laun
 
 #######################
 ### Node Utility Functions
-### Function to get list of active topics
-### Function to get list of active nodes
+
+# Function to get list of active topics
 def get_node_list():
   node = ""
   node_list=rosnode.get_node_names()
@@ -71,23 +73,13 @@ def get_base_namespace():
 #######################
 ### Topic Utility Functions
 
-### Sleep process that breaks sleep into smaller times for better shutdown
-def sleep(sleep_sec,sleep_steps):
-  delay_timer = 0
-  delay_sec = sleep_sec/sleep_steps
-  while delay_timer < sleep_sec and not rospy.is_shutdown():
-    time.sleep(delay_sec)
-    delay_timer = delay_timer + delay_sec
-
-
-
-### Function to get list of active topics
+# Function to get list of active topics
 def get_topic_list():
   topic = ""
   topic_list=rospy.get_published_topics(namespace='/')
   return topic_list
 
-### Function to find a topic
+# Function to find a topic
 def find_topic(topic_name):
   topic = ""
   topic_list=get_topic_list()
@@ -107,7 +99,7 @@ def check_for_topic(topic_name):
     topic_exists = False
   return topic_exists
 
-### Function to wait for a topic
+# Function to wait for a topic
 def wait_for_topic(topic_name):
   topic = ""
   while topic == "" and not rospy.is_shutdown():
@@ -117,7 +109,7 @@ def wait_for_topic(topic_name):
 
 
 #######################
-### Script Utility Functions
+# Script Utility Functions
 
 def startup_script_initialize(self,NEPI_BASE_NAMESPACE):
   ## Initialize Class Variables
@@ -163,7 +155,7 @@ def startup_script_initialize(self,NEPI_BASE_NAMESPACE):
 
 
 
-### Function to get list of installed scripts
+# Function to get list of installed scripts
 def get_installed_scripts(get_installed_scripts_service):
   installed_scripts = None
   try:
@@ -174,7 +166,7 @@ def get_installed_scripts(get_installed_scripts_service):
     rospy.loginfo("Get installed scripts service call failed: " + str(e))
   return installed_scripts
 
-### Function to get list of running scripts
+# Function to get list of running scripts
 def get_running_scripts(get_running_scripts_service):
   running_scripts = None
   try:
@@ -186,7 +178,7 @@ def get_running_scripts(get_running_scripts_service):
   return running_scripts
 
 
-### Function to launch a script
+# Function to launch a script
 def launch_script(script2launch,launch_script_service):
   launch_success=False
   try:
@@ -208,7 +200,7 @@ def stop_script(script2stop,stop_script_service):
     rospy.loginfo("Stop script service call failed: " + str(e))
   return stop_success
 
-### Function to start scripts from list
+# Function to start scripts from list
 def launch_scripts(script_list,launch_script_service,get_installed_scripts_service,get_running_scripts_service):
   installed_scripts = get_installed_scripts(get_installed_scripts_service)
   running_scripts = get_running_scripts(get_running_scripts_service)
@@ -242,7 +234,7 @@ def launch_scripts(script_list,launch_script_service,get_installed_scripts_servi
   #rospy.loginfo(running_scripts)
           
 
-### Function to stop scripts from list, a
+# Function to stop scripts from list, a
 def stop_scripts(script_list,stop_script_service,get_installed_scripts_service,get_running_scripts_service,optional_ignore_script_list=[]):
   installed_scripts = get_installed_scripts(get_installed_scripts_service)
   running_scripts = get_running_scripts(get_running_scripts_service)
@@ -271,6 +263,15 @@ def stop_scripts(script_list,stop_script_service,get_installed_scripts_service,g
 
 #########################
 ### Misc Helper Functions
+
+# Sleep process that breaks sleep into smaller times for better shutdown
+def sleep(sleep_sec,sleep_steps):
+  delay_timer = 0
+  delay_sec = sleep_sec/sleep_steps
+  while delay_timer < sleep_sec and not rospy.is_shutdown():
+    time.sleep(delay_sec)
+    delay_timer = delay_timer + delay_sec
+
 def get_datetime_str_now():
   date_str=datetime.utcnow().strftime('%Y-%m-%d')
   time_str=datetime.utcnow().strftime('%H%M%S')
@@ -298,7 +299,7 @@ def tm_2_str(tm_val):
     tm_str = ('0'+ tm_str)
   return tm_str
 
-### Function for checking if val in list
+# Function for checking if val in list
 def val_in_list(val2check,list2check):
   in_list = False
   if len(list2check) > 0:

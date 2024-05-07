@@ -9,9 +9,9 @@
 #
 
 
-# NEPI utility script includes
-# 1) NavPose Request Functions
-# 2) NavPose Conversion Utility Functions
+# NEPI navigation utility functions include
+# 1) NavPose request functions
+# 2) NavPose conversion utility functions
 
 
 import rospy

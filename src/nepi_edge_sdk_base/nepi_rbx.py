@@ -11,14 +11,15 @@
 
 # NEPI utility script includes
 # 1) RBX Initialization Process
-# 2) RBX Control Utility Functions
+# 2) RBX Settings Utility Functions
+# 3) RBX Control Utility Functions
 
 
 import rospy
 import rosnode
 import time
 import sys
-from resources import nepi
+from nepi_edge_sdk_base import nepi_ros
 
 from std_msgs.msg import Empty, Int8, UInt8, UInt32, Bool, String, Float32, Float64, Float64MultiArray
 from nav_msgs.msg import Odometry
@@ -47,7 +48,7 @@ def rbx_initialize(self, NEPI_BASE_NAMESPACE):
   ## Define Class Namespaces
   # NEPI RBX DEVICE NAMESPACE
   rbx_status_topic = "/rbx/status"
-  rbx_topic=nepi.wait_for_topic(rbx_status_topic)
+  rbx_topic=nepi_ros.wait_for_topic(rbx_status_topic)
   NEPI_RBX_NAMESPACE = (rbx_topic.rpartition("rbx")[0] + "rbx/")
   rospy.loginfo("Found rbx namespace: " + NEPI_RBX_NAMESPACE)
   rospy.loginfo("Found rbx status topic: " + rbx_topic)
@@ -111,7 +112,7 @@ def rbx_initialize(self, NEPI_BASE_NAMESPACE):
 
   ## Start Class Subscribers
   rospy.loginfo("Waiting for topic: " + NEPI_RBX_STATUS_TOPIC)
-  nepi.wait_for_topic(NEPI_RBX_STATUS_TOPIC)
+  nepi_ros.wait_for_topic(NEPI_RBX_STATUS_TOPIC)
   rospy.loginfo("Starting state scubscriber callback")
   rospy.Subscriber(NEPI_RBX_STATUS_TOPIC, RBXStatus, self.rbx_status_callback, queue_size=None)
   while self.rbx_status is None and not rospy.is_shutdown():
