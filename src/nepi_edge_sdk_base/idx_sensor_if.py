@@ -58,9 +58,11 @@ class ROSIDXSensorIF:
 
 
 
-    def resetControls(self, msg):
+    def resetControlsCb(self, msg):
         rospy.loginfo("Resetting IDX and Sensor Controls")
+        sefl.resetControls()
 
+    def resetControls():
         rospy.set_param('~idx/idx_controls', self.init_idx_controls_enable)
         self.status_msg.idx_controls = self.init_idx_controls_enable
 
@@ -97,8 +99,9 @@ class ROSIDXSensorIF:
     def setAutoAdjust(self, msg):
         new_auto = msg.data
         if rospy.get_param('~idx/idx_controls', self.IDX_CONTROLS_ENABLE):
-            if new_idx_controls:
+            if new_auto:
                 rospy.loginfo("Enabling IDX Auto Adjust")
+                self.resetControls()
             else:
                 rospy.loginfo("Disabling IDX Auto Adjust")
             if (self.setAutoAdjustCb is not None):
@@ -296,7 +299,7 @@ class ROSIDXSensorIF:
         # Defer actually setting these on the camera via the parent callbacks... the parent may need to do some 
         # additional setup/calculation first. Parent can then get these all applied by calling updateFromParamServer()
 
-        rospy.Subscriber('~idx/reset_controls', Empty, self.resetControls, queue_size=1)
+        rospy.Subscriber('~idx/reset_controls', Empty, self.resetControlsCb, queue_size=1)
 
         rospy.Subscriber('~idx/set_idx_controls_enable', Bool, self.setIDXControlsEnable, queue_size=1)
         self.init_idx_controls_enable = rospy.get_param('~idx/idx_controls', self.IDX_CONTROLS_ENABLE)
