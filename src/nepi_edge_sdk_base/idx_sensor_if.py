@@ -25,8 +25,8 @@ from nepi_edge_sdk_base import nepi_img
 
 class ROSIDXSensorIF:
     # Default Global Values
-    AUTO_ADJUST = False
     IDX_CONTROLS_ENABLE = True
+    AUTO_ADJUST = False
     RESOLUTION_MODE_MAX = 3 # LOW, MED, HIGH, MAX
     FRAMERATE_MODE_MAX = 3 # LOW, MED, HIGH, MAX
     
@@ -60,11 +60,11 @@ class ROSIDXSensorIF:
 
     def resetControlsCb(self, msg):
         rospy.loginfo("Resetting IDX and Sensor Controls")
-        sefl.resetControls()
+        self.resetControls()
 
-    def resetControls():
-        rospy.set_param('~idx/idx_controls', self.init_idx_controls_enable)
-        self.status_msg.idx_controls = self.init_idx_controls_enable
+    def resetControls(self):
+        rospy.set_param('~idx/idx_controls', self.init_idx_controls)
+        self.status_msg.idx_controls = self.init_idx_controls
 
         rospy.set_param('~idx/auto', self.init_auto_adjust)
         self.status_msg.auto = self.init_auto_adjust
@@ -92,36 +92,52 @@ class ROSIDXSensorIF:
             rospy.loginfo("Enabling IDX Controls")
         else:
             rospy.loginfo("Disabling IDX Controls")
+            self.resetControls()
         rospy.set_param('~idx/idx_controls', new_idx_controls)
         self.status_msg.idx_controls = new_idx_controls
         self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
     def setAutoAdjust(self, msg):
         new_auto = msg.data
+        print(new_auto)
+        status = False
         if rospy.get_param('~idx/idx_controls', self.IDX_CONTROLS_ENABLE):
             if new_auto:
                 rospy.loginfo("Enabling IDX Auto Adjust")
-                self.resetControls()
             else:
                 rospy.loginfo("Disabling IDX Auto Adjust")
+            rospy.loginfo(self.setAutoAdjustCb)
             if (self.setAutoAdjustCb is not None):
+                rospy.loginfo("Using Auto Adjust driver callback")
                 # Call the parent's method and update ROS param as necessary
                 # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
                 status, err_str = self.setAutoAdjustCb(new_auto)
-                if status is True:
-                    rospy.set_param('~idx/auto', new_auto)
-                    self.status_msg.auto = new_auto
-                else:
-                    rospy.logerr("Failed to update brightness: " + err_str)
+                if status is False:
+                    rospy.logerr("Failed to update auto_adjust: " + err_str)
             else:
                 # Use post processing
+                rospy.loginfo("Using Auto Adjust post processing")
+                status = True
+            if status is True:
+                rospy.loginfo("Udpating local status")
                 rospy.set_param('~idx/auto', new_auto)
                 self.status_msg.auto = new_auto
+                if new_auto:
+                    # Reset brightness, contrast, and threshold
+                    rospy.set_param('~idx/brightness', self.init_brightness)
+                    self.status_msg.brightness = self.init_brightness
+                    
+                    rospy.set_param('~idx/contrast', self.init_contrast)
+                    self.status_msg.contrast = self.init_contrast
+                    
+                    rospy.set_param('~idx/thresholding', self.init_thresholding)
+                    self.status_msg.thresholding = self.init_thresholding
         self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
 
     def setBrightness(self, msg):
         new_brightness = msg.data
+        status = False
         if (new_brightness < 0.0 or new_brightness > 1.0):
             rospy.logerr("Brightness value out of bounds")
             self.updateAndPublishStatus(do_updates=False) # No change
@@ -134,19 +150,19 @@ class ROSIDXSensorIF:
                     # Call the parent's method and update ROS param as necessary
                     # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
                     status, err_str = self.setBrightnessCb(new_brightness)
-                    if status is True:
-                        rospy.set_param('~idx/brightness', new_brightness)
-                        self.status_msg.brightness = new_brightness
-                    else:
+                    if status is False:
                         rospy.logerr("Failed to update brightness: " + err_str)
                 else:
                     # Use post processing
+                    status = True
+                if status is True:
                     rospy.set_param('~idx/brightness', new_brightness)
                     self.status_msg.brightness = new_brightness
             self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
     def setContrast(self, msg):
         new_contrast = msg.data
+        status = False
         if (new_contrast < 0.0 and new_contrast != -1.0) or (new_contrast > 1.0):
             rospy.logerr("Contrast value out of bounds")
             self.updateAndPublishStatus(do_updates=False) # No change
@@ -159,13 +175,12 @@ class ROSIDXSensorIF:
                     # Call the parent's method and update ROS param as necessary
                     # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
                     status, err_str = self.setContrastCb(new_contrast)
-                    if status is True:
-                        rospy.set_param('~idx/contrast', new_contrast)
-                        self.status_msg.contrast = new_contrast
-                    else:
+                    if status is False:
                         rospy.logerr("Failed to update contrast: " + err_str)
                 else:
                     # Use post processing
+                    status = True
+                if status is True:
                     rospy.set_param('~idx/contrast', new_contrast)
                     self.status_msg.contrast = new_contrast
             self.updateAndPublishStatus(do_updates=False) # Updated inline here
@@ -174,6 +189,7 @@ class ROSIDXSensorIF:
 
     def setThresholding(self, msg):
         new_thresholding = msg.data
+        status = False
         if (new_thresholding < 0.0 or new_thresholding > 1.0):
             rospy.logerr("Thresholding value out of bounds")
             self.updateAndPublishStatus(do_updates=False) # No change
@@ -186,63 +202,58 @@ class ROSIDXSensorIF:
                     # Call the parent's method and update ROS param as necessary
                     # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
                     status, err_str = self.setThresholdingCb(new_thresholding)
-                    if status is True:
-                        rospy.set_param('~idx/thresholding', new_thresholding)
-                        self.status_msg.thresholding = new_thresholding
-                    else:
+                    if status is False:
                         rospy.logerr("Failed to update thresholding: " + err_str)
                 else:
                     # Use post processing
+                    status = True
+                if status is True:
                     rospy.set_param('~idx/thresholding', new_thresholding)
-                    self.status_msg.thresholding = new_thresholding 
+                    self.status_msg.thresholding = new_thresholding
             self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
     def setResolutionMode(self, msg):
         new_resolution = msg.data
+        status = False
         if (new_resolution < 0 or new_resolution > 3):
             rospy.logerr("Resolution mode value out of bounds")
             self.updateAndPublishStatus(do_updates=False) # No change
             return
         else:
             if rospy.get_param('~idx/idx_controls', self.IDX_CONTROLS_ENABLE):
-                if rospy.get_param('~idx/auto', self.AUTO_ADJUST):
-                    pass # Skip updating in automode
-                elif (self.setResolutionModeCb is not None):
+                if (self.setResolutionModeCb is not None):
                     # Call the parent's method and update ROS param as necessary
                     # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
                     status, err_str = self.setResolutionModeCb(new_resolution)
-                    if status is True:
-                        rospy.set_param('~idx/resolution_mode', new_resolution)
-                        self.status_msg.resolution_mode = new_resolution
-                    else:
+                    if status is False:
                         rospy.logerr("Failed to update resolution: " + err_str)
                 else:
                     # Use post processing
+                    status = True
+                if status is True:
                     rospy.set_param('~idx/resolution_mode', new_resolution)
                     self.status_msg.resolution_mode = new_resolution
             self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
     def setFramerateMode(self, msg):
         new_framerate = msg.data
+        status = False
         if (new_framerate < 0 or new_framerate > 3):
             rospy.logerr("Framerate mode value out of bounds")
             self.updateAndPublishStatus(do_updates=False) # No change
             return
         else:
             if rospy.get_param('~idx/idx_controls', self.IDX_CONTROLS_ENABLE):
-                if rospy.get_param('~idx/auto', self.AUTO_ADJUST):
-                    pass # Skip updating in automode
-                elif (self.setResolutionModeCb is not None):
+                if (self.setResolutionModeCb is not None):
                     # Call the parent's method and update ROS param as necessary
                     # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
                     status, err_str = self.setFramerateModeCb(new_framerate)
-                    if status is True:
-                        rospy.set_param('~idx/framerate_mode', new_framerate)
-                        self.status_msg.framerate_mode = new_framerate
-                    else:
+                    if status is False:
                         rospy.logerr("Failed to update framerate: " + err_str)
                 else:
                     # Use post processing
+                    status = True
+                if status is True:
                     rospy.set_param('~idx/framerate_mode', new_framerate)
                     self.status_msg.framerate_mode = new_framerate
             self.updateAndPublishStatus(do_updates=False) # Updated inline here
@@ -257,7 +268,8 @@ class ROSIDXSensorIF:
     def updateFromParamServer(self):
         param_dict = rospy.get_param('~idx', {})
         #rospy.logwarn("Debugging: param_dict = " + str(param_dict))
-        
+        if (self.setAutoAdjustCb is not None and 'auto' in param_dict):
+            self.setAutoAdjustCb(param_dict['auto'])
         if (self.setBrightnessCb is not None and 'brightness' in param_dict):
             self.setBrightnessCb(param_dict['brightness'])
         if (self.setContrastCb is not None and 'contrast' in param_dict):
@@ -276,8 +288,9 @@ class ROSIDXSensorIF:
     def provide_capabilities(self, _):
         return self.capabilities_report
            
-    def __init__(self, sensor_name, setResolutionModeCb=None, setFramerateModeCb=None, setContrastCb=None, 
-                 setBrightnessCb=None, setThresholdingCb=None, setAutoAdjustCb=None, setRangeCb=None, 
+    def __init__(self, sensor_name, setAutoAdjustCb=None,
+                 setContrastCb=None, setBrightnessCb=None, setThresholdingCb=None,
+                 setResolutionModeCb=None, setFramerateModeCb=None, setRangeCb=None, 
                  getColor2DImgCb=None, stopColor2DImgAcquisitionCb=None, 
                  getGrayscale2DImgCb=None, stopGrayscale2DImgAcquisitionCb=None,
                  getDepthMapCb=None, stopDepthMapAcquisitionCb=None, 
@@ -302,7 +315,8 @@ class ROSIDXSensorIF:
         rospy.Subscriber('~idx/reset_controls', Empty, self.resetControlsCb, queue_size=1)
 
         rospy.Subscriber('~idx/set_idx_controls_enable', Bool, self.setIDXControlsEnable, queue_size=1)
-        self.init_idx_controls_enable = rospy.get_param('~idx/idx_controls', self.IDX_CONTROLS_ENABLE)
+        self.init_idx_controls = rospy.get_param('~idx/idx_controls', self.IDX_CONTROLS_ENABLE)
+        rospy.set_param('~idx/idx_controls', self.init_idx_controls)
 
         self.setAutoAdjustCb = setAutoAdjustCb
         rospy.Subscriber('~idx/set_auto_adjust', Bool, self.setAutoAdjust, queue_size=1)
@@ -438,7 +452,7 @@ class ROSIDXSensorIF:
 
         # Set up additional publishers
         self.status_msg = IDXStatus()
-        self.status_pub = rospy.Publisher('~idx/status', IDXStatus, queue_size=5, latch=True)
+        self.status_pub = rospy.Publisher('~idx/status', IDXStatus, queue_size=1, latch=True)
 
         # Set up the save data and save cfg i/f -- Do this before launching threads so that they can check data_product_should_save() immediately
         self.save_data_if = SaveDataIF(data_product_names = data_products)
@@ -486,7 +500,7 @@ class ROSIDXSensorIF:
                                 cv2_img = nepi_img.adjust_sharpness(cv2_img, threshold_ratio)
                         else:
                             if self.setAutoAdjustCb is None:
-                                cv2_img = nepi_img.adjust_auto(cv2_img, 0.5)
+                                cv2_img = nepi_img.adjust_auto(cv2_img, 0.3)
                             
                         if self.setFramerateModeCb is None:
                             framerate_mode = rospy.get_param('~idx/framerate_mode', self.PP_FRAMERATE_MODE) 
@@ -596,6 +610,8 @@ class ROSIDXSensorIF:
         if do_updates is True:
             # TODO: Probably these should be queried from the parent (and through the driver) via explicit callbacks rather than via the param server
             idx_params = rospy.get_param('~idx')
+            self.status_msg.idx_controls = idx_params['idx_controls'] if 'idx_controls' in idx_params else 0
+            self.status_msg.auto = idx_params['auto'] if 'auto' in idx_params else 0
             self.status_msg.resolution_mode = idx_params['resolution_mode'] if 'resolution_mode' in idx_params else 0
             self.status_msg.framerate_mode = idx_params['framerate_mode'] if 'framerate_mode' in idx_params else 0
             self.status_msg.contrast = idx_params['contrast'] if 'contrast' in idx_params else 0
