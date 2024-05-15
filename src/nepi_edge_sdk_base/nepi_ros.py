@@ -13,7 +13,8 @@
 # 1) ROS Node utility functions
 # 2) ROS Topic utility functions
 # 3) NEPI ROS Script utility functions
-# 4) Misc helper functions
+# 4) NEPI Settings utility functions
+# 5) Misc helper functions
 
   
 import os
@@ -261,6 +262,8 @@ def stop_scripts(script_list,stop_script_service,get_installed_scripts_service,g
     rospy.loginfo("Failed to get installed and running script list")
   #running_scripts = get_running_scripts()
   #rospy.loginfo(running_scripts)
+
+
 
 #########################
 ### Misc Helper Functions

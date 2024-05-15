@@ -13,7 +13,7 @@ import rospy
 from cv_bridge import CvBridge
 import cv2
 
-from std_msgs.msg import UInt8, Float32, Bool, Empty
+from std_msgs.msg import UInt8, Float32, Bool, Empty, String
 from sensor_msgs.msg import Image, PointCloud2
 
 from nepi_edge_sdk_base.save_data_if import SaveDataIF
@@ -29,6 +29,7 @@ class ROSIDXSensorIF:
     AUTO_ADJUST = False
     RESOLUTION_MODE_MAX = 3 # LOW, MED, HIGH, MAX
     FRAMERATE_MODE_MAX = 3 # LOW, MED, HIGH, MAX
+    SETTINGS_STATE_LIST = []
     
     # Default Factory Values for Post Processing
     PP_AUTO_ADJUST = False
@@ -84,6 +85,13 @@ class ROSIDXSensorIF:
         rospy.set_param('~idx/framerate_mode', self.init_framerate)
         self.status_msg.framerate_mode = self.init_framerate
 
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+
+
+    def updateSettings(self,msg):
+        new_settings = msg.data
+        rospy.set_param('~idx/settings', new_settings)
+        self.status_msg.settings_states = new_settings
         self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
     def setIDXControlsEnable(self, msg):
@@ -268,6 +276,8 @@ class ROSIDXSensorIF:
     def updateFromParamServer(self):
         param_dict = rospy.get_param('~idx', {})
         #rospy.logwarn("Debugging: param_dict = " + str(param_dict))
+        if (self.updateSettingsCb is not None and 'settings' in param_dict):
+            self.updateSettingsCb(param_dict['settings'])
         if (self.setAutoAdjustCb is not None and 'auto' in param_dict):
             self.setAutoAdjustCb(param_dict['auto'])
         if (self.setBrightnessCb is not None and 'brightness' in param_dict):
@@ -288,7 +298,8 @@ class ROSIDXSensorIF:
     def provide_capabilities(self, _):
         return self.capabilities_report
            
-    def __init__(self, sensor_name, setAutoAdjustCb=None,
+    def __init__(self, sensor_name, 
+                 setAutoAdjustCb=None,
                  setContrastCb=None, setBrightnessCb=None, setThresholdingCb=None,
                  setResolutionModeCb=None, setFramerateModeCb=None, setRangeCb=None, 
                  getColor2DImgCb=None, stopColor2DImgAcquisitionCb=None, 
@@ -308,9 +319,38 @@ class ROSIDXSensorIF:
 
         self.capabilities_report = IDXCapabilitiesQueryResponse()
 
+        #************************************ new settings testing
+        
+        self.settings_options = ["TestDiscrete","Discrete","Option_1","Option_2","Option_3","Option_4",
+  			"TestString","String",
+  			"TestBool","Bool",
+  			"TestInt","Int","0","100",
+  			"TestFloat","Float"]
+
+        self.updateSettingsCb = None
+        
+
+
+        self.capabilities_report.settings_options = str(self.settings_options)
+       
+
+        self.settings_state_list = ["TestDiscrete","Discrete","Option_1",
+  			"TestString","String","InitString",
+  			"TestBool","Bool","True",
+  			"TestInt","Int","5",
+  			"TestFloat","Float","3.14"]   
+
+        rospy.Subscriber('~idx/update_settings', String, self.updateSettings, queue_size=1)
+        self.init_settings_state = rospy.get_param('~idx/settings', self.settings_state_list)
+        rospy.set_param('~idx/settings', self.init_settings_state )
+        #************************************ new settings testing
+
         # Set up standard IDX parameters with ROS param and subscriptions
         # Defer actually setting these on the camera via the parent callbacks... the parent may need to do some 
         # additional setup/calculation first. Parent can then get these all applied by calling updateFromParamServer()
+
+        
+        
 
         rospy.Subscriber('~idx/reset_controls', Empty, self.resetControlsCb, queue_size=1)
 
@@ -610,6 +650,9 @@ class ROSIDXSensorIF:
         if do_updates is True:
             # TODO: Probably these should be queried from the parent (and through the driver) via explicit callbacks rather than via the param server
             idx_params = rospy.get_param('~idx')
+            rospy.loginfo("IDX settings state string")
+            rospy.loginfo(str(idx_params['settings']))
+            self.status_msg.settings_states = str(idx_params['settings']) if 'settings' in idx_params else ""
             self.status_msg.idx_controls = idx_params['idx_controls'] if 'idx_controls' in idx_params else 0
             self.status_msg.auto = idx_params['auto'] if 'auto' in idx_params else 0
             self.status_msg.resolution_mode = idx_params['resolution_mode'] if 'resolution_mode' in idx_params else 0
