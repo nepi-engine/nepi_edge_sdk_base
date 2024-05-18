@@ -17,6 +17,7 @@ import rospy
 #########################
 ### NEX Driver Settings Helper Functions
 
+
 SETTING_TYPES = ["Discrete","String","Bool","Int","Float"]
 
 NONE_SETTINGS = [["None","None","None"]]
@@ -61,7 +62,7 @@ def parse_settings_msg_data(msg_data):
   msg_string_list = eval(msg_data)
   setting = []
   settings = []
-  if len(msg_string_list) >= 3:
+  if len(msg_string_list) >= 2:
     for string in msg_string_list:
       if string in SETTING_TYPES:
         if setting != []:
@@ -74,76 +75,114 @@ def parse_settings_msg_data(msg_data):
       settings.append(setting) # Update last
   return(settings)
 
-def filter_settings_by_type(settings,type_str):
-  settings_of_type = []
-  for setting in settings:
-    if len(setting) > 1:
-      if setting[0] == type_str :
-        settings_of_type.append(setting)
-  return settings_of_type
+def create_new_settings():
+  return []
 
-def check_setting_in_settings(setting_to_check,settings):
-  s_name = setting_to_check[1]
-  s_type = setting_to_check[0]
-  s_value = setting_to_check[2]
-  name_match = False
-  type_match = False
-  value_match = False
-  for setting in settings:
-    if setting[1] == s_name:
-      name_match = True
-      if setting[0] == s_type:
-        type_match = True
-      if setting[2] == s_value:
-        value_match = True
-      return name_match, type_match, value_match
-      break
-  return name_match, type_match, value_match
 
 def get_setting_from_settings(s_name,settings):
   for setting in settings:
     if setting[1] == s_name:
       return setting
       break
-  return []
+  return None
+
+def create_setting(s_name,s_type,s_values = [None]):
+  setting = None
+  if type_s in SETTING_TYPES:
+    setting = [s_type,s_name]
+    if isinstance(s_value,list):
+      if s_value is not None:
+        for value in s_values:
+          settings.append(value)
+      elif isinstance(s_values,str):
+          setting.append(s_values)
+  return setting
+
+def add_setting_to_settings(setting,settings=[]):
+  if len(setting) > 1:
+    settings.append(setting)
+  return settings
+
+def remove_setting_from_settings(setting,settings):
+  updated_settings = []
+  for check_setting in settings:
+    if setting[0] != check_setting[0]:
+      updated_settings.append(settings)
+  return updated_settings
+
 
 def get_setting_as_str(setting):  
   s_str = (setting[0] + ',' + setting[1] + "," + setting[2])
   return s_str
 
-def get_value_from_setting(setting):
+
+def get_name_str_from_setting(s_name,setting):
+  s_name = None
+  if len(setting)>2:
+    s_name = setting[1]
+  return s_name
+
+def get_type_str_from_setting(s_name,setting):
+  s_type = None
+  if len(setting)>2:
+    s_type = setting[0]
+  return s_type
+
+def get_value_str_from_setting(s_name,setting):
+  s_value = None
+  if len(setting)>2:
+    s_value = setting[2]
+  return s_value
+
+def get_options_from_cap_setting(s_name,setting):
+  value = None
+  if len(setting)>2:
+    value = setting[2:]
+  return value
+
+def get_data_from_setting(setting):
   s_str = get_setting_as_str(setting)
   status = None
-  value = None
+  data = None
   if len(setting) == 3:
     if setting[0] != None and setting[2] != None:
       s_name = setting[1]
       s_type = setting[0]
       s_value = setting[2]
-      value = None
       try:
         if s_type == "Bool":
-          value = bool(s_value)
+          data = bool(s_value)
         elif s_type == "Int":
-          value = int(s_value)
+          data = int(s_value)
         elif s_type == "Float":
-          value = float(s_value)
+          data = float(s_value)
         elif s_type == "String":
-          value = str(s_value)
+          data = str(s_value)
         elif s_type == "Discrete":
-          value = str(s_value)
+          data = str(s_value)
       except Exception as e:
         rospy.loginfo("Setting conversion failed for setting " + s_str + "with exception" + str(e) )
   return value
 
-def get_value_from_settings(s_name,settings):
-  value = None
-  if settings != [[]]:
-    for setting in settings:
-      if setting[1] == s_name:
-        value = setting[2]
-  return value
-  
+
+def compare_setting_in_settings(setting,settings):
+  s_name = setting[1]
+  s_type = setting[0]
+  s_value = setting[2]
+  name_match = False
+  type_match = False
+  value_match = False
+  for check_setting in settings:
+    if check_setting[1] == s_name:
+      name_match = True
+      if check_setting[0] == s_type:
+        type_match = True
+      if check_setting[2] == s_value:
+        value_match = True
+      return name_match, type_match, value_match
+      break
+  return name_match, type_match, value_match
+
 def check_valid_setting(setting,cap_settings):
   valid= False
   for cap_setting in cap_settings: # Check for valid option in capabilities string setting
@@ -208,6 +247,15 @@ def try_to_update_setting(setting_to_update,settings,cap_settings,update_setting
   else:
     rospy.loginfo("Failed to update setting: " + s_str + " No update function provided")
   return updated_settings, success
+
+
+def filter_settings_by_type(settings,type_str):
+  settings_of_type = []
+  for setting in settings:
+    if len(setting) > 1:
+      if setting[0] == type_str :
+        settings_of_type.append(setting)
+  return settings_of_type
 
 def sort_settings_alphabetically(settings,setting_ind_to_sort):
   if len(settings) > 1:
