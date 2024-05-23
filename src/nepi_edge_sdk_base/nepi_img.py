@@ -36,7 +36,7 @@ from nepi_edge_sdk_base import nepi_ros
 ###########################################
 ### Image conversion functions
 
-def rosimg_to_cv2img(ros_img_msg):
+def rosimg_to_cv2img(ros_img_msg, encoding = 'passthrough'):
   """ Convert image from ROS to OpenCV
 
   Args: 
@@ -46,11 +46,11 @@ def rosimg_to_cv2img(ros_img_msg):
       cv2_image (cv2.mat): OpenCV Mat Image
   """
   bridge = CvBridge()
-  cv2_image = bridge.imgmsg_to_cv2(ros_img_msg, "bgr8")
+  cv2_image = bridge.imgmsg_to_cv2(ros_img_msg, desired_encoding = encoding)
   return cv2_image
     
     
-def cv2img_to_rosimg(cv2_image):
+def cv2img_to_rosimg(cv2_image, encoding='passthrough'):
   """ Convert image from OpenCV to ROS
 
   Args: 
@@ -61,7 +61,7 @@ def cv2img_to_rosimg(cv2_image):
   """
 
   bridge = CvBridge()
-  ros_img_msg = bridge.cv2_to_imgmsg(cv2_image,"bgr8")#desired_encoding='passthrough')
+  ros_img_msg = bridge.cv2_to_imgmsg(cv2_image, encoding = encoding)
   return ros_img_msg
     
 ###########################################
@@ -75,37 +75,48 @@ def cv2img_to_rosimg(cv2_image):
 
 ###########################################
 ### Image process functions
-
+def isgray(cv2_img):
+    if len(cv2_img.shape) < 3:
+      return True
+    else:
+      return False
 
 def adjust_auto(cv2_image, sensitivity_ratio = 0.5):    
   # Apply Image Enhancment
   cv2_image.setflags(write=1)
   # Apply threshold filter
   cv2_image=adjust_sharpness(cv2_image, sensitivity_ratio = 0.2)
-  # Color Correction optimization
-  Max=[0,0,0]
-  for k in range(0, 3):
-    Max[k] = np.max(cv2_image[:,:,k])
-  Min_Max_channel  = np.min(Max)
-  for k in range(0, 3):
-    Max_channel  = np.max(cv2_image[:,:,k])
-    Min_channel  = np.min(cv2_image[:,:,k])
-    Mean_channel = np.mean(cv2_image[:,:,k])
-    Chan_scale = (255 - Mean_channel) / (Max_channel - Min_channel)
-    if Chan_scale < 1:
-      Chan_scale = 1 - (1-Chan_scale)*(255-Min_Max_channel)/170
-    elif Chan_scale > 1:
-      Chan_scale = 1 + (Chan_scale-1)*(255-Min_Max_channel)/170
-    if Chan_scale > 1*(1+sensitivity_ratio):
-      Chan_scale = 1 *(1+sensitivity_ratio)
-    if Chan_scale < -1*(1+sensitivity_ratio):
-      Chan_scale = -1 *(1+sensitivity_ratio)
-    Chan_offset = -1*Min_channel
-    if Chan_offset < -10 * (1+9*sensitivity_ratio):
-      Chan_offset = -10 * (1+9*sensitivity_ratio)
-  cv2_image[:,:,k] = (cv2_image[:,:,k] + Chan_offset) * Chan_scale   
-  # Contrast and Brightness optimization
-  gray = cv2.cvtColor(cv2_image, cv2.COLOR_BGR2GRAY)
+  #rospy.loginfo("input image shape and type")
+  #rospy.loginfo(cv2_image.shape)
+  if isgray(cv2_image) is True:
+    gray = cv2_image
+  else:
+    # Color Correction optimization
+    Max=[0,0,0]
+    for k in range(0, 3):
+      Max[k] = np.max(cv2_image[:,:,k])
+    Min_Max_channel  = np.min(Max)
+    for k in range(0, 3):
+      Max_channel  = np.max(cv2_image[:,:,k])
+      Min_channel  = np.min(cv2_image[:,:,k])
+      Mean_channel = np.mean(cv2_image[:,:,k])
+      Chan_scale = (255 - Mean_channel) / (Max_channel - Min_channel)
+      if Chan_scale < 1:
+        Chan_scale = 1 - (1-Chan_scale)*(255-Min_Max_channel)/170
+      elif Chan_scale > 1:
+        Chan_scale = 1 + (Chan_scale-1)*(255-Min_Max_channel)/170
+      if Chan_scale > 1*(1+sensitivity_ratio):
+        Chan_scale = 1 *(1+sensitivity_ratio)
+      if Chan_scale < -1*(1+sensitivity_ratio):
+        Chan_scale = -1 *(1+sensitivity_ratio)
+      Chan_offset = -1*Min_channel
+      if Chan_offset < -10 * (1+9*sensitivity_ratio):
+        Chan_offset = -10 * (1+9*sensitivity_ratio)
+    cv2_image[:,:,k] = (cv2_image[:,:,k] + Chan_offset) * Chan_scale   
+    # Contrast and Brightness optimization
+    gray = cv2.cvtColor(cv2_image, cv2.COLOR_BGR2GRAY)
+  #rospy.loginfo("gray image shape and type")
+  #rospy.loginfo(gray.shape)
   # Calculate grayscale histogram
   hist = cv2.calcHist([gray],[0],None,[256],[0,256])
   hist_size = len(hist)

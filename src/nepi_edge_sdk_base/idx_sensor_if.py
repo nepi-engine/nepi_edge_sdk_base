@@ -7,11 +7,14 @@
 #
 # License: 3-clause BSD, see https://opensource.org/licenses/BSD-3-Clause
 #
+import os
 import time
 import threading
 import rospy
+import numpy as np
 from cv_bridge import CvBridge
 import cv2
+import open3d as o3d
 
 from std_msgs.msg import UInt8, Float32, Bool, Empty, String
 from sensor_msgs.msg import Image, PointCloud2
@@ -23,16 +26,17 @@ from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
 from nepi_ros_interfaces.msg import IDXStatus, RangeWindow
 from nepi_ros_interfaces.srv import IDXCapabilitiesQuery, IDXCapabilitiesQueryResponse, NavPoseCapabilitiesQuery, NavPoseCapabilitiesQueryResponse
 
-from nepi_edge_sdk_base import nepi_img
 from nepi_edge_sdk_base import nepi_nex
+from nepi_edge_sdk_base import nepi_img
+from nepi_edge_sdk_base import nepi_pc
 
 class ROSIDXSensorIF:
     # Default Global Values
-
     RESOLUTION_MODE_MAX = 3 # LOW, MED, HIGH, MAX
     FRAMERATE_MODE_MAX = 3 # LOW, MED, HIGH, MAX
     SETTINGS_STATE_LIST = []
     UPDATE_NAVPOSE_RATE_HZ = 20
+    CHECK_DATA_SAVE_RATE_HZ = 40
     
     # Backup Factory Control Values 
     FACTORY_CONTROLS = dict( controls_enable = True,
@@ -43,9 +47,12 @@ class ROSIDXSensorIF:
         resolution_mode = 1, # LOW, MED, HIGH, MAX
         framerate_mode = 1, # LOW, MED, HIGH, MAX
         start_range_ratio = 0.0,
-        stop_ranage_ratio = 1.0,
+        stop_range_ratio = 1.0,
         min_range_m = 0.0,
-        max_range_m = 1.0 
+        max_range_m = 1.0,
+        zoom_ratio = 0.5, 
+        rotate_ratio = 0.5,
+        frame_3d = 'nepi_center_frame'
     )
 
     # Define class variables
@@ -59,28 +66,72 @@ class ROSIDXSensorIF:
     init_framerate_mode = None
     init_min_range = None
     init_max_range = None
+    init_frame_3d = None
+    init_zoom_ratio = None
+    inti_zoom_ratio = None
 
     caps_settings = None
     factory_settings = None
-    current_settings = None
     init_settings = None
     update_settings_function = None
+    data_products = []
 
+    save_data_if = None
+    save_cfg_if = None
 
+    update_navpose_interval_sec = float(1)/UPDATE_NAVPOSE_RATE_HZ
+    check_data_save_interval_sec = float(1)/CHECK_DATA_SAVE_RATE_HZ
 
-    def resetSensorCb(self, msg):
+    def resetFactoryCb(self, msg):
         rospy.loginfo(msg)
-        rospy.loginfo("Resetting IDX and Sensor Controls")
-        self.resetSensor()
+        rospy.loginfo("Factory Resetting IDX Sensor Controls")
+        self.resetFactory()
 
-    def resetSensor(self):
-        #************************************ new settings testing
-        self.updateSettings(self.init_settings)
-        #************************************ new settings testing
+    def resetFactory(self):
+        rospy.set_param('~idx/auto', self.factory_controls.get(auto_adjust))
+        self.status_msg.auto_adjust = self.factory_controls.get(auto_adjust)
+        
+        rospy.set_param('~idx/brightness', self.factory_controls.get(brightness_ratio))
+        self.status_msg.brightness = self.factory_controls.get(brightness_ratio)
+        
+        rospy.set_param('~idx/contrast', self.factory_controls.get(contrast_ratio))
+        self.status_msg.contrast = self.factory_controls.get(contrast_ratio)
+        
+        rospy.set_param('~idx/thresholding', self.factory_controls.get(threshold_ratio))
+        self.status_msg.thresholding = self.factory_controls.get(threshold_ratio)
+        
+        rospy.set_param('~idx/resolution_mode', self.factory_controls.get(resolution_mode))
+        self.status_msg.resolution_mode = self.factory_controls.get(resolution_mode)
+        
+        rospy.set_param('~idx/framerate_mode', self.factory_controls.get(framerate_mode))
+        self.status_msg.framerate_mode = self.factory_controls.get(framerate_mode)
 
-        rospy.set_param('~idx/controls_enable', self.init_controls_enable)
-        self.status_msg.controls_enable = self.init_controls_enable
+        rospy.set_param('~idx/range_window/start_range_ratio', self.factory_controls.get(start_range_ratio))
+        rospy.set_param('~idx/range_window/stop_range_ratio', self.factory_controls.get(stop_range_ratio))
+        self.status_msg.min_range_m = self.factory_controls.get(min_range_m)
+        self.status_msg.max_range_m = self.factory_controls.get(max_range_m)
+        
+        rospy.set_param('~idx/zoom', self.factory_controls.get(zoom_ratio))
+        self.status_msg.zoom = self.factory_controls.get(zoom_ratio)
 
+        rospy.set_param('~idx/rotate', self.factory_controls.get(rotate_ratio))
+        self.status_msg.rotate = self.factory_controls.get(rotate_ratio)
+
+        rospy.set_param('~idx/frame_3d', self.factory_controls.get(frame_3d))
+        self.status_msg.frame_3d = self.factory_controls.get(frame_3d)
+
+        self.updateSettings(self.factory_settings)
+
+        self.updateFromParamServer()
+
+
+
+    def resetControlsCb(self, msg):
+        rospy.loginfo(msg)
+        rospy.loginfo("Resetting IDX Sensor Controls")
+        self.resetControls()
+
+    def resetControls(self):
         rospy.set_param('~idx/auto', self.init_auto_adjust)
         self.status_msg.auto_adjust = self.init_auto_adjust
         
@@ -99,7 +150,30 @@ class ROSIDXSensorIF:
         rospy.set_param('~idx/framerate_mode', self.init_framerate_mode)
         self.status_msg.framerate_mode = self.init_framerate_mode
 
-        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+        rospy.set_param('~idx/range_window/start_range_ratio', self.init_start_range_ratio)
+        rospy.set_param('~idx/range_window/stop_range_ratio', self.init_stop_range_ratio)
+        self.status_msg.min_range_m = self.init_min_range_m
+        self.status_msg.max_range_m = self.init_max_range_m
+        
+        rospy.set_param('~idx/zoom', self.init_zoom_ratio)
+        self.status_msg.zoom = self.init_zoom_ratio
+    
+        rospy.set_param('~idx/rotate', self.init_rotate_ratio)
+        self.status_msg.rotate = self.init_rotate_ratio
+
+        rospy.set_param('~idx/frame_3d', self.init_frame_3d)
+        self.status_msg.frame_3d = self.init_frame_3d
+
+        self.updateFromParamServer()
+
+    def resetSettingsCb(self, msg):
+        rospy.loginfo(msg)
+        rospy.loginfo("Resetting IDX Sensor Settings")
+        self.resetSettings()
+
+    def resetSettings(self):
+        self.updateSettings(self.init_settings)
+        self.updateFromParamServer()
 
 #************************************ new settings testing
     def updateSettingsCb(self,msg):
@@ -109,19 +183,27 @@ class ROSIDXSensorIF:
 
 
     def updateSettings(self,new_settings):
-        if self.update_settings_function != None:
-            for setting in new_settings:
-                [name_match,type_match,value_match] = nepi_nex.compare_setting_in_settings(setting,self.current_settings)
-                if not value_match: # name_match would be true for value_match to be true
-                    rospy.loginfo("Will try to update setting " + str(setting))
-                    [self.current_settings,success] = nepi_nex.try_to_update_setting(setting,self.current_settings,self.cap_settings,self.update_settings_function)
-            rospy.set_param('~idx/settings', self.current_settings)
-            self.current_settings = nepi_nex.sort_settings_alphabetically(self.current_settings,1)
-            settings_msg = nepi_nex.create_msg_data_from_settings(self.current_settings)
+        success = False
+        if self.getCurrentSettings() is not None:
+            current_settings =  self.getCurrentSettings()
+            current_settings= nepi_nex.sort_settings_alphabetically(current_settings,1)
+            if self.update_settings_function != None:
+                for setting in new_settings:
+                    [name_match,type_match,value_match] = nepi_nex.compare_setting_in_settings(setting,current_settings)
+                    if not value_match: # name_match would be true for value_match to be true
+                        rospy.loginfo("Will try to update setting " + str(setting))
+                        [current_settings,success] = nepi_nex.try_to_update_setting(setting,current_settings,self.cap_settings,self.update_settings_function)
+                rospy.set_param('~idx/settings', current_settings)
+                current_settings = nepi_nex.sort_settings_alphabetically(current_settings,1)
+            else:
+                rospy.loginfo("Settings updates ignored. No settings update function defined ")
+            settings_msg = nepi_nex.create_msg_data_from_settings(current_settings)
             self.status_msg.settings_states = settings_msg 
             self.updateAndPublishStatus(do_updates=False) # Updated inline here
         else:
-            rospy.loginfo("Settings updates ignored. No settings update function defined ")
+            rospy.loginfo("Skipping settings update request. getCurrentSettings function not defined")
+        return success
+
 #************************************ new settings testing
 
     # Define local IDX Control callbacks
@@ -136,6 +218,7 @@ class ROSIDXSensorIF:
             if status is True:
                 rospy.set_param('~idx/controls_enable', new_controls_enable)
                 self.status_msg.controls_enable = new_controls_enable
+                self.updateAndPublishStatus(do_updates=False) # Updated inline here
                 if new_controls_enable:
                     rospy.loginfo("Enabling IDX Controls")
                 else:
@@ -150,10 +233,10 @@ class ROSIDXSensorIF:
                     rospy.set_param('~idx/thresholding', self.factory_controls["threshold_ratio"])
                     self.status_msg.thresholding = self.factory_controls["threshold_ratio"]
 
-                    self.resetSensor()
+                    self.updateFromParamServer()
         else:
             rospy.loginfo("Ignoring set controls_enable.  Driver has no setControlsEnable function")
-        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+            self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
             
     def setAutoAdjustCb(self, msg):
@@ -307,51 +390,95 @@ class ROSIDXSensorIF:
 
  
     def setRangeCb(self, msg):
-        new_start_range = msg.range_window.start_range
-        new_stop_range = msg.range_window.stop_range
+        rospy.loginfo(msg)
+        new_start_range_ratio = msg.start_range
+        new_stop_range_ratio = msg.stop_range
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
             rospy.loginfo("Ignoring Set Range request. Controls disabled")    
         else: 
             if self.setRange is None:
                 rospy.loginfo("Ignoring Set Range. Driver has no setRange function")
             else:
-                if (new_start_range >= 0 and new_stop_range <= 1 and new_stop_range < new_start_range):
+                if (new_start_range_ratio < 0 or new_stop_range_ratio > 1 or new_stop_range_ratio < new_start_range_ratio):
                     rospy.logerr("Range values out of bounds")
                     self.updateAndPublishStatus(do_updates=False) # No change
                     return
                 else:
                     # Call the parent's method and update ROS param as necessary
                     # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
-                    status, err_str = self.setRange(new_min_range,new_max_range)
+                    status, err_str = self.setRange(new_start_range_ratio,new_stop_range_ratio)
                     if status is True:
-                        rospy.set_param('~idx/range_window/startRange', new_start_range)
-                        rospy.set_param('~idx/range_window/startRange', new_stop_range)
-                        self.status_msg.range_window.start_range = new_start_range
-                        self.status_msg.range_window.stop_range = new_stop_range
+                        rospy.set_param('~idx/range_window/start_range_ratio', new_start_range_ratio)
+                        rospy.set_param('~idx/range_window/stop_range_ratio', new_stop_range_ratio)
+                        self.status_msg.range_window.start_range = new_start_range_ratio
+                        self.status_msg.range_window.stop_range = new_stop_range_ratio
                     else:
                         rospy.logerr("Failed to update framerate: " + err_str)
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here       
+
+    def setZoomCb(self, msg):
+        new_zoom = msg.data
+        if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
+            rospy.loginfo("Ignoring Set Zoom request. Controls disabled")
+        else:
+            if self.setZoom is None:
+                rospy.loginfo("Ignoring Set Zoom. Driver has no setZoom function")
+            else:
+                if (new_zoom < 0.0 and new_zoom != -1.0) or (new_zoom > 1.0):
+                    rospy.logerr("Zoom value out of bounds")
+                    self.updateAndPublishStatus(do_updates=False) # No change
+                    return
+                else:
+                    # Call the parent's method and update ROS param as necessary
+                    # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
+                    status, err_str = self.setZoom(new_zoom)
+                    if status is True:
+                        rospy.set_param('~idx/zoom', new_zoom)
+                        self.status_msg.zoom = new_zoom
+                    else:
+                        rospy.logerr("Failed to update Zoom: " + err_str)
         self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
-        
-    def pubNavposeCb(self,timer):
-        if self.getGPSMsg != None:
-            self.idx_navpose_gps_pub.publish(self.getGPSMsg())
-    
-        if self.getOdomMsg != None:
-            self.idx_navpose_odom_pub.publish(self.getOdomMsg())
+    def setRotateCb(self, msg):
+        new_rotate = msg.data
+        if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
+            rospy.loginfo("Ignoring Set Rotate request. Controls disabled")
+        else:
+            if self.setRotate is None:
+                rospy.loginfo("Ignoring Set Rotate. Driver has no setRotate function")
+            else:
+                if (new_rotate < 0.0 and new_rotate != -1.0) or (new_rotate > 1.0):
+                    rospy.logerr("Rotate value out of bounds")
+                    self.updateAndPublishStatus(do_updates=False) # No change
+                    return
+                else:
+                    # Call the parent's method and update ROS param as necessary
+                    # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
+                    status, err_str = self.setRotate(new_rotate)
+                    if status is True:
+                        rospy.set_param('~idx/rotate', new_rotate)
+                        self.status_msg.rotate = new_rotate
+                    else:
+                        rospy.logerr("Failed to update Rotate: " + err_str)
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here    
 
-        if self.getHeadingMsg != None:
-            self.idx_navpose_gps_pub.publish(self.getHeadingMsg())            
+
+    def setFrame3dCb(self, msg):
+        new_frame_3d = msg.data
+        self.setFrame3d(new_frame_3d)
+
+    def setFrame3d(self, new_frame_3d):
+        rospy.set_param('~idx/frame_3d', new_frame_3d)
+        self.status_msg.frame_3d = new_frame_3d
    
-
-    def setCurrentSettingsAsDefault(self):
-        pass # We only use the param server, no member variables to apply to param server
 
     def updateFromParamServer(self):
         param_dict = rospy.get_param('~idx', {})
         #rospy.logwarn("Debugging: param_dict = " + str(param_dict))
         if (self.updateSettings is not None and 'settings' in param_dict):
             self.updateSettings(param_dict['settings'])
+        if (self.setControlsEnable is not None and 'controls_enable' in param_dict):
+            self.setControlsEnable(param_dict['controls_enable'])
         if (self.setAutoAdjust is not None and 'auto' in param_dict):
             self.setAutoAdjust(param_dict['auto'])
         if (self.setBrightness is not None and 'brightness' in param_dict):
@@ -365,7 +492,12 @@ class ROSIDXSensorIF:
         if (self.setFramerateMode is not None and 'framerate_mode' in param_dict):
             self.setFramerateMode(param_dict['framerate_mode'])
         if (self.setRange is not None and 'start_range' in param_dict and 'stop_range' in param_dict):
-            self.setRange(param_dict['start_range'], param_dict['stop_range'])
+            self.setRange(param_dict['range_window']['start_range'], param_dict['range_window']['stop_range'])
+        if (self.setZoom is not None and 'zoom' in param_dict):
+            self.setZoom(param_dict['zoom'])
+        if (self.setRotate is not None and 'rotate' in param_dict):
+            self.setRotate(param_dict['rotate'])
+        self.setFrame3d(param_dict['frame_3d'])
 
         self.updateAndPublishStatus()
 
@@ -373,24 +505,27 @@ class ROSIDXSensorIF:
         return self.capabilities_report
     
     def provide_navpose_capabilities(self, _):
-        return self.navpose_capabilities_report
+        return self.navpose_capabilities_report  
+
+    def setCurrentSettingsAsDefault(self):
+        pass # We only use the param server, no member variables to apply to param server
            
-    def __init__(self, sensor_name, factoryControls = None, capSettings=None, 
-                 factorySettings=None, currentSettings=None, settingsUpdateFunction=None, 
-                 setControlsEnable=None, setAutoAdjust=None,
+    def __init__(self, sensor_name, capSettings=None, 
+                 factorySettings=None, settingsUpdateFunction=None, getSettings=None,
+                 factoryControls = None, setControlsEnable=None, setAutoAdjust=None,
                  setContrast=None, setBrightness=None, setThresholding=None,
-                 setResolutionMode=None, setFramerateMode=None, setRange=None, 
+                 setResolutionMode=None, setFramerateMode=None, 
+                 setRange=None, setZoom=None, setRotate=None,
                  getColor2DImg=None, stopColor2DImgAcquisition=None, 
-                 getGrayscale2DImg=None, stopGrayscale2DImgAcquisition=None,
+                 getBW2DImg=None, stopBW2DImgAcquisition=None,
                  getDepthMap=None, stopDepthMapAcquisition=None, 
                  getDepthImg=None, stopDepthImgAcquisition=None,
                  getPointcloud=None, stopPointcloudAcquisition=None, 
                  getPointcloudImg=None, stopPointcloudImgAcquisition=None,
                  getGPSMsg=None,getOdomMsg=None,getHeadingMsg=None):
         
-        data_products = []
+        
         self.sensor_name = sensor_name
-        self.camera_frame_id = sensor_name + "_frame" # TODO: Configurable?
 
         # Create the CV bridge. Do this early so it can be used in the threading run() methods below 
         # TODO: Need one per image output type for thread safety?
@@ -414,42 +549,26 @@ class ROSIDXSensorIF:
         # Defer actually setting these on the camera via the parent callbacks... the parent may need to do some 
         # additional setup/calculation first. Parent can then get these all applied by calling updateFromParamServer()
 
-        rospy.Subscriber('~idx/reset_sensor', Empty, self.resetSensorCb, queue_size=1) # start local callback
-
         #************************************ new settings testing
         # Initialize Sensor Settings from Node
         if capSettings is None:
             self.cap_settings = nepi_nex.NONE_SETTINGS
+            self.factory_settings = nepi_nex.NONE_SETTINGS
+            self.capabilities_report.settings = False
         else:
             self.cap_settings = capSettings
-
-        if currentSettings is None:
-            self.current_settings = nepi_nex.NONE_SETTINGS
-        else:
-            self.current_settings = current_settings
-
-        if factorySettings is None:
-            self.factory_settings = nepi_nex.NONE_SETTINGS
-        else:
-            self.factory_settings = factorySettings
-
-        if settingsUpdateFunction is None:
-            self.update_settings_function = None
-        else:
-            self.update_settings_function = settingsUpdateFunction
-
-
-        ####  Remove after testing
-        self.cap_settings = nepi_nex.TEST_CAP_SETTINGS ####  Remove after testing
-        self.current_settings = nepi_nex.TEST_SETTINGS ####  Remove after testing
-        self.factory_settings = nepi_nex.TEST_SETTINGS ####  Remove after testing
-        self.update_settings_function = nepi_nex.TEST_UPDATE_FUNCTION_SUCCESS ####  Remove after testing
-        #self.update_settings_function = nepi_nex.TEST_UPDATE_FUNCTION_FAIL ####  Remove after testing
-        #self.update_settings_function = nepi_nex.TEST_UPDATE_FUNCTION_EXEPTION ####  Remove after testing
-        ####  Remove after testing
+            self.capabilities_report.settings = True
+            if factorySettings is None:
+                self.factory_settings = nepi_nex.NONE_SETTINGS
+            else:
+                self.factory_settings = factorySettings   
+            if settingsUpdateFunction is None:
+                self.update_settings_function = None
+            else:
+                self.update_settings_function = settingsUpdateFunction
+        self.getSettings = getSettings
 
         self.cap_settings = nepi_nex.sort_settings_alphabetically(self.cap_settings,1)
-        self.current_settings= nepi_nex.sort_settings_alphabetically(self.current_settings,1)
         self.factory_settings= nepi_nex.sort_settings_alphabetically(self.factory_settings,1)
 
         cap_msg = nepi_nex.create_msg_data_from_settings(self.cap_settings)
@@ -474,9 +593,9 @@ class ROSIDXSensorIF:
         rospy.set_param('~idx/auto', self.init_auto_adjust)
         if setAutoAdjust is not None:
             rospy.Subscriber('~idx/set_auto_adjust', Bool, self.setAutoAdjustCb, queue_size=1) # start local callback
-            self.capabilities_report.has_auto_adjustment = True
+            self.capabilities_report.auto_adjustment = True
         else:
-            self.capabilities_report.has_auto_adjustment = False
+            self.capabilities_report.auto_adjustment = False
        
         self.setBrightness = setBrightness
         self.init_brightness_ratio = rospy.get_param('~idx/brightness',  self.factory_controls["brightness_ratio"])
@@ -525,45 +644,107 @@ class ROSIDXSensorIF:
             self.capabilities_report.adjustable_framerate = False
 
 
+
         self.setRange = setRange
-        self.init_start_range = rospy.get_param('~idx/range_window/start_range',  self.factory_controls[control])
-        rospy.set_param('~idx/range_window/start_range', self.init_start_range)
-        self.init_stop_range = rospy.get_param('~idx/range_window/stop_range', 1.0)
-        rospy.set_param('~idx/range_window/stop_range', self.init_stop_range)
+        self.init_start_range_ratio = rospy.get_param('~idx/range_window/start_range_ratio',  self.factory_controls["start_range_ratio"])
+        rospy.set_param('~idx/range_window/start_range_ratio', self.init_start_range_ratio)
+        self.init_stop_range_ratio = rospy.get_param('~idx/range_window/stop_range_ratio', self.factory_controls["stop_range_ratio"])
+        rospy.set_param('~idx/range_window/stop_range_ratio', self.init_stop_range_ratio)
+        self.init_min_range_m = rospy.get_param('~idx/range_limits/min_range_m',  self.factory_controls["min_range_m"])
+        rospy.set_param('~idx/range_limits/min_range_m', self.init_min_range_m)
+        self.init_max_range_m = rospy.get_param('~idx/range_limits/max_range_m',  self.factory_controls["max_range_m"])
+        rospy.set_param('~idx/range_limits/max_range_m', self.init_max_range_m)
         if setRange is not None:        
             rospy.Subscriber('~idx/set_range_window', RangeWindow, self.setRangeCb, queue_size=1)
             self.capabilities_report.adjustable_range = True
         else:
             self.capabilities_report.adjustable_range = False
-        
-        # Start the data producer threads
+
+
+        self.setZoom = setZoom
+        self.init_zoom_ratio = rospy.get_param('~idx/zoom',  self.factory_controls["zoom_ratio"])
+        rospy.set_param('~idx/zoom', self.init_zoom_ratio)        
+        if setZoom is not None:
+            rospy.Subscriber('~idx/set_zoom', Float32, self.setZoomCb, queue_size=1) # start local callback
+            self.capabilities_report.zoom = True
+        else:
+            self.capabilities_report.zoom = False
+
+        self.setRotate = setRotate
+        self.init_rotate_ratio = rospy.get_param('~idx/rotate',  self.factory_controls["rotate_ratio"])
+        rospy.set_param('~idx/rotate', self.init_rotate_ratio)        
+        if setRotate is not None:
+            rospy.Subscriber('~idx/set_rotate', Float32, self.setRotateCb, queue_size=1) # start local callback
+            self.capabilities_report.rotate = True
+        else:
+            self.capabilities_report.rotate = False
+
+
+        if self.factory_controls["frame_3d"] is None:
+            self.init_frame_3d = rospy.get_param('~idx/frame_3d',  'nepi_center_frame')
+        else:
+            self.init_frame_3d = rospy.get_param('~idx/frame_3d',  self.factory_controls["frame_3d"] )
+        rospy.set_param('~idx/frame_3d', self.init_frame_3d)
+        rospy.Subscriber('~idx/set_frame_3d', String, self.setFrame3dCb, queue_size=1)
+
+
+        rospy.Subscriber('~idx/reset_controls', Empty, self.resetControlsCb, queue_size=1) # start local callback
+        rospy.Subscriber('~idx/reset_settings', Empty, self.resetSettingsCb, queue_size=1) # start local callback
+        rospy.Subscriber('~idx/reset_factory', Empty, self.resetFactoryCb, queue_size=1) # start local callback
+
+ 
+        # Create shared saving variables and locks between Get and Save threads 
+        self.color_img2save = None
+        self.color_img2save_timestamp = None
+        self.color_img2save_lock = threading.Lock()
+        self.bw_img2save = None
+        self.bw_img2save_timestamp = None
+        self.bw_img2save_lock = threading.Lock()
+        self.depth_map2save = None
+        self.depth_map2save_timestamp = None
+        self.depth_map2save_lock = threading.Lock()
+        self.depth_img2save = None
+        self.depth_img2save_timestamp = None
+        self.depth_img2save_lock = threading.Lock()       
+        self.pointcloud_img2save = None
+        self.pointcloud_img2save_timestamp = None
+        self.pointcloud_img2save_lock = threading.Lock()
+        self.pointcloud2save = None
+        self.pointcloud2save_timestamp = None
+        self.pointcloud2save_lock = threading.Lock()        
+        # Start the data producer threads   
+
         self.getColor2DImg = getColor2DImg
         if (self.getColor2DImg is not None):
             self.color_img_pub = rospy.Publisher('~idx/color_2d_image', Image, queue_size=1, tcp_nodelay=True)
-            data_products.append('color_2d_image')
+            self.data_products.append('color_2d_image')
             self.color_img_thread = threading.Thread(target=self.runColorImgThread)
             self.color_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.saveColorImgThread)
             self.capabilities_report.has_color_2d_image = True
         else:
             self.capabilities_report.has_color_2d_image = False
         self.stopColor2DImgAcquisition = stopColor2DImgAcquisition
 
-        self.getGrayscale2DImg = getGrayscale2DImg
-        if (self.getGrayscale2DImg is not None):
-            self.grayscale_img_pub = rospy.Publisher('~idx/bw_2d_image', Image, queue_size = 3)
-            data_products.append('bw_2d_image')
-            self.bw_img_thread = threading.Thread(target=self.runGrayscaleImgThread)
+        self.getBW2DImg = getBW2DImg
+        if (self.getBW2DImg is not None):
+            self.bw_img_pub = rospy.Publisher('~idx/bw_2d_image', Image, queue_size=1, tcp_nodelay=True)
+            self.data_products.append('bw_2d_image')
+            self.bw_img_thread = threading.Thread(target=self.runBWImgThread)
             self.bw_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.saveBWImgThread)
             self.capabilities_report.has_bw_2d_image = True
         else:
             self.capabilities_report.has_bw_2d_image = False
-        self.stopGrayscale2DImg = stopGrayscale2DImgAcquisition
+        self.stopBW2DImgAcquisition = stopBW2DImgAcquisition
 
         self.getDepthMap = getDepthMap
         if (self.getDepthMap is not None):
-            self.depth_map_pub = rospy.Publisher('~idx/depth_map', Image, queue_size=1)
-            data_products.append('depth_map')
-            rospy.logwarn("idx_sensor_if.py: TODO: Need to create depth map thread")
+            self.depth_map_pub = rospy.Publisher('~idx/depth_map', Image, queue_size=1, tcp_nodelay=True)
+            self.data_products.append('depth_map')
+            self.depth_map_thread = threading.Thread(target=self.runDepthMapThread)
+            self.depth_map_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.saveDepthMapThread)
             self.capabilities_report.has_depth_map = True
         else:
             self.capabilities_report.has_depth_map = False
@@ -571,9 +752,11 @@ class ROSIDXSensorIF:
 
         self.getDepthImg = getDepthImg
         if (self.getDepthImg is not None):
-            self.depth_img_pub = rospy.Publisher('~idx/depth_image', Image, queue_size = 3)
-            data_products.append('depth_image')
-            rospy.logwarn("idx_sensor_if.py: TODO: Need to create depth image thread")
+            self.depth_img_pub = rospy.Publisher('~idx/depth_image', Image, queue_size=1, tcp_nodelay=True)
+            self.data_products.append('depth_image')
+            self.depth_img_thread = threading.Thread(target=self.runDepthImgThread)
+            self.depth_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.saveDepthImgThread)
             self.capabilities_report.has_depth_image = True
         else:
             self.capabilities_report.has_depth_image = False
@@ -581,23 +764,28 @@ class ROSIDXSensorIF:
 
         self.getPointcloudImg = getPointcloudImg
         if (self.getPointcloudImg is not None):
-            self.pointcloud_img_pub = rospy.Publisher('~idx/pointcloud_image', Image, queue_size=1)
-            data_products.append('pointcloud_image')
-            rospy.logwarn("idx_sensor_if.py: TODO: Need to create pointcloud image thread")
+            self.pointcloud_img_pub = rospy.Publisher('~idx/pointcloud_image', Image, queue_size=1, tcp_nodelay=True)
+            self.data_products.append('pointcloud_image')
+            self.pointcloud_img_thread = threading.Thread(target=self.runPointcloudImgThread)
+            self.pointcloud_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.savePointcloudImgThread)
             self.capabilities_report.has_pointcloud_image = True
         else:
-            self.capabilities_report.has_pointcloud_image = False
-        self.stopPointcloudAcquisition = stopPointcloudAcquisition        
+            self.capabilities_report.has_pointcloud = False
+        self.stopPointcloudImgAcquisition = stopPointcloudImgAcquisition        
+         
 
         self.getPointcloud = getPointcloud
         if (self.getPointcloud is not None):
-            self.pointcloud_img_pub = rospy.Publisher('~idx/pointcloud', PointCloud2, queue_size=1)
-            data_products.append('pointcloud')
-            rospy.logwarn("idx_sensor_if.py: TODO: Need to create pointcloud thread")
+            self.pointcloud_pub = rospy.Publisher('~idx/pointcloud', PointCloud2, queue_size=1, tcp_nodelay=True)
+            self.data_products.append('pointcloud')
+            self.pointcloud_thread = threading.Thread(target=self.runPointcloudThread)
+            self.pointcloud_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.savePointcloudThread)
             self.capabilities_report.has_pointcloud = True
         else:
-            self.capabilities_report.has_pointcloud = False
-        self.stopPointcloudImgAcquisition = stopPointcloudImgAcquisition   
+            self.capabilities_report.has_pointcloud_image = False
+        self.stopPointcloudAcquisition = stopPointcloudAcquisition    
 
 
         self.getGPSMsg = getGPSMsg
@@ -620,128 +808,307 @@ class ROSIDXSensorIF:
             self.navpose_capabilities_report.has_heading = True
         else:
             self.navpose_capabilities_report.has_heading = False
+
+
+        # Set up the save data and save cfg i/f and launch saving threads-- Do this before launching aquisition threads so that they can check data_product_should_save() immediately
+        self.capabilities_report.data_products = str(self.data_products)
+        self.save_data_if = SaveDataIF(data_product_names = self.data_products)
+        self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.setCurrentSettingsAsDefault, paramsModifiedCallback=self.updateFromParamServer)
+
+
     
         # Set up additional publishers
         self.status_msg = IDXStatus()
         self.status_pub = rospy.Publisher('~idx/status', IDXStatus, queue_size=1, latch=True)
 
         if getGPSMsg != None or getOdomMsg != None or getHeadingMsg != None:
-            update_navpose_interval_sec = float(1)/self.UPDATE_NAVPOSE_RATE_HZ
-            rospy.Timer(rospy.Duration(update_navpose_interval_sec), self.pubNavposeCB)
+            rospy.Timer(rospy.Duration(self.update_navpose_interval_sec), self.navposeCb)
 
-        # Set up the save data and save cfg i/f -- Do this before launching threads so that they can check data_product_should_save() immediately
-        self.save_data_if = SaveDataIF(data_product_names = data_products)
-        self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.setCurrentSettingsAsDefault, paramsModifiedCallback=self.updateFromParamServer)
+
 
         # Launch the acquisition threads
-        self.color_img_thread.start()
-        self.bw_img_thread.start()  
+        
+          
+
+
+        # Start threads
+        if (self.getColor2DImg is not None):
+            self.color_img_thread.start()
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.saveColorImgThread)
+
+        if (self.getBW2DImg is not None):
+            self.bw_img_thread.start()
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.saveBWImgThread)
+
+        if (self.getDepthMap is not None):
+            self.depth_map_thread.start()
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.saveDepthMapThread)
+
+        if (self.getDepthImg is not None):
+            self.depth_img_thread.start()
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.saveDepthImgThread)
+
+        if (self.getPointcloudImg is not None):
+            self.pointcloud_img_thread.start()
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.savePointcloudImgThread)
+
+        if (self.getPointcloud is not None):
+            self.pointcloud_thread.start()
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.savePointcloudThread)
+
+        
         # TODO: Start other acquisition threads here when they are implemented  
 
         # Set up service providers
         rospy.Service('~idx/capabilities_query', IDXCapabilitiesQuery, self.provide_capabilities)
         rospy.Service('~idx/navpose_capabilities_query', NavPoseCapabilitiesQuery, self.provide_navpose_capabilities)
 
+
+
+    def getCurrentSettings(self):
+        if self.getSettings is not None:
+            current_settings = self.getSettings()
+            current_settings= nepi_nex.sort_settings_alphabetically(current_settings,1)
+            if current_settings is None:
+                current_settings = nepi_nex.NONE_SETTINGS
+        else:
+            current_settings = nepi_nex.NONE_SETTINGS
+        return current_settings
+
+    
+    # Image from img_get_function can be CV2 or ROS image.  Will be converted as needed in the thread
+    def image_thread_proccess(self,data_product,img_get_function,img_stop_function,img_publisher,save_data,save_timestamp,save_lock):
+        image = None
+        cv2_img = None
+        ros_img = None
+        if not rospy.is_shutdown():
+            rospy.loginfo(rospy.get_name() + ": starting " + data_product + " acquisition thread")
+            acquiring = False
+            while (not rospy.is_shutdown()):
+                saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
+                has_subscribers = (img_publisher.get_num_connections() > 0)
+                if (has_subscribers is True) or (saving_is_enabled is True):
+                    acquiring = True
+                    status, msg, image, ros_timestamp, encoding = img_get_function()
+                    if (status is False):
+                        rospy.logerr_throttle(1, msg)
+                        continue   
+                    if (has_subscribers is True):
+                        if isinstance(image,np.ndarray):  # CV2 image. Convert to ROS Image   
+                            # Convert cv to ros   
+                            ros_img = nepi_img.cv2img_to_rosimg(image, encoding=encoding)
+                            ros_img.header.stamp = ros_timestamp
+                            ros_img.header.frame_id = rospy.get_param('~idx/frame_3d',  self.init_frame_3d )
+                        elif isinstance(image,Image): # ROS Image. Passthrough
+                            ros_img = image
+                        if ros_img is not None:
+                            # Publish image
+                            img_publisher.publish(ros_img)
+                    if (saving_is_enabled is True) and save_lock.locked() is False:
+                        if isinstance(image,np.ndarray):  # CV2 image. Passthrough   
+                            cv2_img = image
+                        elif isinstance(image,Image): # ROS Image. Convert to CV2 Image
+                            cv2_img = nepi_img.rosimg_to_cv2img(image, encoding=encoding)
+                        save_lock.acquire()
+                        save_data = cv2_img
+                        save_timestamp = ros_timestamp
+                        save_lock.release()
+                elif acquiring is True:
+                    if img_stop_function is not None:
+                        rospy.loginfo("Stopping " + data_product + " acquisition")
+                        img_stop_function()
+                    acquiring = False
+                else: # No subscribers and already stopped
+                    acquiring = False
+                    rospy.sleep(0.25)
+                rospy.sleep(0.01) # Yield
+
+    
+    # Pointcloud from pointcloud_get_function can be open3D or ROS pointcloud.  Will be converted as needed in the thread
+    def pointcloud_thread_proccess(self,data_product,pc_get_function,pc_stop_function,pc_publisher,save_data,save_timestamp,save_lock):
+        pc = None
+        o3d_pc = None
+        ros_pc = None
+        if not rospy.is_shutdown():
+            rospy.loginfo(rospy.get_name() + ": starting " + data_product + " acquisition thread")
+            acquiring = False
+            while (not rospy.is_shutdown()):
+                saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
+                has_subscribers = (pc_publisher.get_num_connections() > 0)
+                if (has_subscribers is True) or (saving_is_enabled is True):
+                    acquiring = True
+                    status, msg, pc, ros_timestamp, ros_frame = pc_get_function()
+                    #********************
+                    ros_frame = rospy.get_param('~idx/frame_3d',  self.init_frame_3d )
+                    #********************
+                    if (status is False):
+                        rospy.logerr_throttle(1, msg)
+                        continue   
+                    if (has_subscribers is True):
+                        if isinstance(pc,o3d.geometry.PointCloud):  # Open3D Pointcloud. Convert to ROS Pointcloud   
+                            # Convert o3d to ros   
+                            ros_pc = nepi_pc.o3dpc_to_rospc(pc, stamp = ros_timestamp, frame_id = ros_frame )
+                        elif isinstance(pc,PointCloud2): # ROS Pointcloud. Passthrough
+                            ros_pc = pc
+                        if ros_pc is not None:
+                            # Publish Pointcloud
+                            pc_publisher.publish(ros_pc)
+                    if (saving_is_enabled is True) and save_lock.locked() is False:
+                        if isinstance(pc,o3d.geometry.PointCloud):  # Open3d pointcloud. Passthrough   
+                            o3d_pc = pc
+                        elif isinstance(pc,PointCloud2): # ROS Pointcloud. Convert to Open3d pointcloud
+                            o3d_pc = nepi_pc.rospc_to_o3dpc(pc)
+                        save_lock.acquire()
+                        save_data = o3d_pc
+                        save_timestamp = ros_timestamp
+                        save_lock.release()
+                elif acquiring is True:
+                    if pc_stop_function is not None:
+                        rospy.loginfo("Stopping " + data_product + " acquisition")
+                        pc_stop_function()
+                    acquiring = False
+                else: # No subscribers and already stopped
+                    acquiring = False
+                    rospy.sleep(0.25)
+                rospy.sleep(0.01) # Yield
+
     def runColorImgThread(self):
-        rospy.loginfo(rospy.get_name() + ": starting color_2d_image acquisition thread")
-        acquiring = False
-        while (True):
+        self.image_thread_proccess('color_2d_image', self.getColor2DImg, self.stopColor2DImgAcquisition, self.color_img_pub,
+                                            self.color_img2save, self.color_img2save_timestamp, self.color_img2save_lock)
+        
+    def runBWImgThread(self):
+        self.image_thread_proccess('bw_2d_image', self.getBW2DImg, self.stopBW2DImgAcquisition, self.bw_img_pub,
+                                            self.bw_img2save, self.bw_img2save_timestamp, self.bw_img2save_lock)
+
+    def runDepthMapThread(self):
+        self.image_thread_proccess('depth_map', self.getDepthMap, self.stopDepthMapAcquisition, self.depth_map_pub,
+                                            self.depth_map2save, self.depth_map2save_timestamp, self.depth_map2save_lock)
+
+    def runDepthImgThread(self):
+        self.image_thread_proccess('depth_image', self.getDepthImg, self.stopDepthImgAcquisition, self.depth_img_pub,
+                                            self.depth_img2save, self.depth_img2save_timestamp, self.depth_img2save_lock)
+
+    def runPointcloudImgThread(self):
+        self.image_thread_proccess('pointcloud_image', self.getPointcloudImg, self.stopPointcloudImgAcquisition, self.pointcloud_img_pub,
+                                            self.pointcloud_img2save, self.pointcloud_img2save_timestamp, self.pointcloud_img2save_lock)
+
+    def runPointcloudThread(self):
+        self.pointcloud_thread_proccess('pointcloud', self.getPointcloud, self.stopPointcloudAcquisition, self.pointcloud_pub,
+                                            self.pointcloud2save, self.pointcloud2save_timestamp, self.pointcloud2save_lock)
+
+
+
+# Define saving functions for saving callbacks
+
+    def save_img2file(self,image,ros_timestamp,data_name,lock=None):
+        if (self.save_data_if.data_product_should_save(data_name) is True):
+            if lock is not None:
+                self.image_lock.acquire()
+            full_path_filename = self.save_data_if.get_full_path_filename(nepi_ros.get_datetime_str_from_stamp(ros_timestamp), 
+                                                                                    self.sensor_name + data_name, 'png')
+            if image is not None and os.path.isfile(full_path_filename) is False:
+                if isinstance(image,np.ndarray):  # CV2 image. Passthrough    
+                    cv2_img = image
+                elif isinstance(image,Image): # ROS Image. Convert to CV2 Image
+                    cv2_img = nepi_img.rosimg_to_cv2img(image)
+                cv2.imwrite(full_path_filename, cv2_img)
+            if lock is not None:
+                self.image_lock.release()
+
+    def save_pc2file(self,pointcloud,ros_timestamp,data_name,lock=None):
+        if (self.save_data_if.data_product_should_save(data_name) is True):
+            if lock is not None:
+                self.image_lock.acquire()
+            full_path_filename = self.save_data_if.get_full_path_filename(nepi_ros.get_datetime_str_from_stamp(ros_timestamp), 
+                                                                                    self.sensor_name + data_name, 'png')
+            if pointcloud is not None and os.path.isfile(full_path_filename) is False:
+                if isinstance(pointcloud,PointCloud):  # Opeb3D PointCloud. Passthrough    
+                    o3d_pc = pointcloud
+                elif isinstance(pointcloud,PointCloud2): # ROS PointCloud2. Convert to Open3D PointCloud
+                    o3d_pc = nepi_pc.rospc_to_o3dpc(pointcloud)
+                nepi_pc.save_pointcloud(o3d_pc,full_path_filename)
+            if lock is not None:
+                self.image_lock.release()
+
+    # Create timer callbacks for saving threads
+
+    def saveColorImgThread(self,timer):
+        if self.save_data_if is not None:
             saving_is_enabled = self.save_data_if.data_product_saving_enabled('color_2d_image')
-            has_subscribers = (self.color_img_pub.get_num_connections() > 0)
-            if (has_subscribers is True) or (saving_is_enabled is True):
-                acquiring = True
-                status, msg, cv2_img, ros_timestamp = self.getColor2DImg()
-                if (status is False):
-                    rospy.logerr_throttle(1, msg)
-                    continue
-   
-                if (has_subscribers is True):
-                    # Convert cv to ros and publish                
-                    ros_img = self.cv_bridge.cv2_to_imgmsg(cv2_img, encoding="bgr8")
-                    ros_img.header.stamp = ros_timestamp
-                    ros_img.header.frame_id = self.camera_frame_id
-                    stop = time.time()
+            if saving_is_enabled and self.color_img2save is not None:
+                self.save_img2file(self.color_img2save,self.color_img2save_timestamp,'color_2d_img',self.color_img2save_lock)
 
-                   
-                    #print('CV2Img: ', stop-start)
-                    self.color_img_pub.publish(ros_img)
-                    next_stop = time.time()
-                    #print('Pub: ', next_stop-stop)
-
-                if (self.save_data_if.data_product_should_save('color_2d_image') is True):
-                    full_path_filename = self.save_data_if.get_full_path_filename(self.save_data_if.get_timestamp_string(), 
-                                                                                  self.sensor_name + '_color_2d_img', 'png')
-                    #rospy.logwarn("Debugging: Time to save color_2d_img to " + full_path_filename)
-                    cv2.imwrite(full_path_filename, cv2_img)
-
-            elif acquiring is True:
-                if self.stopColor2DImgAcquisition is not None:
-                    rospy.loginfo(rospy.get_name() + ": stopping color_2d_image acquisition")
-                    self.stopColor2DImgAcquisition()
-                acquiring = False
-            else: # No subscribers and already stopped
-                acquiring = False
-                rospy.sleep(0.25)
-
-            rospy.sleep(0.01) # Yield
-
-    def runGrayscaleImgThread(self):
-        rospy.loginfo(rospy.get_name() + ": starting bw_2d_image acquisition thread")
-        acquiring = False
-        while (True):
+    def saveBWImgThread(self,timer):
+        if self.save_data_if is not None:
             saving_is_enabled = self.save_data_if.data_product_saving_enabled('bw_2d_image')
-            has_subscribers = (self.grayscale_img_pub.get_num_connections() > 0)
-            if (has_subscribers is True) or (saving_is_enabled is True):
-                status, msg, cv2_img, ros_timestamp = self.getGrayscale2DImg()
-                if (status is False):
-                    rospy.logerr_throttle(1, msg)
-                    continue
+            if saving_is_enabled and self.bw_img2save is not None:
+                self.save_image2file(self.bw_img2save,self.bw_img2save_timestamp,'bw_2d_image',self.bw_img2save_lock)
 
-                acquiring = True
-                
-                if (has_subscribers is True):
-                    # Convert cv to ros and publish
-                    ros_img = self.cv_bridge.cv2_to_imgmsg(cv2_img, encoding="mono8")
-                    ros_img.header.stamp = ros_timestamp
-                    ros_img.header.frame_id = self.camera_frame_id
-                    self.grayscale_img_pub.publish(ros_img)
+    def saveDepthMapThread(self,timer):
+        if self.save_data_if is not None:
+            saving_is_enabled = self.save_data_if.data_product_saving_enabled('depth_map')
+            if saving_is_enabled and self.depth_map2save is not None:
+                self.save_img2file(self.depth_map2save,self.depth_map2save_timestamp,'depth_map',self.depth_map2save_lock)
 
-                if (self.save_data_if.data_product_should_save('bw_2d_image') is True):
-                    full_path_filename = self.save_data_if.get_full_path_filename(self.save_data_if.get_timestamp_string(), 
-                                                                                  self.sensor_name + '_bw_2d_img', 'png')
-                    cv2.imwrite(full_path_filename, cv2_img)
+    def saveDepthImgThread(self,timer):
+        if self.save_data_if is not None:
+            saving_is_enabled = self.save_data_if.data_product_saving_enabled('depth_image')
+            if saving_is_enabled and self.depth_img2save is not None:
+                self.save_img2file(self.depth_img2save,self.depth_img2save_timestamp,'depth_image',self.depth_img2save_lock)
 
-            elif acquiring is True:
-                if self.stopGrayscale2DImg is not None:
-                    rospy.loginfo(rospy.get_name() + ": stopping bw_2d_image acquisition")
-                    self.stopGrayscale2DImg()
-                acquiring = False
-            else: # No subscribers and already stopped
-                acquiring = False
-                rospy.sleep(0.25)
-                
-            rospy.sleep(0.01) # Yield
+    def savePointcloudImgThread(self,timer):
+        if self.save_data_if is not None:
+            saving_is_enabled = self.save_data_if.data_product_saving_enabled('pointcloud_image')
+            if saving_is_enabled and self.pointcloud_img2save is not None:
+                self.save_img2file(self.pointcloud_img2save,self.pointcloud_img2save_timestamp,'pointcloud_image',self.pointcloud_img2save_lock)
+
+    def savePointcloudThread(self,timer):
+        if self.save_data_if is not None:
+            saving_is_enabled = self.save_data_if.data_product_saving_enabled('pointcloud')
+            if saving_is_enabled and self.pointcloud2save is not None:
+                self.save_pc2file(self.pointcloud2save,self.pointcloud2save_timestamp,'pointcloud',self.pointcloud2save_lock)
+
+
+    def navposeCb(self, timer):
+        if self.getGPSMsg != None:
+            gps_msg = self.getGPSMsg()
+            if gps_msg is not None:
+                self.idx_navpose_gps_pub.publish(gps_msg)
+
+        if self.getOdomMsg != None:
+            odom_msg = self.getOdomMsg()
+            if odom_msg is not None:
+                self.idx_navpose_odom_pub.publish(odom_msg)
+
+        if self.getHeadingMsg != None:
+            heading_msg = self.getHeadingMsg()
+            if heading_msg is not None:
+                self.idx_navpose_gps_pub.publish(heading_msg)   
+
+
+    # Function to update and publish status message
 
     def updateAndPublishStatus(self, do_updates = True):
         if do_updates is True:
             # TODO: Probably these should be queried from the parent (and through the driver) via explicit callbacks rather than via the param server
             idx_params = rospy.get_param('~idx')
             rospy.loginfo("IDX settings state string")
-            rospy.loginfo(str(idx_params['settings']))
-            settings_msg = nepi_nex.create_msg_data_from_settings(idx_params['settings']) if 'settings' in idx_params else 0
+            settings_msg = nepi_nex.create_msg_data_from_settings(self.getCurrentSettings())
             self.status_msg.settings_states = settings_msg 
-            self.status_msg.controls_enable = idx_params['controls_enable'] if 'controls_enable' in idx_params else 0
-            self.status_msg.auto_adjust = idx_params['auto'] if 'auto' in idx_params else 0
+            self.status_msg.controls_enable = idx_params['controls_enable'] if 'controls_enable' in idx_params else True
+            self.status_msg.auto_adjust = idx_params['auto'] if 'auto' in idx_params else False
             self.status_msg.resolution_mode = idx_params['resolution_mode'] if 'resolution_mode' in idx_params else 0
             self.status_msg.framerate_mode = idx_params['framerate_mode'] if 'framerate_mode' in idx_params else 0
             self.status_msg.contrast = idx_params['contrast'] if 'contrast' in idx_params else 0
             self.status_msg.brightness = idx_params['brightness'] if 'brightness' in idx_params else 0
             self.status_msg.thresholding = idx_params['thresholding'] if 'thresholding' in idx_params else 0
-            self.status_msg.range_window.start_range = idx_params['range_window']['start_range'] if 'range_window' in idx_params else 0
-            self.status_msg.range_window.stop_range = idx_params['range_window']['stop_range'] if 'range_window' in idx_params else 0
-            self.status_msg.min_range_m = idx_params['range_limits']['min_range_m'] if 'range_limits' in idx_params else 0
-            self.status_msg.max_range_m = idx_params['range_limits']['max_range_m'] if 'range_limits' in idx_params else 0
-        
+            
+            self.status_msg.range_window.start_range = rospy.get_param('~idx/range_window/start_range_ratio', 0.0)
+            self.status_msg.range_window.stop_range =  rospy.get_param('~idx/range_window/stop_range_ratio', 1.0)
+            self.status_msg.min_range_m = rospy.get_param('~idx/range_limits/min_range_m',0.0)
+            self.status_msg.max_range_m = rospy.get_param('~idx/range_limits/max_range_m',1.0)
+            self.status_msg.zoom = idx_params['zoom'] if 'zoom' in idx_params else 0.5
+            self.status_msg.rotate = idx_params['rotate'] if 'rotate' in idx_params else 0.5
             # The transfer frame into which 3D data (pointclouds) are transformed for the pointcloud data topic
             self.status_msg.frame_3d = idx_params['frame_3d'] if 'frame_3d' in idx_params else "nepi_center_frame"
         

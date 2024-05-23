@@ -19,6 +19,8 @@ from nepi_ros_interfaces.srv import DataProductQuery, DataProductQueryResponse, 
 Basic interface for the global and private save_data topics.
 '''
 class SaveDataIF(object):
+    save_continuous = False
+    
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
         if (self.save_continuous is False) and (msg.save_continuous is True):
@@ -141,7 +143,7 @@ class SaveDataIF(object):
     def get_full_path_filename(self, timestamp_string, identifier, extension):
         if self.save_data_root_directory is None:
             return ""
-        return os.path.join(self.save_data_root_directory, self.save_data_prefix + timestamp_string + "_" + identifier + "." + extension)
+        return os.path.join(self.save_data_root_directory, self.save_data_prefix + "_" + timestamp_string + "_" + identifier + "." + extension)
 
     def __init__(self, data_product_names=None):
         # First thing, need to get the data folder

@@ -21,19 +21,20 @@ import numpy as np
 import ros_numpy
 import open3d as o3d
 import rospy
+import math
 import copy
 import cv2
 from sensor_msgs.msg import PointCloud2, PointField
 from geometry_msgs.msg import Pose, PoseStamped, Transform, TransformStamped
 
-from nepi_edge_skd_base import open3d_ros_helper as op3rh
+from nepi_edge_sdk_base import open3d_ros_helper 
 
 
 ###########################################
 ### Pointcloud conversion functions
 
-def rospc_to_o3dpc(rospc, remove_nans=False):
-    """ Convert ROS PointCloud2 to Open3D PointCloud
+def rospc_to_o3dpc(ros_pc, remove_nans=False):
+    ''' Convert ROS PointCloud2 to Open3D PointCloud
     
     Args: 
         rospc (sensor.msg.PointCloud2): ROS PointCloud2 message
@@ -41,22 +42,22 @@ def rospc_to_o3dpc(rospc, remove_nans=False):
     
     Returns: 
         o3dpc (o3d.geometry.PointCloud): Open3D PointCloud
-    """
-    o3d_pc = o3drh.rospc_to_o3dpc(ros_pc, remove_nans)
+    '''
+    o3d_pc = open3d_ros_helper.rospc_to_o3dpc(ros_pc, remove_nans)
     return o3d_pc
     
 
 def o3dpc_to_rospc(o3d_pc, stamp=None, frame_id=None):
-    """ convert open3d point cloud to ros point cloud
+    ''' convert open3d point cloud to ros point cloud
     Args:
         o3dpc (o3d.geometry.PointCloud): open3d point cloud
         frame_id (string): frame id of ros point cloud header
         stamp (rospy.Time): time stamp of ros point cloud header
     Returns:
         rospc (sensor.msg.PointCloud2): ros point cloud message
-    """
+    '''
 
-    ros_pc = o3drh.o3dpc_to_rospc(o3d_pc, stamp, frame_id)
+    ros_pc = open3d_ros_helper.o3dpc_to_rospc(o3d_pc, stamp, frame_id)
     return ros_pc
     
     
@@ -77,7 +78,7 @@ def o3dimg_to_rosimg(o3d_img, stamp=None, frame_id=None):
     if frame_id is not None:
         ros_img_msg.header.frame_id = frame_id
     else:
-        ros_img_msg.header.frame_id="map"
+        ros_img_msg.header.frame_id="nepi_center_frame"
     return ros_img_msg
 
 def o3dimg_to_cv2img(o3d_img):
@@ -94,7 +95,7 @@ def cv2img_to_o3dimg(cv2_image):
 ### Pointcloud filter functions    
 
 def apply_pass_through_filter(o3d_pc, x_range, y_range, z_range):
-    """ apply 3D pass through filter to the open3d point cloud
+    ''' apply 3D pass through filter to the open3d point cloud
     Args:
         o3dpc (o3d.geometry.PointCloud): open3d point cloud
         x_range (list): list of [x_min, x_maz]
@@ -103,29 +104,29 @@ def apply_pass_through_filter(o3d_pc, x_range, y_range, z_range):
     Returns:
         o3dpc (o3d.geometry.PointCloud): filtered open3d point cloud
     some codes from https://github.com/powersimmani/example_3d_pass_through-filter_guide
-    """
-    o3d_pc = o3drh.apply_pass_through_filter(o3d_pc, x_range, y_range, z_range)
+    '''
+    o3d_pc = open3d_ros_helper.apply_pass_through_filter(o3d_pc, x_range, y_range, z_range)
     return o3d_pc
     
 ###########################################
 ### Pointcloud manipulation functions
 
 def do_transform_point(o3d_pc, transform_stamped):
-    """ transform a input cloud with respect to the specific frame
+    ''' transform a input cloud with respect to the specific frame
         open3d version of tf2_geometry_msgs.do_transform_point
     Args: 
         o3dpc (o3d.geometry.PointCloud): open3d point cloud
         transform_stamped (geometry_msgs.msgs.TransformStamped): transform to be applied 
     Returns:
         o3dpc (o3d.geometry.PointCloud): transformed open3d point cloud
-    """
-    o3d_pc = o3drh.do_transform_point(o3d_pc, transform_stamped)
+    '''
+    o3d_pc = open3d_ros_helper.do_transform_point(o3d_pc, transform_stamped)
     return o3dpc
     
 
 
 def crop_with_2dmask(o3d_pc, mask, K=None):
-    """ crop open3d point cloud with given 2d binary mask
+    ''' crop open3d point cloud with given 2d binary mask
     Args: 
         o3dpc (o3d.geometry.PointCloud): open3d point cloud
         mask (np.array): binary mask aligned with the point cloud frame shape of [H, W]
@@ -133,29 +134,171 @@ def crop_with_2dmask(o3d_pc, mask, K=None):
         if K is not given, point cloud should be ordered
     Returns:
         o3dpc (o3d.geometry.PointCloud): filtered open3d point cloud
-    """
-    o3d_pc = o3drh.crop_with_2dmask(o3d_pc, mask, K=None)
-    return open3d_pc
+    '''
+    o3d_pc = open3d_ros_helper.crop_with_2dmask(o3d_pc, mask, K=None)
+    return o3d_pc
+
+def range_clip( o3d_pc, range_clip_min_range_m, range_clip_max_range_m):
+    ''' Clip input Open3d PointCloud based on min range meters and max range meters
+    
+    Args:
+      o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+      range_clip_min_range_m (float): minimum clip range in meters
+      range_clip_max_range_m (float): maximum clip range in meters
+     
+    Returns:
+      o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+    '''
+    
+    o3d_pc_points = np.asarray(o3d_pc.points)
+    # Check if pointcloud has color
+    o3d_pc_has_colors = o3d_pc.colors
+    if o3d_pc_has_colors:
+      has_colors = True
+      #print("o3d_pc has colors")
+      ### Need to Add color data as well if it has color data
+      o3d_pc_colors = np.asarray(o3d_pc.colors)
+      o3d_pc_colors = o3d_pc_colors[(o3d_pc_points[:, 0] >= range_clip_min_range_m) & (o3d_pc_points[:, 0] <= range_clip_max_range_m)]
+    o3d_pc_points = o3d_pc_points[(o3d_pc_points[:, 0] >= range_clip_min_range_m) & (o3d_pc_points[:, 0] <= range_clip_max_range_m)]
+    # Clear and create new pointcloud      
+    o3d_pc = o3d.geometry.PointCloud()
+    o3d_pc.points = o3d.utility.Vector3dVector(o3d_pc_points)
+    if o3d_pc_has_colors:
+      #print("adding colors to new o3d_pc")
+      o3d_pc.colors = o3d.utility.Vector3dVector(o3d_pc_colors)
+    return o3d_pc
+    
+def angles_to_rotation_matrix( rotation_angles_deg):
+    ''' Convert angles (degrees) to 3D Rotation Matrix
+        Args:
+        rotation_angles_deg (list): Angles in degrees, [x_angle, y_angle, z_angle]
+        Returns:
+        rotation_matrix (numpy.ndarray[numpy.float64[3, 3]]): 3x3 rotation matrix corresponding to the given angles
+    '''  
+
+    angles_rad = np.radians(rotation_angles_deg)
+    rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(angles_rad)
+    return rotation_matrix
+
+
+
+def clip_bounding_box( o3d_pc, bounding_box_center, bounding_box_extent, bounding_box_rotation):
+    ''' Clip a Open3D Pointcloud with a bounding box
+        Args:
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+        bounding_box_center (list): The center of the bounding box in 3D space
+        bounding_box_extent (list): The extent of the bounding box along each axis (Meters)
+        bounding_box_rotation (list): The rotation of the bounding box for each axis (Degrees)
+        Returns:
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+    '''
+
+    bounding_box_center = np.asarray(bounding_box_center).reshape(3, 1)
+    bounding_box_extent = np.asarray(bounding_box_extent).reshape(3, 1)
+    bounding_box_rotation = angles_to_rotation_matrix(bounding_box_rotation)
+    clip_bounding_box = o3d.geometry.OrientedBoundingBox(bounding_box_center, bounding_box_rotation, bounding_box_extent)
+    o3d_pc = o3d_pc.crop(clip_bounding_box)
+    return o3d_pc
+
+def voxel_down_sampling( o3d_pc, voxel_size_m):
+    ''' 
+    Down-Sample a Open3D PointCloud using Voxel Grip Downsampling
+    Args: 
+    o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+    voxel_size_m (float): The size of the voxels in meters
+    Returns:
+    o3d_pc (o3d.geometry.PointCloud): Down-sampled Open3D PointCloud
+    '''
+
+    o3d_pc = o3d_pc.voxel_down_sample(voxel_size_m)
+    return o3d_pc
+
+def uniform_down_sampling( o3d_pc, every_k_points):
+    ''' Down-Sample a Open3D PointCloud Using Uniform Downsampling with every k point.
+        Args: 
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+        every_k_points (int): The sampling rate
+        Returns:
+        o3d_pc (o3d.geometry.PointCloud): Down-sampled Open3D PointCloud
+    '''
+
+    o3d_pc = o3d_pc.uniform_down_sample(every_k_points)
+    return o3d_pc
+
+def statistical_outlier_removal( o3d_pc, nb_neighbors, std_ratio):
+    ''' Remove statistical outliers from a Open3d PointCloud using statistical outlier removal filter
+        Args:
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+        nb_neighbors (int): The number of neighbors to consider for outlier removal
+        std_ratio (float): The standard deviation ratio used for determining outliers
+        Returns: 
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud with Statistical Outliers Removed
+    '''
+
+    o3d_pc = o3d_pc.remove_statistical_outlier(nb_neighbors, std_ratio)
+    return o3d_pc
+
+def radius_outlier_removal( o3d_pc, nb_points, search_radius_m):
+    ''' Remove Radius Outliers from a Open3D PointCloud using a radius outlier removal filter
+        Args: 
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+        nb_points (int): The minimum number of points that the search radius will contain
+        search_radius_m (float): Radius of the Sphere that will Count the Neighbors
+        Returns:
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud with Radius Outliers Removed
+    '''
+
+    o3d_pc = o3d_pc.remove_radius_outlier(nb_points, search_radius_m)
+    return o3d_pc
+
+def rotate_pc( o3d_pc, rotation_angles_deg):
+    ''' Rotate a Open3D PointCloud around its orgin by specified angles.
+        Args:
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+        rotation_angles_deg (list): The rotation angles around the x, y, and z axes in degrees
+        Returns:
+        o3d_pc (o3d.geometry.PointCloud): Rotated Open3D PointCloud
+    '''
+
+    rotation_matrix = angles_to_rotation_matrix(rotation_angles_deg)
+    o3d_pc = o3d_pc.rotate(rotation_matrix)
+    return o3d_pc
+
+def translate_pc( o3d_pc, translation_vector):
+    ''' Translate a Open3D PointCloud by a Specified Translation Vector
+        Args:
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+        translation_vector (list): The Translation Vector in Meters
+        Returns:
+        o3d_pc (o3d.geometry.PointCloud) Translated Open3D PointCloud
+    '''
+
+    points = np.asarray(o3d_pc.points)
+    translated_points = points + translation_vector
+    o3d_pc.points = o3d.utility.Vector3dVector(translated_points)
+    return o3d_pc
+
+
     
 ###########################################
 ### Pointcloud registration functions
 
 def p2p_icp_registration(source_cloud, target_cloud, n_points=100, threshold=0.02, \
     relative_fitness=1e-10, relative_rmse=1e-8, max_iteration=500, max_correspondence_distance=500):
-    """ align the source cloud to the target cloud using point-to-point ICP registration algorithm
+    ''' align the source cloud to the target cloud using point-to-point ICP registration algorithm
     Args: 
         source_cloud (o3d.geometry.PointCloud): source open3d point cloud
         target_cloud (o3d.geometry.PointCloud): target open3d point cloud
         for other parameter, go to http://www.o3d.org/docs/0.9.0/python_api/o3d.registration.registration_icp.html
     Returns:
         icp_result (o3d.registration.RegistrationResult): registration result
-    """                        
-    [icp_result, evaluation] = o3drh.p2p_icp_registration(source_cloud, target_cloud, n_points, threshold, \
+    '''                        
+    [icp_result, evaluation] = open3d_ros_helper.p2p_icp_registration(source_cloud, target_cloud, n_points, threshold, \
     relative_fitness, relative_rmse, max_iteration, max_correspondence_distance)
     return icp_result, evaluation
             
 def ppf_icp_registration(source_cloud, target_cloud, n_points=3000, n_iter=100, tolerance=0.001, num_levels=5, scale=0.001):
-    """ align the source cloud to the target cloud using point pair feature (PPF) match
+    ''' align the source cloud to the target cloud using point pair feature (PPF) match
     Args: 
         source_cloud (o3d.geometry.PointCloud): source open3d point cloud
         target_cloud (o3d.geometry.PointCloud): target open3d point cloud
@@ -163,8 +306,8 @@ def ppf_icp_registration(source_cloud, target_cloud, n_points=3000, n_iter=100, 
     Returns:
         pose (np.array): 4x4 transformation between source and targe cloud
         residual (float): the output resistration error
-    """
-    [pose, residual] = o3drh.ppf_icp_registration(source_cloud, target_cloud, n_points=3000, n_iter=100, tolerance=0.001, num_levels=5, scale=0.001)
+    '''
+    [pose, residual] = open3d_ros_helper.ppf_icp_registration(source_cloud, target_cloud, n_points=3000, n_iter=100, tolerance=0.001, num_levels=5, scale=0.001)
     return pose, residual
 
 
@@ -172,13 +315,61 @@ def ppf_icp_registration(source_cloud, target_cloud, n_points=3000, n_iter=100, 
 ###########################################
 ### Pointcloud rendering functions
 
-def render_image(o3d_pc,img_width,img_height,background,FOV,center,eye,up):
+def create_bounding_box( bounding_box_center, bounding_box_extent, bounding_box_rotation, bounding_box_color):
+    ''' Create bounding box around a Open3D PointCloud
+    
+      Args:
+        bounding_box_center (list): The center of the bounding box in 3D space
+        bounding_box_extent (list): The extent of the bounding box along each axis (Meters)
+        bounding_box_rotation (list): The rotation of the bounding box for each axis (Degrees)
+      
+      Returns: 
+        bounding_box_lineset (open3d.geometry.LineSet: A LineSet representing the bounding box
+    '''
+    
+    bounding_box_rotation = angles_to_rotation_matrix(bounding_box_rotation)
+    # Create bounding box tensor
+    bounding_box_center = o3d.core.Tensor(bounding_box_center, dtype=o3d.core.Dtype.Float32)
+    bounding_box_extent = o3d.core.Tensor(bounding_box_extent, dtype=o3d.core.Dtype.Float32)
+    bounding_box_rotation = o3d.core.Tensor(bounding_box_rotation, dtype=o3d.core.Dtype.Float32)
+    oriented_bounding_box = o3d.t.geometry.OrientedBoundingBox(bounding_box_center, bounding_box_rotation, bounding_box_extent)
+    
+    # Turn bounding box tensor into legacy bounding box for line set creation
+    bounding_box_center = oriented_bounding_box.center.numpy().reshape(3, 1)
+    bounding_box_rotation = oriented_bounding_box.rotation.numpy()
+    bounding_box_extent = oriented_bounding_box.extent.numpy().reshape(3, 1)
+    oriented_bounding_box = o3d.geometry.OrientedBoundingBox(bounding_box_center, bounding_box_rotation, bounding_box_extent)
+    
+    # Add color if enabled, will be black by default
+    oriented_bounding_box.color = bounding_box_color
+ 
+    # Create and return line set for visualization
+    bounding_box_lineset = o3d.geometry.LineSet.create_from_oriented_bounding_box(oriented_bounding_box)
+    return bounding_box_lineset
+
+def vector_length(vector):
+    return math.sqrt(sum((val ** 2) for val in vector))
+
+def vector_rotate(vector,ratio):
+    vector_out = []
+    length = vector_length(vector)
+    offset = 2* (0.5 - ratio) * length
+    for val in vector:
+        val = val + offset
+        if val > length:
+            val = (2 * length) - val
+        elif val < (-1*length):
+            val = (-2 * length) - val
+        vector_out.append(val)
+    return vector_out
+
+def render_image(o3d_pc,img_width,img_height,background,FOV,center,eye,up,show_axis=False,post_proccessing=False):
     render = o3d.visualization.rendering.OffscreenRenderer(img_width, img_height)
     # Set background color
     render.scene.set_background(background)
     # Show the original coordinate axes for comparison.
     # X is red, Y is green and Z is blue.
-    render.scene.show_axes(True)
+    render.scene.show_axes(show_axis)
     # Define a simple unlit Material.
     # (The base color does not replace the arrows' own colors.)
     mtl = o3d.visualization.rendering.MaterialRecord()  # or MaterialRecord(), for later versions of Open3D
@@ -197,18 +388,33 @@ def render_image(o3d_pc,img_width,img_height,background,FOV,center,eye,up):
     # Look at the origin from the front (along the -Z direction, into the screen), with Y as Up.
     render.scene.camera.look_at(center, eye, up)
     # Render
-    o3d_img = render.render_to_image()
-    return o3d_img
-    
+    render.scene.view.set_post_processing(post_proccessing)
+    img_o3d = render.render_to_image()
+    return img_o3d
+
 ###########################################
 ### Pointcloud saving functions
 
-def save_o3d_pc(o3d_pc,filename):
+def save_pointcloud(o3d_pc,filename):
+    ''' Save a Open3D PointCloud to a File
+        Args:
+        o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+        filename (str): The path to the file where the Open3D PointCloud will be saved
+        Returns:
+        ret (bool): If true, point cloud was successfully saved
+    '''
     ret = o3d.io.write_point_cloud(filename, o3d_pc)
     return ret
 
-def save_o3d_img(o3d_img,filename):
-    ret = o3d.io.write_image(filename, o3d_img)
+def save_image(open3d_image,filename):
+    ''' Save a Open3D PointCloud Image to a File
+        Args:
+        open3d_image: Image to be Saved
+        filename (str): The path to the file where the image will be saved
+        Returns:
+        ret (bool): If true, image was successfully saved
+    '''
+    ret = o3d.io.write_image(filename, open3d_image)
     return ret
     
 

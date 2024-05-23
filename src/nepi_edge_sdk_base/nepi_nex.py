@@ -13,6 +13,7 @@
 # 1) NEPI NEX Driver Settings utility functions
 
 import rospy
+from nepi_edge_sdk_base import nepi_img
   
 #########################
 ### NEX Driver Settings Helper Functions
@@ -62,7 +63,7 @@ def parse_settings_msg_data(msg_data):
   msg_string_list = eval(msg_data)
   setting = []
   settings = []
-  if len(msg_string_list) >= 2:
+  if len(msg_string_list) > 0:
     for string in msg_string_list:
       if string in SETTING_TYPES:
         if setting != []:
@@ -77,6 +78,13 @@ def parse_settings_msg_data(msg_data):
 
 def create_new_settings():
   return []
+
+def create_msg_data_from_settings(settings):
+  msg_data = []
+  for setting in settings:
+    for string in setting:
+      msg_data.append(string)
+  return str(msg_data)
 
 
 def get_setting_from_settings(s_name,settings):
@@ -116,19 +124,19 @@ def get_setting_as_str(setting):
   return s_str
 
 
-def get_name_str_from_setting(s_name,setting):
+def get_name_str_from_setting(setting):
   s_name = None
   if len(setting)>2:
     s_name = setting[1]
   return s_name
 
-def get_type_str_from_setting(s_name,setting):
+def get_type_str_from_setting(setting):
   s_type = None
   if len(setting)>2:
     s_type = setting[0]
   return s_type
 
-def get_value_str_from_setting(s_name,setting):
+def get_value_str_from_setting(setting):
   s_value = None
   if len(setting)>2:
     s_value = setting[2]
@@ -231,21 +239,26 @@ def remove_setting_from_settings(setting_to_remove,settings):
 
 def try_to_update_setting(setting_to_update,settings,cap_settings,update_settings_function):
   s_str = get_setting_as_str(setting_to_update)
+  s_name = get_name_str_from_setting(setting_to_update)
   updated_settings = settings
   success = False
-  if update_settings_function is not None:
-    if check_valid_setting(setting_to_update,cap_settings):
-      try:
-        if update_settings_function(setting_to_update):
-           updated_settings = update_setting_in_settings(setting_to_update,settings)
-        else:
-          rospy.loginfo("Failed to update setting: " + s_str + " Update function return failure message")
-      except Exception as e:
-        rospy.loginfo("Failed to update setting: " + s_str + " with exception: " + str(e) )
+  if s_name != "None":
+    if update_settings_function is not None:
+      if check_valid_setting(setting_to_update,cap_settings):
+        try:
+          if update_settings_function(setting_to_update):
+            updated_settings = update_setting_in_settings(setting_to_update,settings)
+            success = True
+          else:
+            rospy.loginfo("Failed to update setting: " + s_str + " Update function return failure message")
+        except Exception as e:
+          rospy.loginfo("Failed to update setting: " + s_str + " with exception: " + str(e) )
+      else:
+        rospy.loginfo("Failed to update setting: " + s_str + " Invalid setting name or value")
     else:
-      rospy.loginfo("Failed to update setting: " + s_str + " Invalid setting name or value")
+      rospy.loginfo("Failed to update setting: " + s_str + " No update function provided")
   else:
-    rospy.loginfo("Failed to update setting: " + s_str + " No update function provided")
+    success = True
   return updated_settings, success
 
 
@@ -265,14 +278,66 @@ def sort_settings_alphabetically(settings,setting_ind_to_sort):
     return settings
 	
   
-def create_msg_data_from_settings(settings):
+
+#***************************
+# NEX Data Saving utitlity functions
+
+def parse_save_data_products_msg_data(msg_data):
+  msg_string_list = eval(msg_data)
+  product = []
+  productss = []
+  new_product = True
+  if len(msg_string_list) > 0:
+    for string in msg_string_list:
+      if new_product:
+        product = [string]
+      else:
+        products.append(setting)
+        product = []
+  return(products)
+
+def create_save_data_products():
+  return []
+
+def create_msg_data_from_save_data_products(products):
   msg_data = []
-  for setting in settings:
-    for string in setting:
+  for product in products:
+    for string in product:
       msg_data.append(string)
   return str(msg_data)
 
 
+#***************************
+# IDX utitlity functions
 
+#Factory Control Values 
+DEFAULT_CONTROLS_DICT = dict( controls_enable = True,
+  auto_adjust = False,
+  brightness_ratio = 0.5,
+  contrast_ratio =  0.5,
+  threshold_ratio =  0.0,
+  resolution_mode = 3, # LOW, MED, HIGH, MAX
+  framerate_mode = 3, # LOW, MED, HIGH, MAX
+  start_range_ratio = 0.0, 
+  stop_ranage_ratio = 1.0,
+  min_range_m = 0.0,
+  max_range_m = 1.0 
+  )
+
+def applyIDXControls2Image(cv2_img,IDXcontrols_dict=DEFAULT_CONTROLS_DICT,current_fps=20):
+    if IDXcontrols_dict.get("controls_enable"): 
+        resolution_ratio = IDXcontrols_dict.get("resolution_mode")/3
+        [cv2_img,new_res] = nepi_img.adjust_resolution(cv2_img, resolution_ratio)
+        if IDXcontrols_dict.get("auto_adjust") is False:
+            cv2_img = nepi_img.adjust_brightness(cv2_img,IDXcontrols_dict.get("brightness_ratio"))
+            cv2_img = nepi_img.adjust_contrast(cv2_img,IDXcontrols_dict.get("contrast_ratio"))
+            cv2_img = nepi_img.adjust_sharpness(cv2_img,IDXcontrols_dict.get("threshold_ratio"))
+        else:
+            cv2_img = nepi_img.adjust_auto(cv2_img,0.3)
+        ##  Need to get current framerate setting
+        ##  Hard Coded for now
+        framerate_ratio = IDXcontrols_dict.get("framerate_mode")/3
+        [cv2_img,new_rate] = nepi_img.adjust_framerate(cv2_img, current_fps, framerate_ratio)
+    return cv2_img
 
   
