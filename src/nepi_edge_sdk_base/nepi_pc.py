@@ -30,6 +30,17 @@ from geometry_msgs.msg import Pose, PoseStamped, Transform, TransformStamped
 from nepi_edge_sdk_base import open3d_ros_helper 
 
 
+
+
+VERBOSITY_LEVELS = ["Debug","Error","Info","Warning"]
+
+def get_verbosity_level():
+    return o3d.utility.get_verbosity_level()
+
+def set_verbosity_level(level = "Error"):
+    if level in VERBOSITY_LEVELS:
+        eval("o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel." + level + ")")
+    return get_verbosity_level()
 ###########################################
 ### Pointcloud conversion functions
 

@@ -20,6 +20,8 @@
 import os
 import rospy
 import rosnode
+import rostopic
+import rosservice
 import time
 import sys
 
@@ -59,10 +61,12 @@ def check_for_node(node_name):
 
 ### Function to wait for a node
 def wait_for_node(node_name):
+  rospy.loginfo("Waiting for node with name: " + node_name)
   node = ""
   while node == "" and not rospy.is_shutdown():
     node=find_node(node_name)
     time.sleep(.1)
+  rospy.loginfo("Found node: " + node)
   return node
 
 def get_base_namespace():
@@ -77,20 +81,21 @@ def get_base_namespace():
 
 # Function to get list of active topics
 def get_topic_list():
-  topic = ""
-  topic_list=rospy.get_published_topics(namespace='/')
+  pubs, subs =rostopic.get_topic_list()
+  topic_list = pubs + subs
   return topic_list
 
 # Function to find a topic
 def find_topic(topic_name):
   topic = ""
   topic_list=get_topic_list()
-  #rospy.loginfo(topic_list)
   for topic_entry in topic_list:
-    #rospy.loginfo(topic_entry[0])
-    if topic_entry[0].find(topic_name) != -1 and topic_entry[0].find(topic_name+"_") == -1:
-      topic = topic_entry[0]
-      break
+    topic_str = topic_entry[0]
+    if isinstance(topic_str,str):
+      if topic_str.find(topic_name) != -1 : # and topic_str.find(topic_name+"_") == -1:
+
+        topic = topic_str
+        break
   return topic
 
 ### Function to check for a topic 
@@ -103,12 +108,58 @@ def check_for_topic(topic_name):
 
 # Function to wait for a topic
 def wait_for_topic(topic_name):
+  rospy.loginfo("Waiting for topic with name: " + topic_name)
   topic = ""
   while topic == "" and not rospy.is_shutdown():
     topic=find_topic(topic_name)
     time.sleep(.1)
+  rospy.loginfo("Found topic: " + topic)
   return topic
 
+#######################
+### Service Utility Functions
+
+# Function to get list of active topics
+def get_service_list():
+  service = ""
+  service_list=rosservice.get_service_list()
+  return service_list
+
+# Function to get list of active services
+def get_published_service_list(search_namespace='/'):
+  service = ""
+  service_list=rospy.get_published_services(namespace=search_namespace)
+  return service_list
+
+# Function to find a service
+def find_service(service_name):
+  service = ""
+  service_list=get_service_list()
+  #rospy.loginfo(service_list)
+  for service_entry in service_list:
+    #rospy.loginfo(service_entry[0])
+    if service_entry.find(service_name) != -1 and service_entry.find(service_name+"_") == -1:
+      service = service_entry
+      break
+  return service
+
+### Function to check for a service 
+def check_for_service(service_name):
+  service_exists = True
+  service=find_service(service_name)
+  if service == "":
+    service_exists = False
+  return service_exists
+
+# Function to wait for a service
+def wait_for_service(service_name):
+  rospy.loginfo("Waiting for servcie name: " + service_name)
+  service = ""
+  while service == "" and not rospy.is_shutdown():
+    service=find_service(service_name)
+    time.sleep(.1)
+  rospy.loginfo("Found service: " + service)
+  return service
 
 #######################
 # Script Utility Functions

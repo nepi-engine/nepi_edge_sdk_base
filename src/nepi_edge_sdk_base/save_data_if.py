@@ -143,7 +143,11 @@ class SaveDataIF(object):
     def get_full_path_filename(self, timestamp_string, identifier, extension):
         if self.save_data_root_directory is None:
             return ""
-        return os.path.join(self.save_data_root_directory, self.save_data_prefix + "_" + timestamp_string + "_" + identifier + "." + extension)
+        spacer = ""
+        if self.save_data_prefix != "":
+            if self.save_data_prefix[-1] != "_":
+                spacer = "_"
+        return os.path.join(self.save_data_root_directory, self.save_data_prefix + spacer + timestamp_string + "_" + identifier + "." + extension)
 
     def __init__(self, data_product_names=None):
         # First thing, need to get the data folder
