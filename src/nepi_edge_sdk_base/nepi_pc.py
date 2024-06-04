@@ -79,10 +79,10 @@ def rosimg_to_o3dimg(ros_img_msg):
     o3d_img = o3d.geometry.Image(np_array)
     return o3d_img
 
-def o3dimg_to_rosimg(o3d_img, stamp=None, frame_id=None):
+def o3dimg_to_rosimg(o3d_img, stamp=None, frame_id=None, encoding="rgb8"):
     np_array = np.asarray(o3d_img)
-    ros_img_msg = ros_numpy.image.numpy_to_image(np_array, "bgr8")
-
+    ros_img_msg = ros_numpy.image.numpy_to_image(np_array, encoding)
+    
     if stamp is None:
         ros_img_msg.header.stamp = rospy.Time.now()
     else:
