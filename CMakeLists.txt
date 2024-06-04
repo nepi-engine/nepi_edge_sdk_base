@@ -254,6 +254,7 @@ catkin_install_python(PROGRAMS
   scripts/sequential_image_mux.py
   scripts/idx_sensor_mgr.py
   scripts/nepi_autolauncher.py
+  scripts/idx_pointcloud_processor.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

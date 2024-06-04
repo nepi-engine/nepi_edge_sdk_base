@@ -10,6 +10,7 @@
 import os
 import time
 import threading
+import subprocess
 import rospy
 import numpy as np
 from cv_bridge import CvBridge
@@ -712,7 +713,6 @@ class ROSIDXSensorIF:
                  getDepthMap=None, stopDepthMapAcquisition=None, 
                  getDepthImg=None, stopDepthImgAcquisition=None,
                  getPointcloud=None, stopPointcloudAcquisition=None, 
-                 getPointcloudImg=None, stopPointcloudImgAcquisition=None,
                  getGPSMsg=None,getOdomMsg=None,getHeadingMsg=None):
         
         
@@ -957,20 +957,6 @@ class ROSIDXSensorIF:
             self.capabilities_report.has_depth_image = True
         else:
             self.capabilities_report.has_depth_image = False
-        
-
-        self.getPointcloudImg = getPointcloudImg
-        if (self.getPointcloudImg is not None):
-            self.pointcloud_img_pub = rospy.Publisher('~idx/pointcloud_image', Image, queue_size=1, tcp_nodelay=True)
-            self.data_products.append('pointcloud_image')
-            self.pointcloud_img_thread = threading.Thread(target=self.runPointcloudImgThread)
-            self.pointcloud_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
-            self.stopPointcloudImgAcquisition = stopPointcloudImgAcquisition 
-            self.capabilities_report.has_pointcloud_image = True
-        else:
-            self.capabilities_report.has_pointcloud = False
-               
-         
 
         self.getPointcloud = getPointcloud
         if (self.getPointcloud is not None):
@@ -980,11 +966,23 @@ class ROSIDXSensorIF:
             self.pointcloud_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopPointcloudAcquisition = stopPointcloudAcquisition
             self.capabilities_report.has_pointcloud = True
-        else:
-            self.capabilities_report.has_pointcloud_image = False
             
+            # And enable the pointcloud_image stuff, processed by a separately launched node, since it is
+            # very resource heavy and starves all other threads running in the same process (due to python
+            # multithreading limitations)
+            self.capabilities_report.has_pointcloud_image = True
+            self.data_products.append('pointcloud_image')
+            idx_namespace = rospy.get_name() + '/idx'
+            rospy.loginfo(f'Starting pointcloud_processor as a separate node')
+            processor_run_cmd = ["rosrun", "nepi_edge_sdk_base", "idx_pointcloud_processor.py",
+                                 "__name:=pointcloud_processor", f"__ns:={idx_namespace}", f"_idx_namespace:={idx_namespace}"]
+            self.pointcloud_proc = subprocess.Popen(processor_run_cmd)
 
-
+        else:
+            self.capabilities_report.has_pointcloud = False
+            self.capabilities_report.has_pointcloud_image = False
+            self.pointcloud_proc = None
+        
         self.getGPSMsg = getGPSMsg
         if getGPSMsg is not None:
             self.idx_navpose_gps_pub = rospy.Publisher('~idx/gps_fix', NavSatFix, queue_size=1)
@@ -1071,13 +1069,6 @@ class ROSIDXSensorIF:
             self.depth_image_lock = threading.Lock()
             rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.saveDepthImgThread)
         
-        if (self.getPointcloudImg is not None):
-            self.pointcloud_img_thread.start()
-            self.pointcloud_image = None
-            self.pointcloud_image_timestamp = None
-            self.pointcloud_image_lock = threading.Lock()
-            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.savePointcloudImgThread)
-
         if (self.getPointcloud is not None):
             self.pointcloud_thread.start()
             self.pointcloud = None
@@ -1203,9 +1194,6 @@ class ROSIDXSensorIF:
     def runDepthImgThread(self):
         self.image_thread_proccess('depth_image', self.getDepthImg, self.stopDepthImgAcquisition, self.depth_img_pub)
 
-    def runPointcloudImgThread(self):
-        self.image_thread_proccess('pointcloud_image', self.getPointcloudImg, self.stopPointcloudImgAcquisition, self.pointcloud_img_pub)
-
     def runPointcloudThread(self):
         self.pointcloud_thread_proccess('pointcloud', self.getPointcloud, self.stopPointcloudAcquisition, self.pointcloud_pub)
 
@@ -1283,10 +1271,6 @@ class ROSIDXSensorIF:
 
     def saveDepthImgThread(self,timer):
         data_product = 'depth_image'
-        eval("self.save_img2file(data_product,self." + data_product + ",self." + data_product + "_timestamp)")
-
-    def savePointcloudImgThread(self,timer):
-        data_product = 'pointcloud_image'
         eval("self.save_img2file(data_product,self." + data_product + ",self." + data_product + "_timestamp)")
 
     def savePointcloudThread(self,timer):
