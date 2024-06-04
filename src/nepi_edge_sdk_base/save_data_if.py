@@ -8,6 +8,7 @@
 #
 import os
 import datetime
+import time
 
 import rospy
 
@@ -20,61 +21,95 @@ Basic interface for the global and private save_data topics.
 '''
 class SaveDataIF(object):
     save_continuous = False
-    
+    save_raw = False
+    save_path = None
+    save_data_prefix = ""
+    save_data_subfolder = ""
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
         if (self.save_continuous is False) and (msg.save_continuous is True):
             self.needs_save_calibration = True
 
-        self.save_continuous = msg.save_continuous
-        self.save_raw = msg.save_raw
+        save_continuous = msg.save_continuous
+        save_raw = msg.save_raw
+        self.save_data_enable(save_continuous, save_raw)
+        
 
-        rospy.set_param('~save_data_continuous', self.save_continuous)
-        rospy.set_param('~save_data_raw', self.save_raw)
-
+    def save_data_enable(self, save_continuous = False, save_raw = False):
+        self.save_continuous = save_continuous
+        self.save_raw = save_raw
+        rospy.set_param('~save_data_continuous', save_continuous)
+        self.save_continuous = save_continuous
+        rospy.set_param('~save_data_raw', save_raw)
+        self.save_raw = save_raw
         self.publish_save_status()
 
     def save_data_prefix_pub_ns_callback(self, msg):
-        self.save_data_prefix = msg.data
-
-        # Mark for calibration save if this will be in a subdirectory
-        # TODO: Better would be if we detected that this was a *new* subdirectory, but that logic is more complicated and
-        # saving calibration more often than necessary seems pretty benign
-        if '/' in self.save_data_prefix:
-            self.needs_save_calibration = True
-        # TODO: Should we monitor here to ensure that a new folder gets created by system_mgr if required according to the new prefix before proceeding?
-        
-        self.publish_save_status()
+        new_prefix = msg.data
+        self.update_save_data_path_and_prefix(new_prefix)
 
     def save_data_prefix_priv_ns_callback(self, msg):
-        self.save_data_prefix = msg.data
-
         if self.save_data_root_directory is None:
             return # No data directory
+        new_prefix = msg.data
+        self.update_save_data_path_and_prefix(new_prefix)
 
-        # Now ensure the directory exists if this prefix defines a subdirectory
-        full_path = os.path.join(self.save_data_root_directory, self.save_data_prefix)
-        parent_path = os.path.dirname(full_path)
+    def update_save_data_path_and_prefix(self,save_data_prefix = ""):
+        if '\\' not in save_data_prefix:
+            if save_data_prefix.find('/') == -1:
+                subfolder = ""
+                prefix = save_data_prefix
+            else:
+                prefix_split = save_data_prefix.rsplit('/',1)
+                subfolder = prefix_split[0]
+                prefix = prefix_split[1]
+            # Now ensure the directory exists if this prefix defines a subdirectory
+        else:
+            subfolder = ""
+            prefix = ""
+        if subfolder != "" and self.save_data_root_directory != None:
+            full_path = os.path.join(self.save_data_root_directory, subfolder)
+        elif self.save_data_root_directory != None:
+            full_path = self.save_data_root_directory
+        else:
+            full_path = ""
         #rospy.logwarn("DEBUG!!!! Computed full path " + full_path + " and parent path " + parent_path)
-        if not os.path.exists(parent_path):
-            rospy.loginfo("Creating new data subdirectory " + parent_path)
-            os.makedirs(parent_path)
-            os.chown(parent_path, self.DATA_UID, self.DATA_GID)
-            # Mark that we should save calibration to the new folder
-            self.needs_save_calibration = True
+        if not os.path.exists(full_path):
+            rospy.loginfo("Creating new data subdirectory " + full_path)
+            try:
+                os.makedirs(full_path)
+                os.chown(full_path, self.DATA_UID, self.DATA_GID)
+                # Mark that we should save calibration to the new folder
+                self.save_path = full_path
+                self.save_data_subfolder  = subfolder
+            except Exception as e:
+                self.save_path = self.save_data_root_directory # revert to root folder
+                self.save_data_subfolder  = ""
+                rospy.loginfo("Could not create save folder " + subfolder + str(e) )
+        else:
+            self.save_path = full_path
+            self.save_data_subfolder  = subfolder
+        self.save_data_prefix = prefix
 
+        self.needs_save_calibration = True
         self.publish_save_status()
 
     def save_data_rate_callback(self, msg):
-        if (msg.data_product == msg.ALL_DATA_PRODUCTS):
+        data_product = msg.data_product
+        save_rate_hz = msg.save_rate_hz
+        self.update_save_data_rate(data_product,save_rate_hz)
+
+    def update_save_data_rate(self,data_product,save_rate_hz=0):
+        save_all = SaveDataRate().ALL_DATA_PRODUCTS
+        if (data_product == save_all):
             for d in self.data_rate_dict:
                 # Respect the max save rate
-                self.data_rate_dict[d][0] = msg.save_rate_hz if msg.save_rate_hz <= self.data_rate_dict[d][2] else self.data_rate_dict[d][2]
-
-        elif (msg.data_product in self.data_rate_dict):
-            self.data_rate_dict[msg.data_product][0] = msg.save_rate_hz if msg.save_rate_hz <= self.data_rate_dict[msg.data_product][2] else self.data_rate_dict[msg.data_product][2]
+                self.data_rate_dict[d][0] = save_rate_hz if save_rate_hz <= self.data_rate_dict[d][2] else self.data_rate_dict[d][2]
+        elif (data_product in self.data_rate_dict):
+            self.data_rate_dict[data_product][0] = save_rate_hz if save_rate_hz <= self.data_rate_dict[data_product][2] else self.data_rate_dict[data_product][2]
         else:
-            rospy.logerr("%s is not a known data product", msg.data_product)
+            rospy.logerr("%s is not a known data product", data_product)
+
 
     def query_data_products_callback(self, req):
         return_list = []
@@ -85,11 +120,12 @@ class SaveDataIF(object):
 
     def publish_save_status(self):
         current_save_data = SaveData(save_continuous = self.save_continuous, save_raw = self.save_raw)
+        current_save_configs = self.getSaveDataConfigs()
+        save_configs_msg = self.create_save_configs_msg(current_save_configs)
         if self.save_data_root_directory is None:
-            self.save_data_status_pub.publish(current_data_dir = "", save_data = current_save_data)
+            self.save_data_status_pub.publish(current_data_dir = "", current_filename_prefix = self.save_data_prefix, save_data_configs = save_configs_msg, save_data = current_save_data)
         else:
-            current_dir = os.path.dirname(os.path.join(self.save_data_root_directory, self.save_data_prefix))
-            self.save_data_status_pub.publish(current_data_dir = current_dir, save_data = current_save_data)
+            self.save_data_status_pub.publish(current_data_dir = self.save_path, current_filename_prefix = self.save_data_prefix,save_data_configs = save_configs_msg, save_data = current_save_data)
 
     def data_product_should_save(self, data_product_name):
         # If saving is disabled for this node, then it is not time to save this data product!
@@ -136,20 +172,43 @@ class SaveDataIF(object):
         return datetime.datetime.now().strftime('%Y-%m-%dT%H%M%S.%f')[:-3]
 
     def get_filename_path_and_prefix(self):
-        if self.save_data_root_directory is None:
+        if self.save_path is None:
             return ""
-        return os.path.join(self.save_data_root_directory, self.save_data_prefix)
+        return os.path.join(self.save_path, self.save_data_prefix)
 
     def get_full_path_filename(self, timestamp_string, identifier, extension):
-        if self.save_data_root_directory is None:
+        if self.save_path is None:
             return ""
         spacer = ""
         if self.save_data_prefix != "":
             if self.save_data_prefix[-1] != "_":
                 spacer = "_"
-        return os.path.join(self.save_data_root_directory, self.save_data_prefix + spacer + timestamp_string + "_" + identifier + "." + extension)
+        filename = os.path.join(self.save_path, self.save_data_prefix + spacer + timestamp_string + "_" + identifier + "." + extension)
+        #rospy.loginfo("******* save data filename: " + filename)
+        return filename
+
+
+    def getSaveDataConfigs(self):
+        save_data_configs = []
+        for data_product in self.data_rate_dict.keys():
+            config = [data_product,str(self.data_rate_dict[data_product][0])]
+            save_data_configs.append(config)
+        return save_data_configs
+
+    def create_save_configs_msg(self,configs):
+        msg_data = []
+        for config in configs:
+            for string in config:
+                msg_data.append(string)
+        return str(msg_data)
 
     def __init__(self, data_product_names=None):
+        if data_product_names != None:
+            data_products_str = str(data_product_names)
+        else:
+            data_products_str = "None"
+        rospy.loginfo("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+        rospy.loginfo("Starting Save_Data_IF with data products: " + data_products_str)
         # First thing, need to get the data folder
         try:
             rospy.wait_for_service('system_storage_folder_query', 10.0)
@@ -181,7 +240,9 @@ class SaveDataIF(object):
         rospy.set_param('~save_data_continuous', self.save_continuous)
         rospy.set_param('~save_data_raw', self.save_raw)
 
-        self.save_data_prefix = ''
+        self.save_data_prefix = ""
+        self.save_data_subfolder = ""
+        self.save_path = self.save_data_root_directory
         
         self.needs_save_calibration = self.save_continuous
 
@@ -196,4 +257,6 @@ class SaveDataIF(object):
 
         rospy.Service('~query_data_products', DataProductQuery, self.query_data_products_callback)
 
-        self.save_data_status_pub = rospy.Publisher('~save_data_status', SaveDataStatus, queue_size = 5)
+        self.save_data_status_pub = rospy.Publisher('~save_data_status', SaveDataStatus, queue_size=1, latch=True)
+        time.sleep(1)
+        self.publish_save_status()

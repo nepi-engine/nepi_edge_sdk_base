@@ -92,7 +92,7 @@ def find_topic(topic_name):
   for topic_entry in topic_list:
     topic_str = topic_entry[0]
     if isinstance(topic_str,str):
-      if topic_str.find(topic_name) != -1 : # and topic_str.find(topic_name+"_") == -1:
+      if topic_str.find(topic_name) != -1 and topic_str.find(topic_name+"_") == -1:
 
         topic = topic_str
         break

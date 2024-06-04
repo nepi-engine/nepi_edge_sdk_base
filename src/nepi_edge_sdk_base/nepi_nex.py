@@ -274,13 +274,13 @@ def update_setting_in_settings(setting_to_update,settings):
   updated_settings = []
   found_setting = False
   for setting in settings:
-    if setting[1] == s_name: # append updated setting
-      updated_settings.append(setting_to_update)
+    if setting[1] == s_name: 
+      updated_settings.append(setting_to_update) # append/replace new
       found_setting = True
-    else: # append original setting
-      updated_settings.append(setting)
+    else: 
+      updated_settings.append(setting) # append original
   if found_setting is False: # append new setting to original settings
-      updated_settings.append(setting_to_update)
+      updated_settings.append(setting_to_update) # append/add new
   return updated_settings
 
 def remove_setting_from_settings(setting_to_remove,settings):
@@ -338,28 +338,66 @@ def sort_settings_alphabetically(settings,setting_ind_to_sort):
 #***************************
 # NEX Data Saving utitlity functions
 
-def parse_save_data_products_msg_data(msg_data):
-  product = []
-  productss = []
+TEST_SAVE_CONFIGS = [["color_2d_image","2"],
+                    ["bw_2d_image","1"]]
+
+def parse_save_configs_msg(msg_data):
+  config = []
+  configs = []
   if msg_data[0] == "[" and msg_data[-1] == "]" :
+    #rospy.loginfo("Parsing save_configs msg data: " + msg_data)
     msg_string_list = eval(msg_data)
-    new_product = True
-    if len(msg_string_list) > 0:
-      for string in msg_string_list:
-        if new_product:
-          product = [string]
-        else:
-          products.append(setting)
-          product = []
-  return(products)
+    #rospy.loginfo(msg_string_list)
+    new_data_product = True
+    for string in msg_string_list:
+      if new_data_product:
+        config = [string]
+        new_data_product = False
+      else:
+        config.append(string)
+        configs.append(config)
+        config = []
+        new_data_product = True
+  return(configs)
 
-def create_save_data_products():
-  return []
+def compare_config_in_save_configs(config,configs):
+  data_product = config[0]
+  rate = config[1]
+  name_match = False
+  value_match = False
+  for check_config in configs:
+    if check_config[0] == data_product:
+      name_match = True
+      if check_config[1] == rate:
+        value_match = True
+      return name_match, value_match
+      break
+  return name_match, value_match
 
-def create_msg_data_from_save_data_products(products):
+
+def update_config_in_save_configs(config,configs):
+  data_product = config[0]
+  rate = config[1]
+  updated_configs = []
+  found_config = False
+  for check_config in configs:
+    if check_config[0] == data_product:
+      updated_configs.append(config) # append/replace new
+      found_config = True
+    else:
+      updated_configs.append(check_config) # append original
+  if found_config is False:
+    updated_configs.append(config) # append/add new
+  return updated_configs
+  
+
+def create_save_config(data_product_name,save_rate_hz):
+  return [data_product_name,str(save_rate_hz)]
+
+def create_save_configs_msg(configs):
   msg_data = []
-  for product in products:
-    for string in product:
+  for config in configs:
+    for string in config:
       msg_data.append(string)
   return str(msg_data)
 

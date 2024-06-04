@@ -21,9 +21,10 @@ from sensor_msgs.msg import Image, PointCloud2
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import NavSatFix
 
+
 from nepi_edge_sdk_base.save_data_if import SaveDataIF
 from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
-from nepi_ros_interfaces.msg import IDXStatus, RangeWindow
+from nepi_ros_interfaces.msg import IDXStatus, RangeWindow, SaveData, SaveDataRate, SaveDataStatus
 from nepi_ros_interfaces.srv import IDXCapabilitiesQuery, IDXCapabilitiesQueryResponse, NavPoseCapabilitiesQuery, NavPoseCapabilitiesQueryResponse
 
 from nepi_edge_sdk_base import nepi_ros
@@ -37,7 +38,7 @@ class ROSIDXSensorIF:
     FRAMERATE_MODE_MAX = 3 # LOW, MED, HIGH, MAX
     SETTINGS_STATE_LIST = []
     UPDATE_NAVPOSE_RATE_HZ = 10
-    CHECK_DATA_SAVE_RATE_HZ = 1
+    CHECK_DATA_SAVE_RATE_HZ = 40
     
     # Backup Factory Control Values 
     FACTORY_CONTROLS = dict( controls_enable = True,
@@ -56,6 +57,14 @@ class ROSIDXSensorIF:
         frame_3d = 'nepi_center_frame'
     )
 
+    FACTORY_SAVE_DATA_CONFIGS = dict( color_2d_image = "1",
+        bw_2d_image = "0",
+        depth_map = "0",
+        depth_image = "0",
+        pointcloud_image = "0",
+        pointcloud = "0",
+    )
+
     # Define class variables
     factory_controls = None
     init_controls_enable = None 
@@ -69,14 +78,24 @@ class ROSIDXSensorIF:
     init_max_range = None
     init_frame_3d = None
     init_zoom_ratio = None
-    inti_zoom_ratio = None
-
+    init_zoom_ratio = None
 
     caps_settings = None
     factory_settings = None
     init_settings = None
     update_settings_function = None
+
     data_products = []
+
+    factory_save_data_configs = []
+    init_save_data_configs = []
+    factory_save_data_enabled = False
+    init_save_data_enabled = False
+    factory_save_data_nav_enabled = False
+    init_save_data_nav_enabled = False
+    save_data_nav_enabled = False
+    save_data_prefix = ""
+    init_save_data_prefix = ""
 
     save_data_if = None
     save_cfg_if = None
@@ -124,6 +143,11 @@ class ROSIDXSensorIF:
 
         self.updateSettings(self.factory_settings)
 
+        self.updateSaveDataConfigs(self.factory_save_data_configs)
+        self.updateSaveDataEnabled(self.factory_save_data_enabled)
+        self.updateSaveDataNavEnabled(self.factory_save_data_nav_enabled)
+        self.setSaveDataPrefix(self.init_save_data_prefix)
+
         self.updateFromParamServer()
 
 
@@ -140,6 +164,9 @@ class ROSIDXSensorIF:
         self.init_rotate_ratio = rospy.get_param('~idx/rotate', self.factory_controls.get('rotate_ratio'))
         self.init_frame_3d = rospy.get_param('~idx/frame_3d', self.factory_controls.get('frame_3d'))
         self.init_settings = rospy.get_param('~idx/settings',self.factory_settings)
+        self.init_save_data_configs = rospy.get_param('~idx/save_data_configs',self.factory_save_data_configs)
+        self.init_save_data_enabled = rospy.get_param('~idx/save_data_enabled',self.factory_save_data_enabled)
+        self.init_save_data_nav_enabled = rospy.get_param('~idx/save_data_enabled',self.factory_save_data_nav_enabled)
         self.updateFromParamServer()
 
 
@@ -227,6 +254,143 @@ class ROSIDXSensorIF:
         else:
             rospy.loginfo("Skipping settings update request. getCurrentSettings function not defined")
         return success
+
+
+    def resetSaveDataCb(self, msg):
+        rospy.loginfo(msg)
+        rospy.loginfo("Resetting IDX Save Data Config")
+        self.resetSaveData()
+
+    def resetSaveData(self):
+        rospy.loginfo(self.init_save_data_configs)
+        self.updateSaveDataConfigs(self.init_save_data_configs)
+        self.setSaveDataPrefix(self.init_save_data_prefix)
+        self.setSaveDataNavEnable(self.init_save_data_nav_enabled)
+        self.setSaveDataEnable(self.init_save_data_enabled)
+        self.updateFromParamServer()
+
+
+    def updateSaveDataConfigsCb(self,msg):
+        #rospy.loginfo("Received save data configs update msg ")
+        #rospy.loginfo(msg)
+        new_save_configs = nepi_nex.parse_save_configs_msg(msg.data)
+        rospy.loginfo("Received save data configs update list")
+        rospy.loginfo(new_save_configs)
+        self.updateSaveDataConfigs(new_save_configs)
+
+
+    def updateSaveDataConfigs(self,new_save_configs):
+        success = False
+        if self.save_data_if is not None:
+            configs = self.save_data_if.getSaveDataConfigs()
+            if configs is not None:
+                for config in new_save_configs:
+                    data_product = config[0]
+                    rate = float(config[1])
+                    if data_product in self.save_data_if.data_rate_dict.keys():
+                        if self.save_data_if.data_rate_dict[data_product][0] != rate:
+                            if rate >= 0 and rate <= 100:
+                                self.save_data_if.update_save_data_rate(data_product,rate)
+                                configs = nepi_nex.update_config_in_save_configs(config,configs)
+                                success = True
+                                save_nav = rospy.get_param('~idx/save_data_nav_enabled', self.init_save_data_nav_enabled)
+                                if save_nav:
+                                    configs =  rospy.get_param('~idx/save_data_configs',  self.init_save_data_configs)
+                                    max_rate = 0
+                                    for config in configs:
+                                        if float(config[1]) > max_rate:
+                                            max_rate = float(config[1])
+                                    nav_rate_msg = SaveDataRate()
+                                    nav_rate_msg.data_product=self.nav_data_product
+                                    nav_rate_msg.save_rate_hz = max_rate
+                                    rospy.loginfo(nav_rate_msg)
+                                    self.set_nav_save_rate_pub.publish(nav_rate_msg)
+                            else:
+                                rospy.loginfo("Ignoring save config update " + str(config) + " as it is out of bounds")
+                                success = False
+                        else:
+                            rospy.loginfo("Ignoring save config update " + str(config) + " as it matches current value")
+                            success = False
+                    else:
+                        rospy.loginfo("Ignoring save config update " + str(config) + " as it is not supported data product")
+                        success = False
+                rospy.set_param('~idx/save_data_configs',  configs)
+                self.status_msg.save_data_configs = nepi_nex.create_save_configs_msg(configs)
+                self.updateAndPublishStatus(do_updates=False) # Updated inline above
+        return success   
+
+
+    def setSaveDataPrefixCb(self,msg):
+        #rospy.loginfo("Received save data prefix msg ")
+        #rospy.loginfo(msg)
+        new_save_prefix = msg.data
+        rospy.loginfo("Received save data prefix update " + str(new_save_prefix))
+        self.setSaveDataPrefix(new_save_prefix)
+
+    def setSaveDataPrefix(self,new_save_prefix):
+        success = False
+        if self.save_data_if is not None:
+            if new_save_prefix.find('\\') == -1:
+                if new_save_prefix != self.save_data_if.save_data_prefix:
+                    self.save_data_if.update_save_data_path_and_prefix(new_save_prefix)
+                    self.save_data_prefix = new_save_prefix
+                    self.status_msg.save_data_prefix = new_save_prefix
+                    success = True
+                    save_nav = rospy.get_param('~idx/save_data_nav_enabled', self.init_save_data_nav_enabled)
+                    if save_nav:
+                        self.set_nav_save_prefix_pub.publish(self.save_data_prefix)
+            else:
+                rospy.loginfo("Ignoring save prefix update as it contained a backslash")
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+        return success
+
+    def setSaveDataEnableCb(self,msg):
+        #rospy.loginfo("Received save data enabled msg ")
+        #rospy.loginfo(msg)
+        new_save_enable = msg.data
+        rospy.loginfo("Received save data enable update " + str(new_save_enable))
+        self.setSaveDataEnable(new_save_enable)
+
+    def setSaveDataEnable(self,new_save_enable):
+        success = False
+        if self.save_data_if is not None:
+            if new_save_enable != self.save_data_if.save_continuous:
+                self.save_data_if.save_data_enable(save_continuous = new_save_enable)
+                rospy.set_param('~idx/save_data_enabled', new_save_enable)
+                self.status_msg.save_data_enabled = new_save_enable
+                success = True
+                # Update nav saving if enabled.
+                save_nav = rospy.get_param('~idx/save_data_nav_enabled', self.init_save_data_nav_enabled)
+                rospy.loginfo("Save Nav : " + str(save_nav))
+                if save_nav:
+                    nav_save_msg = SaveData()
+                    nav_save_msg.save_continuous = new_save_enable
+                    nav_save_msg.save_raw = False
+                    #rospy.loginfo(nav_save_msg)
+                    self.set_nav_save_enable_pub.publish(nav_save_msg)
+            else:
+                rospy.loginfo("Ignoring save nav data enable update since it matches current setting")
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+        return success
+
+    def setSaveDataNavEnableCb(self,msg):
+        #rospy.loginfo("Received save data nav enabled msg ")
+        #rospy.loginfo(msg)
+        new_save_enable = msg.data
+        rospy.loginfo("Received save data nav enable update " + str(new_save_enable))
+        self.setSaveDataNavEnable(new_save_enable)
+
+    def setSaveDataNavEnable(self,new_save_enable):
+        success = False
+        if new_save_enable != rospy.get_param('~idx/save_data_nav_enabled', self.init_save_data_nav_enabled):
+            rospy.set_param('~idx/save_data_nav_enabled', new_save_enable)
+            self.status_msg.save_data_nav_enabled = new_save_enable
+            success = True
+        else:
+            rospy.loginfo("Ignoring save data enable update since it matches current setting")
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here
+        return success
+
 
 
     # Define local IDX Control callbacks
@@ -501,8 +665,8 @@ class ROSIDXSensorIF:
             self.updateSettings(param_dict['settings'])
         if (self.setControlsEnable is not None and 'controls_enable' in param_dict):
             self.setControlsEnable(param_dict['controls_enable'])
-        if (self.setAutoAdjust is not None and 'auto' in param_dict):
-            self.setAutoAdjust(param_dict['auto'])
+        if (self.setAutoAdjust is not None and 'auto_adjust' in param_dict):
+            self.setAutoAdjust(param_dict['auto_adjust'])
         if (self.setBrightness is not None and 'brightness' in param_dict):
             self.setBrightness(param_dict['brightness'])
         if (self.setContrast is not None and 'contrast' in param_dict):
@@ -520,6 +684,13 @@ class ROSIDXSensorIF:
         if (self.setRotate is not None and 'rotate' in param_dict):
             self.setRotate(param_dict['rotate'])
         self.setFrame3d(param_dict['frame_3d'])
+        save_data_configs = rospy.get_param('idx/save_data_configs', self.init_save_data_configs)
+        self.updateSaveDataConfigs(save_data_configs)
+        save_data_nav_enabled = rospy.get_param('idx/save_data_nav_enabled', self.init_save_data_nav_enabled)
+        self.setSaveDataNavEnable(save_data_nav_enabled)
+        save_data_enabled = rospy.get_param('idx/save_data_enabled', self.init_save_data_enabled)
+        self.setSaveDataEnable(save_data_enabled)
+
 
     def provide_capabilities(self, _):
         return self.capabilities_report
@@ -587,7 +758,10 @@ class ROSIDXSensorIF:
         cap_settings_msg = nepi_nex.create_msg_data_from_settings(self.cap_settings)
         self.capabilities_report.settings_options = cap_settings_msg
 
-        
+
+
+
+
 
         # Set init values for resets. Updated saveConfigCb() on save_config msg
         self.init_settings = rospy.get_param('~idx/settings', self.factory_settings)
@@ -716,8 +890,25 @@ class ROSIDXSensorIF:
         rospy.Subscriber('~idx/reset_controls', Empty, self.resetControlsCb, queue_size=1) # start local callback
         rospy.Subscriber('~idx/reset_settings', Empty, self.resetSettingsCb, queue_size=1) # start local callback
         rospy.Subscriber('~idx/reset_factory', Empty, self.resetFactoryCb, queue_size=1) # start local callback
-        rospy.Subscriber('~save_config', Empty, self.saveConfigCb, queue_size=1) # start local callback
- 
+
+        rospy.Subscriber('~idx/update_save_data_configs', String, self.updateSaveDataConfigsCb, queue_size=1) # start local callback
+        rospy.Subscriber('~idx/set_save_data_enable', Bool, self.setSaveDataEnableCb, queue_size=1) # start local callback
+        rospy.Subscriber('~idx/set_save_data_nav_enable', Bool, self.setSaveDataNavEnableCb, queue_size=1) # start local callback
+        rospy.Subscriber('~idx/set_save_data_prefix', String, self.setSaveDataPrefixCb, queue_size=1) # start local callback
+        rospy.Subscriber('~idx/reset_save_data', Empty, self.resetSaveDataCb, queue_size=1) # start local callback
+
+        # Create Nav Data Saving Publishers
+        nepi_base_namespace = nepi_ros.get_base_namespace()
+        self.nav_data_product = "nav_pose"
+        save_nav_prefix_topic = nepi_base_namespace + "nav_pose_mgr/save_data_prefix"
+        save_nav_rate_topic = nepi_base_namespace + "nav_pose_mgr/save_data_rate"
+        save_nav_enable_topic = nepi_base_namespace + "nav_pose_mgr/save_data"
+
+        rospy.loginfo("Save Nav topic: " + save_nav_rate_topic)
+
+        self.set_nav_save_prefix_pub = rospy.Publisher(save_nav_prefix_topic, String, queue_size=10)
+        self.set_nav_save_rate_pub = rospy.Publisher(save_nav_rate_topic, SaveDataRate, queue_size=10)
+        self.set_nav_save_enable_pub = rospy.Publisher(save_nav_enable_topic, SaveData, queue_size=10)
 
         # Start the data producers  
         self.getColor2DImg = getColor2DImg
@@ -818,7 +1009,21 @@ class ROSIDXSensorIF:
 
         # Set up the save data and save cfg i/f and launch saving threads-- Do this before launching aquisition threads so that they can check data_product_should_save() immediately
         self.capabilities_report.data_products = str(self.data_products)
+
         self.save_data_if = SaveDataIF(data_product_names = self.data_products)
+
+        # Update save data configuration fom param server
+
+        for data_product in self.data_products:
+            self.factory_save_data_configs.append([data_product,self.FACTORY_SAVE_DATA_CONFIGS.get(data_product)])
+        self.init_save_data_configs = rospy.get_param('~idx/save_data_configs',  self.factory_save_data_configs)
+        rospy.set_param('~idx/save_data_configs', self.init_save_data_configs) 
+        self.init_save_data_enabled = rospy.get_param('~idx/save_data_enabled',  self.factory_save_data_enabled)
+        rospy.set_param('~idx/save_data_enabled', self.init_save_data_enabled) 
+        self.init_save_data_nav_enabled = rospy.get_param('~idx/save_data_nav_enabled',  self.factory_save_data_nav_enabled)
+        rospy.set_param('~idx/save_data_nav_enabled', self.init_save_data_nav_enabled) 
+
+
         self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.setCurrentSettingsAsDefault, paramsModifiedCallback=self.updateFromParamServer)
 
     
@@ -879,6 +1084,9 @@ class ROSIDXSensorIF:
             self.pointcloud_timestamp = None
             self.pointcloud_lock = threading.Lock()            
             rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.savePointcloudThread)
+        
+        # Start a regular check for save status changes
+        rospy.Timer(rospy.Duration(0.5), self.updateSaveDataStatusCallback)
         
     
     # Image from img_get_function can be CV2 or ROS image.  Will be converted as needed in the thread
@@ -1005,9 +1213,12 @@ class ROSIDXSensorIF:
 
 # Define saving functions for saving callbacks
 
+
+
     def save_img2file(self,data_product,cv2_image,ros_timestamp):
         if self.save_data_if is not None:
             saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
+            # Save data if enabled
             if saving_is_enabled:
                 eval("self." + data_product + "_lock.acquire()")
                 if eval("self." + data_product + " is not None"):
@@ -1033,6 +1244,29 @@ class ROSIDXSensorIF:
                 
 
     # Create timer callbacks for saving threads
+    def updateSaveDataStatusCallback(self,timer):
+        changed = False
+        # Check current data product save configs for change
+        configs_if = self.save_data_if.getSaveDataConfigs()
+        configs = rospy.get_param('~idx/save_data_configs',  self.init_save_data_configs)
+        if configs != configs_if:
+            rospy.set_param('~idx/save_data_configs', configs_if)
+            self.status_msg.save_data_configs = nepi_nex.create_save_configs_msg(configs_if)
+            changed = True
+        if self.save_data_prefix != self.save_data_if.save_data_prefix:
+            self.save_data_prefix = self.save_data_if.save_data_prefix
+            self.status_msg.save_data_prefix = self.save_data_prefix
+            changed = True
+        
+        # Check current data save enabled for change
+        save_enabled_if = (self.save_data_if.save_continuous or self.save_data_if.save_raw)
+        save_enabled = rospy.get_param('~idx/save_data_enabled',  self.init_save_data_enabled)
+        if save_enabled != save_enabled_if:
+            rospy.set_param('~idx/save_data_enabled', save_enabled_if)
+            self.status_msg.save_data_enabled = save_enabled_if
+            changed = True
+        if changed:
+            self.updateAndPublishStatus(do_updates = False) # Status manually updated above
 
     def saveColorImgThread(self,timer):
         data_product = 'color_2d_image'
@@ -1097,7 +1331,7 @@ class ROSIDXSensorIF:
             settings_msg = nepi_nex.create_msg_data_from_settings(idx_params['settings'] if 'settings' in idx_params else self.getCurrentSettings())
             self.status_msg.settings = settings_msg 
             self.status_msg.controls_enable = idx_params['controls_enable'] if 'controls_enable' in idx_params else True
-            self.status_msg.auto_adjust = idx_params['auto'] if 'auto' in idx_params else False
+            self.status_msg.auto_adjust = idx_params['auto_adjust'] if 'auto_adjust' in idx_params else False
             self.status_msg.resolution_mode = idx_params['resolution_mode'] if 'resolution_mode' in idx_params else 0
             self.status_msg.framerate_mode = idx_params['framerate_mode'] if 'framerate_mode' in idx_params else 0
             self.status_msg.contrast = idx_params['contrast'] if 'contrast' in idx_params else 0
@@ -1112,6 +1346,11 @@ class ROSIDXSensorIF:
             self.status_msg.rotate = idx_params['rotate'] if 'rotate' in idx_params else 0.5
             # The transfer frame into which 3D data (pointclouds) are transformed for the pointcloud data topic
             self.status_msg.frame_3d = idx_params['frame_3d'] if 'frame_3d' in idx_params else "nepi_center_frame"
+            save_data_configs = idx_params['save_data_configs'] if 'save_data_configs' in idx_params else []
+            self.status_msg.save_data_configs = nepi_nex.create_save_configs_msg(save_data_configs)
+            self.status_msg.save_data_prefix = self.save_data_prefix
+            self.status_msg.save_data_enabled = idx_params['save_data_enabled'] if 'save_data_enabled' in idx_params else False
+            self.status_msg.save_data_nav_enabled = idx_params['save_data_nav_enabled'] if 'save_data_nav_enabled' in idx_params else False
         
         self.status_pub.publish(self.status_msg)
     
