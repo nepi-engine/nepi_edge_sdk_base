@@ -13,7 +13,7 @@
 # 1) NavPose request functions
 # 2) NavPose conversion utility functions
 
-
+import os
 import rospy
 import numpy as np
 import math
@@ -27,13 +27,17 @@ from pygeodesy.ellipsoidalKarney import LatLon
 # try and import geoid height calculation module and databases
 GEOID_DATABASE_FILE='/opt/nepi/ros/lib/python3/dist-packages/nepi_edge_sdk_base/egm2008-2_5.pgm' # Ignored if PyGeodesy module or Geoids Database is not available
 FALLBACK_GEOID_HEIGHT_M = 0.0 # Ignored if if PyGeodesy module or Geoids Database are available
-try:
-  import pygeodesy
-  GEOID_DATABASE_FILE=GEOID_DATABASE_FILE
-  rospy.loginfo(['Loading Geoids Database from: ' + GEOID_DATABASE_FILE])
-  ginterpolator = pygeodesy.GeoidKarney(GEOID_DATABASE_FILE)
-except rospy.ServiceException as e:
-  rospy.loginfo("Geoids database failed to import: %s"%e)
+file_loaded = False
+if os.path.exists(GEOID_DATABASE_FILE):
+  try:
+    import pygeodesy
+    GEOID_DATABASE_FILE=GEOID_DATABASE_FILE
+    rospy.loginfo(['Loading Geoids Database from: ' + GEOID_DATABASE_FILE])
+    ginterpolator = pygeodesy.GeoidKarney(GEOID_DATABASE_FILE)
+    file_loaded = True
+  except rospy.ServiceException as e:
+    rospy.loginfo("Geoids database failed to import: %s"%e)
+if file_loaded is False:
   def ginterpolator(single_position):
     return FALLBACK_GEOID_HEIGHT_M
 
