@@ -42,7 +42,7 @@ class IDXPointcloudProcessor(object):
         # Delay subscribing until we have a subscriber ourselves
         input_pc_subscriber = None
         
-        output_pc_img_topic = self.idx_namespace + '/pointcloud_img'
+        output_pc_img_topic = self.idx_namespace + '/pointcloud_image'
         self.output_img_pub = rospy.Publisher(output_pc_img_topic, Image, queue_size=1, tcp_nodelay=True)
 
         # TODO: Set up a save_data_if for data products

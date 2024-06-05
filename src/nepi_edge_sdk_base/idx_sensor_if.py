@@ -53,8 +53,6 @@ class ROSIDXSensorIF:
         stop_range_ratio = 1.0,
         min_range_m = 0.0,
         max_range_m = 1.0,
-        zoom_ratio = 0.5, 
-        rotate_ratio = 0.5,
         frame_3d = 'nepi_center_frame'
     )
 
@@ -78,8 +76,15 @@ class ROSIDXSensorIF:
     init_min_range = None
     init_max_range = None
     init_frame_3d = None
-    init_zoom_ratio = None
-    init_zoom_ratio = None
+
+
+    init_zoom_ratio = 0.5
+    init_rotate_ratio = 0.5
+    init_tilt_ratio = 0.5
+
+    zoom_ratio = init_zoom_ratio
+    rotate_ratio = init_rotate_ratio
+    tilt_ratio = init_rotate_ratio
 
     caps_settings = None
     factory_settings = None
@@ -133,21 +138,19 @@ class ROSIDXSensorIF:
         self.status_msg.range_window.start_range = self.factory_controls.get('start_range_ratio')
         self.status_msg.range_window.stop_range =  self.factory_controls.get('stop_range_ratio')
         
-        rospy.set_param('~idx/zoom', self.factory_controls.get('zoom_ratio'))
-        self.status_msg.zoom = self.factory_controls.get('zoom_ratio')
-
-        rospy.set_param('~idx/rotate', self.factory_controls.get('rotate_ratio'))
-        self.status_msg.rotate = self.factory_controls.get('rotate_ratio')
-
         rospy.set_param('~idx/frame_3d', self.factory_controls.get('frame_3d'))
         self.status_msg.frame_3d = self.factory_controls.get('frame_3d')
 
         self.updateSettings(self.factory_settings)
 
         self.updateSaveDataConfigs(self.factory_save_data_configs)
-        self.updateSaveDataEnabled(self.factory_save_data_enabled)
-        self.updateSaveDataNavEnabled(self.factory_save_data_nav_enabled)
+        self.setSaveDataEnable(self.factory_save_data_enabled)
+        self.setSaveDataNavEnabled(self.factory_save_data_nav_enabled)
         self.setSaveDataPrefix(self.init_save_data_prefix)
+
+        self.zoom_ratio = self.init_zoom_ratio
+        self.rotate_ratio = self.init_rotate_ratio
+        self.tilt_ratio = self.init_rotate_ratio
 
         self.updateFromParamServer()
 
@@ -161,8 +164,6 @@ class ROSIDXSensorIF:
         self.init_framerate_mode = rospy.get_param('~idx/framerate_mode', self.factory_controls.get('framerate_mode'))
         self.init_start_range_ratio = rospy.get_param('~idx/range_window/start_range_ratio', self.factory_controls.get('start_range_ratio'))
         self.init_stop_range_ratio = rospy.get_param('~idx/range_window/stop_range_ratio', self.factory_controls.get('stop_range_ratio'))
-        self.init_zoom_ratio = rospy.get_param('~idx/zoom', self.factory_controls.get('zoom_ratio'))
-        self.init_rotate_ratio = rospy.get_param('~idx/rotate', self.factory_controls.get('rotate_ratio'))
         self.init_frame_3d = rospy.get_param('~idx/frame_3d', self.factory_controls.get('frame_3d'))
         self.init_settings = rospy.get_param('~idx/settings',self.factory_settings)
         self.init_save_data_configs = rospy.get_param('~idx/save_data_configs',self.factory_save_data_configs)
@@ -201,14 +202,12 @@ class ROSIDXSensorIF:
         self.status_msg.min_range_m = self.init_min_range_m
         self.status_msg.max_range_m = self.init_max_range_m
         
-        rospy.set_param('~idx/zoom', self.init_zoom_ratio)
-        self.status_msg.zoom = self.init_zoom_ratio
-    
-        rospy.set_param('~idx/rotate', self.init_rotate_ratio)
-        self.status_msg.rotate = self.init_rotate_ratio
-
         rospy.set_param('~idx/frame_3d', self.init_frame_3d)
         self.status_msg.frame_3d = self.init_frame_3d
+
+        self.zoom_ratio = self.init_zoom_ratio
+        self.rotate_ratio = self.init_rotate_ratio
+        self.tilt_ratio = self.init_rotate_ratio
 
         self.updateFromParamServer()
 
@@ -605,49 +604,36 @@ class ROSIDXSensorIF:
 
     def setZoomCb(self, msg):
         new_zoom = msg.data
-        if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
-            rospy.loginfo("Ignoring Set Zoom request. Controls disabled")
+        if (new_zoom < 0.0 and new_zoom != -1.0) or (new_zoom > 1.0):
+            rospy.logerr("Zoom value out of bounds")
+            self.updateAndPublishStatus(do_updates=False) # No change
+            return
         else:
-            if self.setZoom is None:
-                rospy.loginfo("Ignoring Set Zoom. Driver has no setZoom function")
-            else:
-                if (new_zoom < 0.0 and new_zoom != -1.0) or (new_zoom > 1.0):
-                    rospy.logerr("Zoom value out of bounds")
-                    self.updateAndPublishStatus(do_updates=False) # No change
-                    return
-                else:
-                    # Call the parent's method and update ROS param as necessary
-                    # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
-                    status, err_str = self.setZoom(new_zoom)
-                    if status is True:
-                        rospy.set_param('~idx/zoom', new_zoom)
-                        self.status_msg.zoom = new_zoom
-                    else:
-                        rospy.logerr("Failed to update Zoom: " + err_str)
+            self.zoom_ratio = new_zoom
+            self.status_msg.zoom = new_zoom
         self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
     def setRotateCb(self, msg):
         new_rotate = msg.data
-        if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
-            rospy.loginfo("Ignoring Set Rotate request. Controls disabled")
+        if (new_rotate < 0.0 and new_rotate != -1.0) or (new_rotate > 1.0):
+            rospy.logerr("rotate value out of bounds")
+            self.updateAndPublishStatus(do_updates=False) # No change
+            return
         else:
-            if self.setRotate is None:
-                rospy.loginfo("Ignoring Set Rotate. Driver has no setRotate function")
-            else:
-                if (new_rotate < 0.0 and new_rotate != -1.0) or (new_rotate > 1.0):
-                    rospy.logerr("Rotate value out of bounds")
-                    self.updateAndPublishStatus(do_updates=False) # No change
-                    return
-                else:
-                    # Call the parent's method and update ROS param as necessary
-                    # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
-                    status, err_str = self.setRotate(new_rotate)
-                    if status is True:
-                        rospy.set_param('~idx/rotate', new_rotate)
-                        self.status_msg.rotate = new_rotate
-                    else:
-                        rospy.logerr("Failed to update Rotate: " + err_str)
-        self.updateAndPublishStatus(do_updates=False) # Updated inline here    
+            self.rotate_ratio = new_rotate
+            self.status_msg.rotate = new_rotate
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here  
+
+    def setTiltCb(self, msg):
+        new_tilt = msg.data
+        if (new_tilt < 0.0 and new_tilt != -1.0) or (new_tilt > 1.0):
+            rospy.logerr("tilt value out of bounds")
+            self.updateAndPublishStatus(do_updates=False) # No change
+            return
+        else:
+            self.tilt_ratio = new_tilt
+            self.status_msg.tilt = new_tilt
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here  
 
 
     def setFrame3dCb(self, msg):
@@ -680,10 +666,6 @@ class ROSIDXSensorIF:
             self.setFramerateMode(param_dict['framerate_mode'])
         if (self.setRange is not None and 'start_range' in param_dict and 'stop_range' in param_dict):
             self.setRange(param_dict['range_window']['start_range'], param_dict['range_window']['stop_range'])
-        if (self.setZoom is not None and 'zoom' in param_dict):
-            self.setZoom(param_dict['zoom'])
-        if (self.setRotate is not None and 'rotate' in param_dict):
-            self.setRotate(param_dict['rotate'])
         self.setFrame3d(param_dict['frame_3d'])
         save_data_configs = rospy.get_param('idx/save_data_configs', self.init_save_data_configs)
         self.updateSaveDataConfigs(save_data_configs)
@@ -707,11 +689,11 @@ class ROSIDXSensorIF:
                  factoryControls = None, setControlsEnable=None, setAutoAdjust=None,
                  setContrast=None, setBrightness=None, setThresholding=None,
                  setResolutionMode=None, setFramerateMode=None, 
-                 setRange=None, setZoom=None, setRotate=None,
+                 setRange=None, 
                  getColor2DImg=None, stopColor2DImgAcquisition=None, 
                  getBW2DImg=None, stopBW2DImgAcquisition=None,
                  getDepthMap=None, stopDepthMapAcquisition=None, 
-                 getDepthImg=None, stopDepthImgAcquisition=None,
+                 getDepthImg=None, stopDepthImgAcquisition=None, 
                  getPointcloud=None, stopPointcloudAcquisition=None, 
                  getGPSMsg=None,getOdomMsg=None,getHeadingMsg=None):
         
@@ -787,12 +769,6 @@ class ROSIDXSensorIF:
 
         self.init_framerate_mode = rospy.get_param('~idx/framerate_mode',  self.factory_controls["framerate_mode"])
         rospy.set_param('~idx/framerate_mode', self.init_framerate_mode)
-
-        self.init_zoom_ratio = rospy.get_param('~idx/zoom',  self.factory_controls["zoom_ratio"])
-        rospy.set_param('~idx/zoom', self.init_zoom_ratio) 
-
-        self.init_rotate_ratio = rospy.get_param('~idx/rotate',  self.factory_controls["rotate_ratio"])
-        rospy.set_param('~idx/rotate', self.init_rotate_ratio) 
 
         if self.factory_controls["frame_3d"] is None:
             self.init_frame_3d = rospy.get_param('~idx/frame_3d',  'nepi_center_frame')
@@ -870,19 +846,6 @@ class ROSIDXSensorIF:
         else:
             self.capabilities_report.adjustable_range = False
 
-        self.setZoom = setZoom      
-        if setZoom is not None:
-            rospy.Subscriber('~idx/set_zoom', Float32, self.setZoomCb, queue_size=1) # start local callback
-            self.capabilities_report.zoom = True
-        else:
-            self.capabilities_report.zoom = False
-
-        self.setRotate = setRotate       
-        if setRotate is not None:
-            rospy.Subscriber('~idx/set_rotate', Float32, self.setRotateCb, queue_size=1) # start local callback
-            self.capabilities_report.rotate = True
-        else:
-            self.capabilities_report.rotate = False
 
         rospy.Subscriber('~idx/set_frame_3d', String, self.setFrame3dCb, queue_size=1)
 
@@ -945,8 +908,7 @@ class ROSIDXSensorIF:
             self.capabilities_report.has_depth_map = True
         else:
             self.capabilities_report.has_depth_map = False
-        
-
+            
         self.getDepthImg = getDepthImg
         if (self.getDepthImg is not None):
             self.depth_img_pub = rospy.Publisher('~idx/depth_image', Image, queue_size=1, tcp_nodelay=True)
@@ -966,10 +928,15 @@ class ROSIDXSensorIF:
             self.pointcloud_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopPointcloudAcquisition = stopPointcloudAcquisition
             self.capabilities_report.has_pointcloud = True
-            
+
+            rospy.Subscriber('~idx/set_zoom', Float32, self.setZoomCb, queue_size=1) # start local callback
+            rospy.Subscriber('~idx/set_rotate', Float32, self.setRotateCb, queue_size=1) # start local callback
+            rospy.Subscriber('~idx/set_tilt', Float32, self.setTiltCb, queue_size=1) # start local callback
+
             # And enable the pointcloud_image stuff, processed by a separately launched node, since it is
             # very resource heavy and starves all other threads running in the same process (due to python
             # multithreading limitations)
+
             self.capabilities_report.has_pointcloud_image = True
             self.data_products.append('pointcloud_image')
             idx_namespace = rospy.get_name() + '/idx'
@@ -1073,7 +1040,7 @@ class ROSIDXSensorIF:
             self.pointcloud_thread.start()
             self.pointcloud = None
             self.pointcloud_timestamp = None
-            self.pointcloud_lock = threading.Lock()            
+            self.pointcloud_lock = threading.Lock()
             rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.savePointcloudThread)
         
         # Start a regular check for save status changes
@@ -1095,7 +1062,7 @@ class ROSIDXSensorIF:
                     acquiring = True
                     status, msg, image, ros_timestamp, encoding = img_get_function()
                     if (status is False):
-                        rospy.logerr_throttle(1, msg)
+                        #rospy.logerr_throttle(1, msg)
                         continue   
                     if (has_subscribers is True):
                         if isinstance(image,np.ndarray):  # CV2 image. Convert to ROS Image   
@@ -1128,6 +1095,8 @@ class ROSIDXSensorIF:
                     rospy.sleep(0.25)
                 rospy.sleep(0.01) # Yield
 
+
+
     
     # Pointcloud from pointcloud_get_function can be open3D or ROS pointcloud.  Will be converted as needed in the thread
     def pointcloud_thread_proccess(self,data_product,pc_get_function,pc_stop_function,pc_publisher):
@@ -1151,7 +1120,7 @@ class ROSIDXSensorIF:
                         ros_frame = rospy.get_param('~idx/frame_3d',  self.init_frame_3d )
                     #********************
                     if (status is False):
-                        rospy.logerr_throttle(1, msg)
+                        #rospy.logerr_throttle(1, msg)
                         continue   
                     if (has_subscribers is True):
                         if isinstance(pc,o3d.geometry.PointCloud):  # Open3D Pointcloud. Convert to ROS Pointcloud   
@@ -1197,6 +1166,56 @@ class ROSIDXSensorIF:
     def runPointcloudThread(self):
         self.pointcloud_thread_proccess('pointcloud', self.getPointcloud, self.stopPointcloudAcquisition, self.pointcloud_pub)
 
+   # Depth Image processing callback
+    def depth_image_process_callback(self,depth_map_msg):
+        data_product = "depth_image"
+        cv2_img = None
+        ros_img = None
+        encoding = 'bgr8'
+        saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
+        has_subscribers = (self.depth_img_pub.get_num_connections() > 0)
+        if (has_subscribers is True) or (saving_is_enabled is True):
+            ros_timestamp = depth_map_msg.header.stamp
+            # Convert ros depth_map to cv2_img and numpy depth data
+            cv2_depth_map = nepi_img.rosimg_to_cv2img(depth_map_msg, encoding="passthrough")
+            depth_data = (np.array(cv2_depth_map, dtype=np.float32)) # replace nan values
+            # Get range data
+            start_range_ratio = rospy.get_param('~idx/range_window/start_range_ratio', 0.0)
+            stop_range_ratio = rospy.get_param('~idx/range_window/stop_range_ratio', 1.0)
+            min_range_m = rospy.get_param('~idx/range_limits/min_range_m',0.0)
+            max_range_m = rospy.get_param('~idx/range_limits/max_range_m',1.0)
+            delta_range_m = max_range_m - min_range_m
+            # Adjust range Limits if IDX Controls enabled and range ratios are not min/max
+            controls_enabled = rospy.get_param('~idx/controls_enabled',False)
+            if controls_enabled and (start_range_ratio > 0 or stop_range_ratio < 1):
+                # update min max ranges based on range controls
+                max_range_m = min_range_m + stop_range_ratio * delta_range_m
+                min_range_m = min_range_m + start_range_ratio * delta_range_m
+                delta_range_m = max_range_m - min_range_m
+            # Filter depth_data in range
+            depth_data[np.isnan(depth_data)] = max_range_m 
+            depth_data[depth_data <= min_range_m] = max_range_m # set to max
+            depth_data[depth_data >= max_range_m] = max_range_m # set to max
+            # Create colored cv2 depth image
+            depth_data = depth_data - min_range_m # Shift down 
+            depth_data = np.abs(depth_data - max_range_m) # Reverse for colormap
+            depth_data = np.array(255*depth_data/delta_range_m,np.uint8) # Scale for bgr colormap
+            cv2_img = cv2.applyColorMap(depth_data, cv2.COLORMAP_JET)
+            #img_msg = nepi_img.cv2img_to_rosimg(cv2_depth_image,encoding)
+            if (has_subscribers is True):
+                # Convert cv to ros   
+                ros_img = nepi_img.cv2img_to_rosimg(cv2_img, encoding=encoding)
+                ros_img.header.stamp = ros_timestamp
+                ros_img.header.frame_id = rospy.get_param('~idx/frame_3d',  self.init_frame_3d )
+                if ros_img is not None:
+                    # Publish image
+                    self.depth_img_pub.publish(ros_img)
+            if (saving_is_enabled is True):
+                if self.depth_image_lock.locked() is False:
+                    self.depth_image_lock.acquire()
+                    self.depth_image = cv2_img
+                    self.depth_image_timestamp = ros_timestamp
+                    self.depth_image_lock.release()
 
 
 # Define saving functions for saving callbacks
@@ -1260,7 +1279,6 @@ class ROSIDXSensorIF:
         data_product = 'color_2d_image'
         eval("self.save_img2file(data_product,self." + data_product + ",self." + data_product + "_timestamp)")
                 
-
     def saveBWImgThread(self,timer):
         data_product = 'bw_2d_image'
         eval("self.save_img2file(data_product,self." + data_product + ",self." + data_product + "_timestamp)")
@@ -1326,8 +1344,6 @@ class ROSIDXSensorIF:
             self.status_msg.range_window.stop_range =  rospy.get_param('~idx/range_window/stop_range_ratio', 1.0)
             self.status_msg.min_range_m = rospy.get_param('~idx/range_limits/min_range_m',0.0)
             self.status_msg.max_range_m = rospy.get_param('~idx/range_limits/max_range_m',1.0)
-            self.status_msg.zoom = idx_params['zoom'] if 'zoom' in idx_params else 0.5
-            self.status_msg.rotate = idx_params['rotate'] if 'rotate' in idx_params else 0.5
             # The transfer frame into which 3D data (pointclouds) are transformed for the pointcloud data topic
             self.status_msg.frame_3d = idx_params['frame_3d'] if 'frame_3d' in idx_params else "nepi_center_frame"
             save_data_configs = idx_params['save_data_configs'] if 'save_data_configs' in idx_params else []
@@ -1335,6 +1351,9 @@ class ROSIDXSensorIF:
             self.status_msg.save_data_prefix = self.save_data_prefix
             self.status_msg.save_data_enabled = idx_params['save_data_enabled'] if 'save_data_enabled' in idx_params else False
             self.status_msg.save_data_nav_enabled = idx_params['save_data_nav_enabled'] if 'save_data_nav_enabled' in idx_params else False
-        
+            self.status_msg.zoom = self.zoom_ratio
+            self.status_msg.rotate = self.rotate_ratio
+            self.status_msg.tilt = self.tilt_ratio
+
         self.status_pub.publish(self.status_msg)
     
