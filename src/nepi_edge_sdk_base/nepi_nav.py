@@ -25,7 +25,7 @@ from pygeodesy.ellipsoidalKarney import LatLon
 
 
 # try and import geoid height calculation module and databases
-GEOID_DATABASE_FILE='/opt/nepi/ros/lib/python3/dist-packages/nepi_edge_sdk_base/geoids/egm2008-2_5.pgm' # Ignored if PyGeodesy module or Geoids Database is not available
+GEOID_DATABASE_FILE='/opt/nepi/ros/lib/python3/dist-packages/nepi_edge_sdk_base/egm2008-2_5.pgm' # Ignored if PyGeodesy module or Geoids Database is not available
 FALLBACK_GEOID_HEIGHT_M = 0.0 # Ignored if if PyGeodesy module or Geoids Database are available
 try:
   import pygeodesy
