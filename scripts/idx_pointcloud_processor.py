@@ -17,18 +17,32 @@ from nepi_edge_sdk_base import nepi_pc
 
 DEFAULT_NODE_NAME = 'idx_pointcloud_processor'
 
+
+# Rendering Initialization Values
+Render_Img_Width = 1280
+Render_Img_Height = 720
+Render_Background = [0, 0, 0, 0] # background color rgba
+Render_FOV = 60 # camera field of view in degrees
+Render_Center = [3, 0, 0]  # look_at target
+Render_Eye = [-5, -2.5, 0]  # camera position
+Render_Up = [0, 0, 1]  # camera orientation
+Default_Zoom_Ratio = 0.5  # zoom level: run-time adjustable via ROS parameter
+
 class IDXPointcloudProcessor(object):
-    # Rendering constants
-    Render_Img_Width = 1280
-    Render_Img_Height = 720
-    Render_Background = [0, 0, 0, 0] # background color rgba
-    Render_FOV = 60 # camera field of view in degrees
-    Render_Center = [3, 0, 0]  # look_at target
-    Render_Eye = [-5, -2.5, 0]  # camera position
-    Render_Up = [0, 0, 1]  # camera orientation
-    Default_Zoom_Ratio = 0.5  # zoom level: run-time adjustable via ROS parameter
+    render_enable = Render_Enable 
+    render_img_width = Render_Img_Width 
+    render_img_height = Render_Img_Height
+    render_background = Render_Background
+    render_fov = Render_FOV
+    render_center = Render_Center
+    render_eye = Render_Eye
+    render_up = Render_Up
+
+    img_renderer = None
+    img_renderer_mtl = None
 
     def __init__(self):
+
         try:
             self.idx_namespace = rospy.get_param('~idx_namespace') # Throw exception if not present
         except Exception as e:
@@ -38,7 +52,9 @@ class IDXPointcloudProcessor(object):
         rospy.loginfo(f"Starting IDX pointcloud processor for namespace {self.idx_namespace}")
         
         # Setup publishers and subscribers
-        input_pc_topic = self.idx_namespace + '/pointcloud'
+        #input_pc_topic = self.idx_namespace + '/pointcloud'
+        input_pc_topic = '/nepi/s2x/zed2/zed_node/point_cloud/cloud_registered'
+
         # Delay subscribing until we have a subscriber ourselves
         input_pc_subscriber = None
         
@@ -96,8 +112,12 @@ class IDXPointcloudProcessor(object):
             render_eye = self.Render_Eye
             
         if not rospy.is_shutdown():
-            o3d_img = nepi_pc.render_image(o3d_pc,img_width,img_height, self.Render_Background,
-                                           self.Render_FOV,self.Render_Center,render_eye,self.Render_Up)
+            if self.img_renderer == None:
+                self.img_renderer = nepi_pc.create_img_renderer(img_width=self.render_img_width,img_height=self.render_img_height, background = self.render_background)
+            if self.img_renderer_mtl == None:
+                self.img_renderer_mtl = nepi_pc.create_img_renderer_mtl()
+            o3d_img = nepi_pc.render_image(open3d_pc,self.img_renderer,self.img_renderer_mtl,
+                                     self.render_fov,self.render_center,self.render_eye,self.render_up)
             
             ros_img = nepi_pc.o3dimg_to_rosimg(o3d_img, stamp=ros_timestamp, frame_id=ros_frame)
             self.output_img_pub.publish(ros_img)

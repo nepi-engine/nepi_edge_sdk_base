@@ -85,6 +85,8 @@ class ROSIDXSensorIF:
     zoom_ratio = init_zoom_ratio
     rotate_ratio = init_rotate_ratio
     tilt_ratio = init_rotate_ratio
+    render_controls = [zoom_ratio,rotate_ratio,tilt_ratio]
+
 
     caps_settings = None
     factory_settings = None
@@ -145,12 +147,17 @@ class ROSIDXSensorIF:
 
         self.updateSaveDataConfigs(self.factory_save_data_configs)
         self.setSaveDataEnable(self.factory_save_data_enabled)
-        self.setSaveDataNavEnabled(self.factory_save_data_nav_enabled)
+        self.setSaveDataNavEnable(self.factory_save_data_nav_enabled)
         self.setSaveDataPrefix(self.init_save_data_prefix)
 
         self.zoom_ratio = self.init_zoom_ratio
         self.rotate_ratio = self.init_rotate_ratio
         self.tilt_ratio = self.init_rotate_ratio
+        self.render_controls = [self.zoom_ratio,self.rotate_ratio,self.tilt_ratio]
+        self.status_msg.zoom = self.zoom_ratio
+        self.status_msg.rotate = self.rotate_ratio
+        self.status_msg.tilt = self.tilt_ratio
+        self.updateAndPublishStatus(do_updates=False)
 
         self.updateFromParamServer()
 
@@ -208,6 +215,12 @@ class ROSIDXSensorIF:
         self.zoom_ratio = self.init_zoom_ratio
         self.rotate_ratio = self.init_rotate_ratio
         self.tilt_ratio = self.init_rotate_ratio
+        self.render_controls = [self.zoom_ratio,self.rotate_ratio,self.tilt_ratio]
+        self.status_msg.zoom = self.zoom_ratio
+        self.status_msg.rotate = self.rotate_ratio
+        self.status_msg.tilt = self.tilt_ratio
+        self.updateAndPublishStatus(do_updates=False)
+
 
         self.updateFromParamServer()
 
@@ -611,6 +624,7 @@ class ROSIDXSensorIF:
         else:
             self.zoom_ratio = new_zoom
             self.status_msg.zoom = new_zoom
+            self.render_controls[0] = new_zoom
         self.updateAndPublishStatus(do_updates=False) # Updated inline here
 
     def setRotateCb(self, msg):
@@ -622,6 +636,7 @@ class ROSIDXSensorIF:
         else:
             self.rotate_ratio = new_rotate
             self.status_msg.rotate = new_rotate
+            self.render_controls[1] = new_rotate
         self.updateAndPublishStatus(do_updates=False) # Updated inline here  
 
     def setTiltCb(self, msg):
@@ -633,6 +648,7 @@ class ROSIDXSensorIF:
         else:
             self.tilt_ratio = new_tilt
             self.status_msg.tilt = new_tilt
+            self.render_controls[2] = new_tilt
         self.updateAndPublishStatus(do_updates=False) # Updated inline here  
 
 
@@ -695,6 +711,7 @@ class ROSIDXSensorIF:
                  getDepthMap=None, stopDepthMapAcquisition=None, 
                  getDepthImg=None, stopDepthImgAcquisition=None, 
                  getPointcloud=None, stopPointcloudAcquisition=None, 
+                 getPointcloudImg=None, stopPointcloudImgAcquisition=None, 
                  getGPSMsg=None,getOdomMsg=None,getHeadingMsg=None):
         
         
@@ -928,27 +945,23 @@ class ROSIDXSensorIF:
             self.pointcloud_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopPointcloudAcquisition = stopPointcloudAcquisition
             self.capabilities_report.has_pointcloud = True
+        else:
+            self.capabilities_report.has_pointcloud = False
+
+        self.getPointcloudImg = getPointcloudImg
+        if (self.getPointcloudImg is not None):
+            self.pointcloud_img_pub = rospy.Publisher('~idx/pointcloud_image', Image, queue_size=1, tcp_nodelay=True)
+            self.data_products.append('pointcloud_image')
+            self.pointcloud_img_thread = threading.Thread(target=self.runPointcloudImgThread)
+            self.pointcloud_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            self.stopPointcloudImgAcquisition = stopPointcloudImgAcquisition
+            self.capabilities_report.has_pointcloud_image = True
 
             rospy.Subscriber('~idx/set_zoom', Float32, self.setZoomCb, queue_size=1) # start local callback
             rospy.Subscriber('~idx/set_rotate', Float32, self.setRotateCb, queue_size=1) # start local callback
             rospy.Subscriber('~idx/set_tilt', Float32, self.setTiltCb, queue_size=1) # start local callback
-
-            # And enable the pointcloud_image stuff, processed by a separately launched node, since it is
-            # very resource heavy and starves all other threads running in the same process (due to python
-            # multithreading limitations)
-
-            self.capabilities_report.has_pointcloud_image = True
-            self.data_products.append('pointcloud_image')
-            idx_namespace = rospy.get_name() + '/idx'
-            rospy.loginfo(f'Starting pointcloud_processor as a separate node')
-            processor_run_cmd = ["rosrun", "nepi_edge_sdk_base", "idx_pointcloud_processor.py",
-                                 "__name:=pointcloud_processor", f"__ns:={idx_namespace}", f"_idx_namespace:={idx_namespace}"]
-            self.pointcloud_proc = subprocess.Popen(processor_run_cmd)
-
         else:
-            self.capabilities_report.has_pointcloud = False
             self.capabilities_report.has_pointcloud_image = False
-            self.pointcloud_proc = None
         
         self.getGPSMsg = getGPSMsg
         if getGPSMsg is not None:
@@ -1042,11 +1055,17 @@ class ROSIDXSensorIF:
             self.pointcloud_timestamp = None
             self.pointcloud_lock = threading.Lock()
             rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.savePointcloudThread)
+
+        if (self.getPointcloudImg is not None):
+            self.pointcloud_img_thread.start()
+            self.pointcloud_image = None
+            self.pointcloud_image_timestamp = None
+            self.pointcloud_image_lock = threading.Lock()
+            rospy.Timer(rospy.Duration(self.check_data_save_interval_sec), self.savePointcloudImgThread)
         
         # Start a regular check for save status changes
         rospy.Timer(rospy.Duration(0.5), self.updateSaveDataStatusCallback)
         
-    
     # Image from img_get_function can be CV2 or ROS image.  Will be converted as needed in the thread
     def image_thread_proccess(self,data_product,img_get_function,img_stop_function,img_publisher):
         image = None
@@ -1060,7 +1079,10 @@ class ROSIDXSensorIF:
                 has_subscribers = (img_publisher.get_num_connections() > 0)
                 if (has_subscribers is True) or (saving_is_enabled is True):
                     acquiring = True
-                    status, msg, image, ros_timestamp, encoding = img_get_function()
+                    if data_product != "pointcloud_image":
+                        status, msg, image, ros_timestamp, encoding = img_get_function()
+                    else:
+                        status, msg, image, ros_timestamp, encoding = img_get_function(self.render_controls)
                     if (status is False):
                         #rospy.logerr_throttle(1, msg)
                         continue   
@@ -1150,6 +1172,7 @@ class ROSIDXSensorIF:
                     acquiring = False
                     rospy.sleep(0.25)
                 rospy.sleep(0.01) # Yield
+                
 
     def runColorImgThread(self):
         self.image_thread_proccess('color_2d_image', self.getColor2DImg, self.stopColor2DImgAcquisition, self.color_img_pub)
@@ -1166,56 +1189,9 @@ class ROSIDXSensorIF:
     def runPointcloudThread(self):
         self.pointcloud_thread_proccess('pointcloud', self.getPointcloud, self.stopPointcloudAcquisition, self.pointcloud_pub)
 
-   # Depth Image processing callback
-    def depth_image_process_callback(self,depth_map_msg):
-        data_product = "depth_image"
-        cv2_img = None
-        ros_img = None
-        encoding = 'bgr8'
-        saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-        has_subscribers = (self.depth_img_pub.get_num_connections() > 0)
-        if (has_subscribers is True) or (saving_is_enabled is True):
-            ros_timestamp = depth_map_msg.header.stamp
-            # Convert ros depth_map to cv2_img and numpy depth data
-            cv2_depth_map = nepi_img.rosimg_to_cv2img(depth_map_msg, encoding="passthrough")
-            depth_data = (np.array(cv2_depth_map, dtype=np.float32)) # replace nan values
-            # Get range data
-            start_range_ratio = rospy.get_param('~idx/range_window/start_range_ratio', 0.0)
-            stop_range_ratio = rospy.get_param('~idx/range_window/stop_range_ratio', 1.0)
-            min_range_m = rospy.get_param('~idx/range_limits/min_range_m',0.0)
-            max_range_m = rospy.get_param('~idx/range_limits/max_range_m',1.0)
-            delta_range_m = max_range_m - min_range_m
-            # Adjust range Limits if IDX Controls enabled and range ratios are not min/max
-            controls_enabled = rospy.get_param('~idx/controls_enabled',False)
-            if controls_enabled and (start_range_ratio > 0 or stop_range_ratio < 1):
-                # update min max ranges based on range controls
-                max_range_m = min_range_m + stop_range_ratio * delta_range_m
-                min_range_m = min_range_m + start_range_ratio * delta_range_m
-                delta_range_m = max_range_m - min_range_m
-            # Filter depth_data in range
-            depth_data[np.isnan(depth_data)] = max_range_m 
-            depth_data[depth_data <= min_range_m] = max_range_m # set to max
-            depth_data[depth_data >= max_range_m] = max_range_m # set to max
-            # Create colored cv2 depth image
-            depth_data = depth_data - min_range_m # Shift down 
-            depth_data = np.abs(depth_data - max_range_m) # Reverse for colormap
-            depth_data = np.array(255*depth_data/delta_range_m,np.uint8) # Scale for bgr colormap
-            cv2_img = cv2.applyColorMap(depth_data, cv2.COLORMAP_JET)
-            #img_msg = nepi_img.cv2img_to_rosimg(cv2_depth_image,encoding)
-            if (has_subscribers is True):
-                # Convert cv to ros   
-                ros_img = nepi_img.cv2img_to_rosimg(cv2_img, encoding=encoding)
-                ros_img.header.stamp = ros_timestamp
-                ros_img.header.frame_id = rospy.get_param('~idx/frame_3d',  self.init_frame_3d )
-                if ros_img is not None:
-                    # Publish image
-                    self.depth_img_pub.publish(ros_img)
-            if (saving_is_enabled is True):
-                if self.depth_image_lock.locked() is False:
-                    self.depth_image_lock.acquire()
-                    self.depth_image = cv2_img
-                    self.depth_image_timestamp = ros_timestamp
-                    self.depth_image_lock.release()
+    def runPointcloudImgThread(self):
+        self.image_thread_proccess('pointcloud_image', self.getPointcloudImg, self.stopPointcloudImgAcquisition, self.pointcloud_img_pub)
+
 
 
 # Define saving functions for saving callbacks
@@ -1264,7 +1240,6 @@ class ROSIDXSensorIF:
             self.save_data_prefix = self.save_data_if.save_data_prefix
             self.status_msg.save_data_prefix = self.save_data_prefix
             changed = True
-        
         # Check current data save enabled for change
         save_enabled_if = (self.save_data_if.save_continuous or self.save_data_if.save_raw)
         save_enabled = rospy.get_param('~idx/save_data_enabled',  self.init_save_data_enabled)
@@ -1294,6 +1269,10 @@ class ROSIDXSensorIF:
     def savePointcloudThread(self,timer):
         data_product = 'pointcloud'
         eval("self.save_pc2file(data_product,self." + data_product + ",self." + data_product + "_timestamp)")
+
+    def savePointcloudImgThread(self,timer):
+        data_product = 'pointcloud_image'
+        eval("self.save_img2file(data_product,self." + data_product + ",self." + data_product + "_timestamp)")
 
     def navposeCb(self, timer):
         if self.getGPSMsg != None:

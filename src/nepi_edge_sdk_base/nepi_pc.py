@@ -376,45 +376,40 @@ def vector_rotate(vector,ratio):
         vector_out.append(val)
     return vector_out
 
-def render_image(o3d_pc,img_width,img_height,background,FOV,center,eye,up,show_axis=False,post_proccessing=False):
-    global img_renderer
-    global img_renderer_height
-    global img_renderer_width
-    global img_renderer_mtl
 
-    if (img_renderer is None) or (img_renderer_height != img_height) or (img_renderer_width != img_width):
-        img_renderer = o3d.visualization.rendering.OffscreenRenderer(img_width, img_height)
-        img_renderer_height = img_height
-        img_renderer_width = img_width
-
-        img_renderer_mtl = o3d.visualization.rendering.MaterialRecord()  # or MaterialRecord(), for later versions of Open3D
-        img_renderer_mtl.base_color = [1.0, 1.0, 1.0, 1.0]  # RGBA
-        img_renderer_mtl.shader = "defaultUnlit"
-
-        # Set Lighting -- doesn't change
-        img_renderer.scene.set_lighting(img_renderer.scene.LightingProfile.NO_SHADOWS, (0, 0, 0))
-
-    # Clear any previous geometry; this allows us to resue the renderer with new pointcloud
-    if img_renderer.scene.has_geometry('model'):
-        img_renderer.scene.remove_geometry('model')
-
+def create_img_renderer(img_width=1280,img_height=720,fov=50,background=[0, 0, 0, 0],show_axis=False):
+    img_renderer = o3d.visualization.rendering.OffscreenRenderer(img_width, img_height)
+    img_renderer_height = img_height
+    img_renderer_width = img_width
+    # Set Lighting -- doesn't change
+    img_renderer.scene.set_lighting(img_renderer.scene.LightingProfile.NO_SHADOWS, (0, 0, 0))
     # Set background color
     img_renderer.scene.set_background(background)
-    # Show the original coordinate axes for comparison.
-    # X is red, Y is green and Z is blue.
-    img_renderer.scene.show_axes(show_axis)
-
-    # Define a simple unlit Material.
-    # (The base color does not replace the arrows' own colors.)
-    img_renderer.scene.add_geometry('model',o3d_pc, img_renderer_mtl)
-
-    # Optionally set the camera field of view (to zoom in a bit)
-    vertical_field_of_view = FOV  
+    # Set the camera field of view
+    vertical_field_of_view = fov  
     aspect_ratio = img_width / img_height  # azimuth over elevation
     near_plane = 0.1
     far_plane = 50.0
     fov_type = o3d.visualization.rendering.Camera.FovType.Vertical
     img_renderer.scene.camera.set_projection(vertical_field_of_view, aspect_ratio, near_plane, far_plane, fov_type)
+    # Show the original coordinate axes for comparison.
+    # X is red, Y is green and Z is blue.
+    img_renderer.scene.show_axes(show_axis)
+    return img_renderer
+
+def create_img_renderer_mtl(base_color = [1.0, 1.0, 1.0, 1.0],shader = "defaultUnlit"):
+    img_renderer_mtl = o3d.visualization.rendering.MaterialRecord()  # or MaterialRecord(), for later versions of Open3D
+    # Define a simple unlit Material.
+    # (The base color does not replace the arrows' own colors.)
+    img_renderer_mtl.base_color = base_color  # RGBA
+    img_renderer_mtl.shader = shader
+    return img_renderer_mtl
+
+def render_img(o3d_pc,img_renderer,img_renderer_mtl,center,eye,up,post_proccessing=False):
+    # Clear any previous geometry; this allows us to resue the renderer with new pointcloud
+    if img_renderer.scene.has_geometry('model'):
+        img_renderer.scene.remove_geometry('model')
+    img_renderer.scene.add_geometry('model',o3d_pc, img_renderer_mtl)
     # Look at the origin from the front (along the -Z direction, into the screen), with Y as Up.
     img_renderer.scene.camera.look_at(center, eye, up)
     # Render
