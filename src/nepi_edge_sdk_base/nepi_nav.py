@@ -25,7 +25,7 @@ from pygeodesy.ellipsoidalKarney import LatLon
 
 
 # try and import geoid height calculation module and databases
-GEOID_DATABASE_FILE='/opt/nepi/ros/lib/python3/dist-packages/nepi_edge_sdk_base/egm2008-2_5.pgm' # Ignored if PyGeodesy module or Geoids Database is not available
+GEOID_DATABASE_FILE='/mnt/nepi_storage/databases/geoids/egm2008-2_5.pgm' # Ignored if PyGeodesy module or Geoids Database is not available
 FALLBACK_GEOID_HEIGHT_M = 0.0 # Ignored if if PyGeodesy module or Geoids Database are available
 file_loaded = False
 if os.path.exists(GEOID_DATABASE_FILE):
@@ -54,22 +54,32 @@ from nepi_ros_interfaces.srv import NavPoseQuery, NavPoseQueryRequest
 #######################
 # NavPose Request Functions
 
-def get_navpose_heading_deg(nav_pose_response):
+def get_navpose_response():
+  try:
+    get_navpose_service = rospy.ServiceProxy(self.NAVPOSE_SERVICE_NAME, NavPoseQuery)
+    navpose_response = get_navpose_service(NavPoseQueryRequest())
+  except rospy.ServiceException as e:
+    rospy.loginfo("Service call failed: %s"%e)
+    time.sleep(1)
+    rospy.signal_shutdown("Service call failed")
+  return navpose_response
+
+def get_navpose_heading_deg(navpose_response):
   # Set current heading in degrees
-  current_heading_deg = nav_pose_response.nav_pose.heading.heading
+  current_heading_deg = navpose_response.nav_pose.heading.heading
   return current_heading_deg
 
-def get_navpose_orientation_enu_degs(nav_pose_response):
+def get_navpose_orientation_enu_degs(navpose_response):
   # Set current orientation vector (roll, pitch, yaw) in degrees enu frame
-  pose_enu_o = nav_pose_response.nav_pose.odom.pose.pose.orientation
+  pose_enu_o = navpose_response.nav_pose.odom.pose.pose.orientation
   xyzw_enu_o = list([pose_enu_o.x,pose_enu_o.y,pose_enu_o.z,pose_enu_o.w])
   rpy_enu_d = convert_quat2rpy(xyzw_enu_o)
   current_orientation_enu_degs = [rpy_enu_d[0],rpy_enu_d[1],rpy_enu_d[2]]
   return current_orientation_enu_degs
 
-def get_navpose_orientation_ned_degs(nav_pose_response):
+def get_navpose_orientation_ned_degs(navpose_response):
   # Set current orientation vector (roll, pitch, yaw) in degrees ned frame +-180
-  pose_enu_o = nav_pose_response.nav_pose.odom.pose.pose.orientation
+  pose_enu_o = navpose_response.nav_pose.odom.pose.pose.orientation
   xyzw_enu_o = list([pose_enu_o.x,pose_enu_o.y,pose_enu_o.z,pose_enu_o.w])
   rpy_enu_d = convert_quat2rpy(xyzw_enu_o)
   yaw_ned_d = convert_yaw_enu2ned(rpy_enu_d[2])
@@ -77,36 +87,36 @@ def get_navpose_orientation_ned_degs(nav_pose_response):
   current_orientation_ned_degs = [rpy_ned_d[0],rpy_ned_d[1],rpy_ned_d[2]]
   return current_orientation_ned_degs
 
-def get_navpose_position_enu_m(nav_pose_response):
+def get_navpose_position_enu_m(navpose_response):
   # Set current position vector (x, y, z) in meters enu frame
-  pose_enu_p = nav_pose_response.nav_pose.odom.pose.pose.position
+  pose_enu_p = navpose_response.nav_pose.odom.pose.pose.position
   current_position_enu_m = [pose_enu_p.x, pose_enu_p.y, pose_enu_p.z]
   return current_position_enu_m
 
-def get_navpose_position_ned_m(nav_pose_response):
+def get_navpose_position_ned_m(navpose_response):
   # Set current position vector (x, y, z) in meters ned frame
-  pose_enu_p = nav_pose_response.nav_pose.odom.pose.pose.position
+  pose_enu_p = navpose_response.nav_pose.odom.pose.pose.position
   current_position_ned_m = [pose_enu_p.y, pose_enu_p.x, -pose_enu_p.z]
   return current_position_ned_m
 
 
-def get_navpose_location_wgs84_geo(nav_pose_response): 
+def get_navpose_location_wgs84_geo(navpose_response): 
   # Set current location vector (lat, long, alt) in geopoint data with AMSL height
-  fix_wgs84 = nav_pose_response.nav_pose.fix
+  fix_wgs84 = navpose_response.nav_pose.fix
   current_location_wgs84_geo =  [fix_wgs84.latitude,fix_wgs84.longitude,fix_wgs84.altitude]
   return current_location_wgs84_geo
 
 
-def get_navpose_location_amsl_geo(nav_pose_response):  
+def get_navpose_location_amsl_geo(navpose_response):  
   # Set current location vector (lat, long, alt) in geopoint data with AMSL height
-  geoid_height = get_navpose_geoid_height(nav_pose_response)
-  fix_wgs84 = nav_pose_response.nav_pose.fix
+  geoid_height = get_navpose_geoid_height(navpose_response)
+  fix_wgs84 = navpose_response.nav_pose.fix
   current_location_amsl_geo =  [fix_wgs84.latitude,fix_wgs84.longitude,(fix_wgs84.altitude + geoid_height)]
   return current_location_amsl_geo
 
-def get_navpose_geoid_height(nav_pose_response):
+def get_navpose_geoid_height(navpose_response):
   # Set current location vector (lat, long, alt) in geopoint data with WGS84 height
-  fix_wgs84 = nav_pose_response.nav_pose.fix
+  fix_wgs84 = navpose_response.nav_pose.fix
   single_position=LatLon(fix_wgs84.latitude,fix_wgs84.longitude)
   geoid_height = ginterpolator(single_position)
   current_geoid_height =  geoid_height

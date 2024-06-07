@@ -19,11 +19,12 @@ from nepi_edge_sdk_base import nepi_img
 ### NEX Driver Settings Helper Functions
 
 
-SETTING_TYPES = ["Discrete","String","Bool","Int","Float"]
+SETTING_TYPES = ["Menu","Discrete","String","Bool","Int","Float"]
 
 NONE_SETTINGS = [["None","None","None"]]
 
-TEST_CAP_SETTINGS = [["Discrete","TestDiscrete","Option_1","Option_2","Option_3","Option_4"],
+TEST_CAP_SETTINGS = [["Menu","TestMenu","Menu_A:0","Menu_B:1","Menu_C:2","Menu_D:3"],
+        ["Discrete","TestDiscrete","Option_1","Option_2","Option_3","Option_4"],
         ["String","TestString"],
         ["Bool","TestBool"],
         ["Int","TestInt_1"],
@@ -31,7 +32,8 @@ TEST_CAP_SETTINGS = [["Discrete","TestDiscrete","Option_1","Option_2","Option_3"
         ["Float","TestFloat_1"],
         ["Float","TestFloat_2","-1000","5000"]]
 
-TEST_SETTINGS = [["Discrete","TestDiscrete","Option_1"],
+TEST_SETTINGS = [["Menu","TestMenu","Menu_A:0"],
+        ["Discrete","TestDiscrete","Option_1"],
         ["String","TestString","InitString"],
         ["Bool","TestBool","True"],
         ["Int","TestInt_1","5"],
@@ -39,7 +41,8 @@ TEST_SETTINGS = [["Discrete","TestDiscrete","Option_1"],
         ["Float","TestFloat_1","3.14"], 
         ["Float","TestFloat_2","5000"]] 
 
-TEST_SETTINGS_UPDATE = [["Discrete","TestDiscrete","Option_3"],
+TEST_SETTINGS_UPDATE = [["Menu","TestMenu","Menu_C:2"],
+        ["Discrete","TestDiscrete","Option_3"],
         ["String","TestString","NewString"],
         ["Bool","TestBool","False"],
         ["Int","TestInt_1","500"],
@@ -174,15 +177,17 @@ def get_data_from_setting(setting):
       s_value = setting[2]
       try:
         if s_type == "Bool":
-          data = bool(s_value)
+          data = (s_value == "True")
         elif s_type == "Int":
           data = int(s_value)
         elif s_type == "Float":
           data = float(s_value)
         elif s_type == "String":
-          data = str(s_value)
+          data = s_value
         elif s_type == "Discrete":
-          data = str(s_value)
+          data = s_value
+        elif s_type == "Menu":
+          data = int(s_value.split(":")[1])
       except Exception as e:
         rospy.loginfo("Setting conversion failed for setting " + s_str + "with exception" + str(e) )
   return s_name, s_type, data
@@ -225,10 +230,13 @@ def check_valid_setting(setting,cap_settings):
             valid = True
           elif c_type == "String" and isinstance(s_value,str):
             valid = True      
+          elif c_type == "Menu" and isinstance(s_value,str):  
+            if s_value in c_options:
+              valid = True
           elif c_type == "Discrete" and isinstance(s_value,str):  
             if s_value in c_options:
               valid = True
-          elif c_type == "Int" and isinstance(eval(s_value),int) :
+          elif c_type == "Int" and isinstance(eval(s_value),int):
             if len(c_options) == 2:
               val = eval(s_value)
               if c_options[0] != "":
@@ -246,10 +254,8 @@ def check_valid_setting(setting,cap_settings):
               (valid)
             else:    
               valid = True
-          elif c_type == "Float" and (isinstance(eval(s_value),float) or isinstance(eval(s_value),int)) :
-            ("2")
+          elif c_type == "Float" and isinstance(eval(s_value),float):
             if len(c_options) == 2:
-              ("3")
               val = eval(s_value)
               if c_options[0] != "":
                 lower_limit = eval(c_options[0])
@@ -301,12 +307,9 @@ def try_to_update_setting(setting_to_update,settings,cap_settings,update_setting
     if update_settings_function is not None:
       if check_valid_setting(setting_to_update,cap_settings):
         try:
-          if update_settings_function(setting_to_update):
-            updated_settings = update_setting_in_settings(setting_to_update,settings)
-            success = True
+          [success, msg] = update_settings_function(setting_to_update)
+          if success:
             msg = ("Updated setting: " + s_str )
-          else:
-            msg = ("Failed to update setting: " + s_str + " Update function return failure message")
         except Exception as e:
           msg = ("Failed to update setting: " + s_str + " with exception: " + str(e) )
       else:
@@ -315,7 +318,7 @@ def try_to_update_setting(setting_to_update,settings,cap_settings,update_setting
       msg = ("Failed to update setting: " + s_str + " No update function provided")
   else:
     success = True
-  return updated_settings, success, msg
+  return success, msg
 
 
 def get_settings_by_type(settings,type_str):

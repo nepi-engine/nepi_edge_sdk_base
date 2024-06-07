@@ -253,19 +253,22 @@ class ROSIDXSensorIF:
                     [name_match,type_match,value_match] = nepi_nex.compare_setting_in_settings(setting,current_settings)
                     if not value_match: # name_match would be true for value_match to be true
                         rospy.loginfo("Will try to update setting " + str(setting))
-                        [current_settings,success,msg] = nepi_nex.try_to_update_setting(setting,current_settings,self.cap_settings,self.update_settings_function)
+                        [success,msg] = nepi_nex.try_to_update_setting(setting,current_settings,self.cap_settings,self.update_settings_function)
                         rospy.loginfo(msg)
                     else:
                         rospy.loginfo("Skipping setting update " + str(setting) + " because it matches current setting")
-                rospy.set_param('~idx/settings', current_settings)
-                current_settings = nepi_nex.sort_settings_alphabetically(current_settings,1)
             else:
                 rospy.loginfo("Settings updates ignored. No settings update function defined ")
-            settings_msg = nepi_nex.create_msg_data_from_settings(current_settings)
-            self.status_msg.settings = settings_msg 
-            self.updateAndPublishStatus(do_updates=False) # Updated inline here
         else:
             rospy.loginfo("Skipping settings update request. getCurrentSettings function not defined")
+        if self.getSettings is not None:
+            current_settings = nepi_nex.sort_settings_alphabetically(self.getSettings(),1) 
+            rospy.set_param('~idx/settings', current_settings)
+        else:
+            current_settings = nepi_nex.NONE_SETTINGS
+        settings_msg = nepi_nex.create_msg_data_from_settings(current_settings)
+        self.status_msg.settings = settings_msg 
+        self.updateAndPublishStatus(do_updates=False) # Updated inline here
         return success
 
 
@@ -736,35 +739,36 @@ class ROSIDXSensorIF:
         # Initialize Sensor Settings from Node
         if capSettings is None:
             self.cap_settings = nepi_nex.NONE_SETTINGS
-            self.factory_settings = nepi_nex.NONE_SETTINGS
             self.capabilities_report.settings = False
+            self.factory_settings = nepi_nex.NONE_SETTINGS
+            self.init_settings = rospy.get_param('~idx/settings', nepi_nex.NONE_SETTINGS)
+            rospy.set_param('~idx/settings', self.init_settings )
         else:
-            self.cap_settings = capSettings
-            self.capabilities_report.settings = True
+            self.cap_settings = nepi_nex.sort_settings_alphabetically(capSettings,1)
+            self.capabilities_report.settings = True        
+            cap_settings_msg = nepi_nex.create_msg_data_from_settings(self.cap_settings)
+            self.capabilities_report.settings_options = cap_settings_msg
+
             if factorySettings is None:
                 self.factory_settings = nepi_nex.NONE_SETTINGS
             else:
-                self.factory_settings = factorySettings   
+                self.factory_settings = nepi_nex.sort_settings_alphabetically(factorySettings,1) 
             if settingsUpdateFunction is None:
                 self.update_settings_function = None
             else:
                 self.update_settings_function = settingsUpdateFunction
-        self.getSettings = getSettings
 
-        self.cap_settings = nepi_nex.sort_settings_alphabetically(self.cap_settings,1)
-        self.factory_settings= nepi_nex.sort_settings_alphabetically(self.factory_settings,1)
+            self.getSettings = getSettings
+            if self.getSettings is not None:
+                current_settings = nepi_nex.sort_settings_alphabetically(self.getSettings(),1) 
+                rospy.set_param('~idx/settings', current_settings)
+            else:
+                current_settings = nepi_nex.NONE_SETTINGS
+            # Set init values for resets. Updated saveConfigCb() on save_config msg
+            self.init_settings = rospy.get_param('~idx/settings', self.factory_settings)
+            rospy.set_param('~idx/settings', self.init_settings )
 
-        cap_settings_msg = nepi_nex.create_msg_data_from_settings(self.cap_settings)
-        self.capabilities_report.settings_options = cap_settings_msg
 
-
-
-
-
-
-        # Set init values for resets. Updated saveConfigCb() on save_config msg
-        self.init_settings = rospy.get_param('~idx/settings', self.factory_settings)
-        rospy.set_param('~idx/settings', self.init_settings )
 
         self.init_controls_enable = rospy.get_param('~idx/controls_enable',  self.factory_controls["controls_enable"])
         rospy.set_param('~idx/controls_enable', self.init_controls_enable)
@@ -1309,7 +1313,12 @@ class ROSIDXSensorIF:
         if do_updates is True:
             # TODO: Probably these should be queried from the parent (and through the driver) via explicit callbacks rather than via the param server
             idx_params = rospy.get_param('~idx')
-            settings_msg = nepi_nex.create_msg_data_from_settings(idx_params['settings'] if 'settings' in idx_params else self.getCurrentSettings())
+            if self.getSettings is not None:
+                current_settings = nepi_nex.sort_settings_alphabetically(self.getSettings(),1) 
+                rospy.set_param('~idx/settings', current_settings)
+            else:
+                current_settings = nepi_nex.NONE_SETTINGS
+            settings_msg = nepi_nex.create_msg_data_from_settings(current_settings)
             self.status_msg.settings = settings_msg 
             self.status_msg.controls_enable = idx_params['controls_enable'] if 'controls_enable' in idx_params else True
             self.status_msg.auto_adjust = idx_params['auto_adjust'] if 'auto_adjust' in idx_params else False
