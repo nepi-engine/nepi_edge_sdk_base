@@ -26,4 +26,4 @@ In general branching, merging, tagging are all limited to the [nepi_engine_ws](h
 Bug reports, feature requests, and source code contributions (in the form of pull requests) are gladly accepted!
 
 ### Who do I talk to? ###
-At present, all user contributions and requests are vetted by Numurus technical staff, so you can use any convenient mechanism to contact us.
+At present, all user contributions and requests are vetted by Numurus technical staff, so you can use any convenient mechanism to contact us.# nepi_edge_sdk_idx
