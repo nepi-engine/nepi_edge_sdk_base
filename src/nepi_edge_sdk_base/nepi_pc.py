@@ -404,12 +404,17 @@ def create_img_renderer_mtl(base_color = [1.0, 1.0, 1.0, 1.0],shader = "defaultU
     img_renderer_mtl.base_color = base_color  # RGBA
     img_renderer_mtl.shader = shader
     return img_renderer_mtl
-
-def render_img(o3d_pc,img_renderer,img_renderer_mtl,center,eye,up,post_proccessing=False):
-    # Clear any previous geometry; this allows us to resue the renderer with new pointcloud
+    
+def remove_img_renderer_geometry(img_renderer):
     if img_renderer.scene.has_geometry('model'):
         img_renderer.scene.remove_geometry('model')
+    return img_renderer
+    
+def add_img_renderer_geometry(o3d_pc,img_renderer,img_renderer_mtl):
     img_renderer.scene.add_geometry('model',o3d_pc, img_renderer_mtl)
+    return img_renderer
+     
+def render_img(img_renderer,center,eye,up,post_proccessing=False):
     # Look at the origin from the front (along the -Z direction, into the screen), with Y as Up.
     img_renderer.scene.camera.look_at(center, eye, up)
     # Render

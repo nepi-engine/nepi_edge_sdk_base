@@ -356,12 +356,34 @@ bool SaveDataInterface::queryDataProductsHandler(nepi_ros_interfaces::DataProduc
 void SaveDataInterface::publishSaveStatus()
 {
 
+	std::string prefixDirName = "";
+	std::string prefixFileName = "";
+	std::string delimiter = "/";
+	if (_filename_prefix.find('a') == _filename_prefix.npos)
+	{
+		prefixFileName = _filename_prefix;
+	
+	}
+	else 
+	{
+		prefixDirName = _filename_prefix.substr(0, _filename_prefix.find(delimiter));
+		prefixFileName = _filename_prefix.substr(1, _filename_prefix.find(delimiter));
+	}
+
+	std::string saveRates = "[NotImplemented,NotImplemented]";
+	
+	
+	
 	nepi_ros_interfaces::SaveDataStatus stat_msg;
-	stat_msg.current_data_dir = _save_data_dir + "/" + _filename_prefix; // TODO: Keep track of a real directory
+	stat_msg.current_data_dir = _save_data_dir; 
+	stat_msg.current_folder_prefix = prefixDirName;
+	stat_msg.current_filename_prefix = prefixFileName;
+	stat_msg.save_data_rates = saveRates;
 	stat_msg.save_data.save_continuous = _save_continuous;
 	stat_msg.save_data.save_raw = _save_raw;
 
 	_save_status_pub.publish(stat_msg);
+
 }
 
 }

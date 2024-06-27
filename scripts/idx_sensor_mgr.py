@@ -65,7 +65,10 @@ class IDXSensorMgr:
                                                  if d["sensor_class"] == "genicam"}
 
     # Iterate through each device in the current context.
+       
+    
     for device in self.genicam_harvester.device_info_list:
+      #rospy.loginfo(device)
       model = device.model
       sn = device.serial_number
       vendor = device.vendor
@@ -102,88 +105,6 @@ class IDXSensorMgr:
         rospy.logwarn(f'{node_namespace} is no longer responding to discovery')
         self.stopAndPurgeSensorNode(node_namespace)
 
-  def detectAndManageV4L2Sensors(self, _): # Extra arg since this is a rospy Timer callback
-    # First grab the current list of known V4L2 devices
-    p = subprocess.Popen(['v4l2-ctl', '--list-devices'],
-                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    stdout,_ = p.communicate()
-    #if p.returncode != 0:  # This can happen because there are no longer any video devices connected, so v4l2-ctl returns error
-      #raise Exception("Failed to list v4l2 devices: " + stdout)
-    out = stdout.splitlines()
-
-    tmp_device_type = None
-    tmp_device_path = None
-    active_paths = list()
-    nLines = len(out)
-    for i in range(0, nLines):
-      line = out[i].strip()
-      if line.endswith(':'):
-        tmp_device_type = line.split('(')[0].strip()
-        # Some v4l2-ctl outputs have an additional ':'
-        tmp_device_type = tmp_device_type.split(':')[0]
-        
-        # Honor the exclusion list
-        if tmp_device_type in self.excludedV4L2Devices:
-          tmp_device_type = None
-          continue
-
-      elif (tmp_device_type != None) and (line.startswith('/dev/video')):
-        tmp_device_path = line
-
-        # Make sure this is a legitimate Video Capture device, not a Metadata Capture device, etc.
-        is_video_cap_device = False
-        p = subprocess.Popen(['v4l2-ctl', '-d', tmp_device_path, '--all'],
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        stdout,_ = p.communicate()
-        all_out = stdout.splitlines()
-        in_device_caps = False
-        for all_line in all_out:
-          if ('Device Caps' in all_line):
-            in_device_caps = True
-          elif in_device_caps:
-            if ('Video Capture' in all_line):
-              is_video_cap_device = True
-            break
-          elif ':' in all_line:
-            in_device_caps = False
-        
-        if not is_video_cap_device:
-          continue
-
-        active_paths.append(tmp_device_path) # To check later that the sensor list has no entries for paths that have disappeared
-        known_sensor = False
-        # Check if this sensor is already known and launched
-        for sensor in self.sensorList:
-          if sensor['sensor_class'] != 'v4l2':
-            continue
-
-          if sensor['device_path'] == tmp_device_path:
-            known_sensor = True
-            if sensor['device_type'] != tmp_device_type:
-              # Uh oh -- sensor has switched on us!
-              # Kill previous and start new?
-              rospy.logwarn(self.node_name + ": detected V4L2 device type change (" + sensor['device_type'] + "-->" + 
-                            tmp_device_type + ") for device at " + tmp_device_path)
-              self.stopAndPurgeSensorNode(sensor['node_namespace'])
-              self.startV4L2SensorNode(type = tmp_device_type, path = tmp_device_path)
-            elif not self.sensorNodeIsRunning(sensor['node_namespace']):
-              rospy.logwarn(self.node_name + ": node " + sensor['node_name'] + " is not running. Restarting")
-              self.stopAndPurgeSensorNode(sensor['node_namespace'])
-              self.startV4L2SensorNode(type = tmp_device_type, path = tmp_device_path)
-            break
-
-        if not known_sensor:
-          self.startV4L2SensorNode(type = tmp_device_type, path = tmp_device_path)
-
-    # Handle sensors which no longer have a valid active V4L2 device path
-    for sensor in self.sensorList:
-      if sensor['sensor_class'] != 'v4l2':
-        continue
-
-      if sensor['device_path'] not in active_paths:
-        rospy.logwarn(self.node_name + ': ' + sensor['node_namespace'] + ' path ' + sensor['device_path'] + ' no longer exists... sensor disconnected?')
-        self.stopAndPurgeSensorNode(sensor['node_namespace'])
-
   def startGenicamSensorNode(self, vendor, model, serial_number):
     # TODO: fair to assume uniqueness of device serial numbers?
     vendor_ros = vendor.split()[0].replace('-', '_').lower() # Some vendors have really long strings, so just use the part to the first space
@@ -191,8 +112,9 @@ class IDXSensorMgr:
     serial_number_ros = serial_number.replace('-', '_').replace(' ', '_').lower()
     # TODO: Validate that the resulting rootname is a legal ROS identifier
     root_name = f'{vendor_ros}_{model_ros}'
+    root_name = self.short_name(root_name)
     unique_root_name = root_name + '_' + serial_number
-    node_needs_serial_number = False
+    node_needs_serial_number = True
     for sensor in self.sensorList:
       if sensor['device_type'] == model:
         node_needs_serial_number = True
@@ -221,7 +143,92 @@ class IDXSensorMgr:
                               "node_namespace": sensor_node_namespace,
                               "node_subprocess": p})
 
-  def startV4L2SensorNode(self, type, path):
+  def detectAndManageV4L2Sensors(self, _): # Extra arg since this is a rospy Timer callback
+    # First grab the current list of known V4L2 devices
+    p = subprocess.Popen(['v4l2-ctl', '--list-devices'],
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    stdout,_ = p.communicate()
+    #if p.returncode != 0:  # This can happen because there are no longer any video devices connected, so v4l2-ctl returns error
+      #raise Exception("Failed to list v4l2 devices: " + stdout)
+    out = stdout.splitlines()
+
+    device_type = None
+    device_path = None
+    active_paths = list()
+    nLines = len(out)
+    for i in range(0, nLines):
+      line = out[i].strip()
+      if line.endswith(':'):
+        device_type = line.split('(')[0].strip()
+        # Some v4l2-ctl outputs have an additional ':'
+        device_type = device_type.split(':')[0]
+        
+        # Honor the exclusion list
+        if device_type in self.excludedV4L2Devices:
+          device_type = None
+          #continue
+
+      elif line.startswith('/dev/video'):
+        device_path = line
+
+        # Make sure this is a legitimate Video Capture device, not a Metadata Capture device, etc.
+        is_video_cap_device = False
+        p = subprocess.Popen(['v4l2-ctl', '-d', device_path, '--all'],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        stdout,_ = p.communicate()
+        all_out = stdout.splitlines()
+        in_device_caps = False
+        usbBus = None
+        for all_line in all_out:
+          #rospy.loginfo(all_line)
+          if ('Bus info' in all_line):
+            usbBus = all_line.rsplit("-",1)[1].replace(".","")
+          if ('Device Caps' in all_line):
+            in_device_caps = True
+          elif in_device_caps:
+            if ('Video Capture' in all_line):
+              is_video_cap_device = True
+          elif ':' in all_line:
+            in_device_caps = False
+        
+        if not is_video_cap_device:
+          continue
+
+        active_paths.append(device_path) # To check later that the sensor list has no entries for paths that have disappeared
+        known_sensor = False
+        # Check if this sensor is already known and launched
+        for sensor in self.sensorList:
+          if sensor['sensor_class'] != 'v4l2':
+            continue
+
+          if sensor['device_path'] == device_path:
+            known_sensor = True
+            if sensor['device_type'] != device_type:
+              # Uh oh -- sensor has switched on us!
+              # Kill previous and start new?
+              rospy.logwarn(self.node_name + ": detected V4L2 device type change (" + sensor['device_type'] + "-->" + 
+                            device_type + ") for device at " + device_path)
+              self.stopAndPurgeSensorNode(sensor['node_namespace'])
+              self.startV4L2SensorNode(type = device_type, path = device_path, bus = usbBus)
+            elif not self.sensorNodeIsRunning(sensor['node_namespace']):
+              rospy.logwarn(self.node_name + ": node " + sensor['node_name'] + " is not running. Restarting")
+              self.stopAndPurgeSensorNode(sensor['node_namespace'])
+              self.startV4L2SensorNode(type = device_type, path = device_path, bus = usbBus)
+            break
+
+        if not known_sensor:
+          self.startV4L2SensorNode(type = device_type, path = device_path, bus = usbBus)
+
+    # Handle sensors which no longer have a valid active V4L2 device path
+    for sensor in self.sensorList:
+      if sensor['sensor_class'] != 'v4l2':
+        continue
+
+      if sensor['device_path'] not in active_paths:
+        rospy.logwarn(self.node_name + ': ' + sensor['node_namespace'] + ' path ' + sensor['device_path'] + ' no longer exists... sensor disconnected?')
+        self.stopAndPurgeSensorNode(sensor['node_namespace'])
+
+  def startV4L2SensorNode(self, type, path, bus):
     # First, get a unique name
     if type not in self.zedV4L2Devices:
       root_name = type.replace(' ','_').lower()
@@ -233,9 +240,12 @@ class IDXSensorMgr:
       if sensor['device_type'] == type:
         same_type_count += 1
 
-    sensor_node_name = root_name
-    if same_type_count > 0:
-      sensor_node_name += '_' + str(same_type_count)
+    sensor_node_name = self.short_name(root_name)
+    if bus is not None:
+      id = bus
+    else:
+      id = str(same_type_count)
+    sensor_node_name += '_' + id
 
     sensor_node_namespace = rospy.get_namespace() + sensor_node_name
     rospy.loginfo(self.node_name + ": Initiating new V4L2 node " + sensor_node_namespace)
@@ -312,6 +322,14 @@ class IDXSensorMgr:
       subprocess.run(rosparam_load_cmd)
     else:
       rospy.logwarn(self.node_name + ": No config file found for " + node_name + " in " + self.NEPI_DEFAULT_CFG_PATH)
+
+  def short_name(self,name):
+    split = name.split("_")
+    if len(split) > 3:
+      short_name = (split[0] + "_" + split[1] + "_" + split[2])
+    else:
+      short_name = name
+    return short_name
     
 if __name__ == '__main__':
   node = IDXSensorMgr()            

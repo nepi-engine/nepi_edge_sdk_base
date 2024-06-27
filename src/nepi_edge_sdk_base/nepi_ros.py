@@ -315,6 +315,321 @@ def stop_scripts(script_list,stop_script_service,get_installed_scripts_service,g
   #rospy.loginfo(running_scripts)
 
 
+#########################
+### Settings Helper Functions
+
+
+SETTING_TYPES = ["Menu","Discrete","String","Bool","Int","Float"]
+
+NONE_SETTINGS = [["None","None","None"]]
+
+TEST_CAP_SETTINGS = [["Menu","TestMenu","Menu_A:0","Menu_B:1","Menu_C:2","Menu_D:3"],
+        ["Discrete","TestDiscrete","Option_1","Option_2","Option_3","Option_4"],
+        ["String","TestString"],
+        ["Bool","TestBool"],
+        ["Int","TestInt_1"],
+        ["Int","TestInt_2","0","100"],
+        ["Float","TestFloat_1"],
+        ["Float","TestFloat_2","-1000","5000"]]
+
+TEST_SETTINGS = [["Menu","TestMenu","Menu_A:0"],
+        ["Discrete","TestDiscrete","Option_1"],
+        ["String","TestString","InitString"],
+        ["Bool","TestBool","True"],
+        ["Int","TestInt_1","5"],
+        ["Int","TestInt_2","25"],
+        ["Float","TestFloat_1","3.14"], 
+        ["Float","TestFloat_2","5000"]] 
+
+TEST_SETTINGS_UPDATE = [["Menu","TestMenu","Menu_C:2"],
+        ["Discrete","TestDiscrete","Option_3"],
+        ["String","TestString","NewString"],
+        ["Bool","TestBool","False"],
+        ["Int","TestInt_1","500"],
+        ["Int","TestInt_2","100"],
+        ["Float","TestFloat_1","9.81"], 
+        ["Float","TestFloat_2","1000"]] 
+
+def TEST_UPDATE_FUNCTION_SUCCESS(setting):
+  s_str = get_setting_as_str(setting)
+  rospy.loginfo("Setting update success: " + s_str)
+  return True, "Success"
+
+def TEST_UPDATE_FUNCTION_FAIL(setting):
+  s_str = get_setting_as_str(setting)
+  rospy.loginfo("Setting update failed: " + s_str)
+  str(2+[2])
+  return False, "Failed just because"
+
+def TEST_UPDATE_FUNCTION_EXCEPTION(setting):
+  s_str = get_setting_as_str(setting)
+  rospy.loginfo("Setting update will cauase exception: " + s_str)
+  str(2+[2])
+  return True, "Failed with exception"
+
+
+def UPDATE_NONE_SETTINGS_FUNCTION():
+   return False, "No settings update function available"
+
+def GET_NONE_SETTINGS_FUNCTION():
+   return nepi_nex.NONE_SETTINGS
+        
+def parse_settings_msg_data(msg_data):
+  setting = []
+  settings = []
+  if msg_data[0] == "[" and msg_data[-1] == "]" :
+    settings = eval(msg_data)
+  return(settings)
+
+def create_new_settings(name_str,type_str,value_str=None,options_str_list=None):
+  setting = []
+  setting.append(type_str)
+  setting.append(name_str)
+  if value_str != None:
+    setting.append(value_str)
+  if options_str_list != None:
+    for option_str in option_str_list:
+      setting.append(option_str)
+  return setting
+
+def create_msg_data_from_settings(settings):
+  msg_data = []
+  for setting in settings:
+      msg_data.append(setting)
+  return str(msg_data)
+
+
+def get_setting_from_settings(s_name,settings):
+  for setting in settings:
+    if setting[1] == s_name:
+      return setting
+      break
+  return None
+
+def create_setting(s_name,s_type,s_values = [None]):
+  setting = None
+  if type_s in SETTING_TYPES:
+    setting = [s_type,s_name]
+    if isinstance(s_value,list):
+      if s_value is not None:
+        for value in s_values:
+          settings.append(value)
+      elif isinstance(s_values,str):
+          setting.append(s_values)
+  return setting
+
+def add_setting_to_settings(setting,settings=[]):
+  if len(setting) > 1:
+    settings.append(setting)
+  return settings
+
+def remove_setting_from_settings(setting,settings):
+  updated_settings = []
+  for check_setting in settings:
+    if setting[0] != check_setting[0]:
+      updated_settings.append(settings)
+  return updated_settings
+
+
+def get_setting_as_str(setting):  
+  s_str = (setting[0] + ',' + setting[1] + "," + setting[2])
+  return s_str
+
+
+def get_name_str_from_setting(setting):
+  s_name = None
+  if len(setting)>2:
+    s_name = setting[1]
+  return s_name
+
+def get_type_str_from_setting(setting):
+  s_type = None
+  if len(setting)>2:
+    s_type = setting[0]
+  return s_type
+
+def get_value_str_from_setting(setting):
+  s_value = None
+  if len(setting)>2:
+    s_value = setting[2]
+  return s_value
+
+def get_options_from_cap_setting(s_name,setting):
+  value = None
+  if len(setting)>2:
+    value = setting[2:]
+  return value
+
+def get_data_from_setting(setting):
+  s_str = get_setting_as_str(setting)
+  s_name = setting[1]
+  s_type = setting[0]
+  status = None
+  data = None
+  if len(setting) == 3:
+    if setting[0] != None and setting[2] != None:
+
+      s_value = setting[2]
+      try:
+        if s_type == "Bool":
+          data = (s_value == "True")
+        elif s_type == "Int":
+          data = int(s_value)
+        elif s_type == "Float":
+          data = float(s_value)
+        elif s_type == "String":
+          data = s_value
+        elif s_type == "Discrete":
+          data = s_value
+        elif s_type == "Menu":
+          data = int(s_value.split(":")[1])
+      except Exception as e:
+        rospy.loginfo("Setting conversion failed for setting " + s_str + "with exception" + str(e) )
+  return s_name, s_type, data
+
+
+def compare_setting_in_settings(setting,settings):
+  s_name = setting[1]
+  s_type = setting[0]
+  s_value = setting[2]
+  name_match = False
+  type_match = False
+  value_match = False
+  for check_setting in settings:
+    if check_setting[1] == s_name:
+      name_match = True
+      if check_setting[0] == s_type:
+        type_match = True
+      if check_setting[2] == s_value:
+        value_match = True
+      return name_match, type_match, value_match
+      break
+  return name_match, type_match, value_match
+
+def check_valid_setting(setting,cap_settings):
+  valid= False
+  for cap_setting in cap_settings: # Check for valid option in capabilities string setting
+    s_type = setting[0]
+    s_name = setting[1]
+    s_value = setting[2]
+    if cap_setting[1] == s_name:
+      ("1")
+      c_type = cap_setting[0]
+      if len(cap_setting) > 2:
+        c_options = cap_setting[2:] 
+      else:
+        c_options = []
+      if s_type == c_type:
+        if s_value.find("(") == -1 and s_value.find(")") == -1: # Check that s_value is not a function call before eval call
+          if c_type == "Bool" and isinstance(eval(s_value),bool) :
+            valid = True
+          elif c_type == "String" and isinstance(s_value,str):
+            valid = True      
+          elif c_type == "Menu" and isinstance(s_value,str):  
+            if s_value in c_options:
+              valid = True
+          elif c_type == "Discrete" and isinstance(s_value,str):  
+            if s_value in c_options:
+              valid = True
+          elif c_type == "Int" and isinstance(eval(s_value),int):
+            if len(c_options) == 2:
+              val = eval(s_value)
+              if c_options[0] != "":
+                lower_limit = eval(c_options[0])
+              else:
+                lower_limit = -float('inf')
+              (val >= lower_limit)
+              if c_options[1] != "":
+                upper_limit = eval(c_options[1])
+              else:
+                upper_limit = float('inf')
+              (val <= upper_limit)
+              if val >= lower_limit and val <= upper_limit:
+                valid = True
+              (valid)
+            else:    
+              valid = True
+          elif c_type == "Float" and (isinstance(eval(s_value),float) or isinstance(eval(s_value),int)):
+            if len(c_options) == 2:
+              val = eval(s_value)
+              if c_options[0] != "":
+                lower_limit = eval(c_options[0])
+              else:
+                lower_limit = -float('inf')
+              (val >= lower_limit)
+              if c_options[1] != "":
+                upper_limit = eval(c_options[1])
+              else:
+                upper_limit = float('inf')
+              (val <= upper_limit)
+              if val >= lower_limit and val <= upper_limit:
+                valid = True
+              (valid)
+            else:    
+              valid = True
+  return valid
+
+def update_setting_in_settings(setting_to_update,settings):
+  s_name = setting_to_update[1]
+  s_value = setting_to_update[2]
+  updated_settings = []
+  found_setting = False
+  for setting in settings:
+    if setting[1] == s_name: 
+      updated_settings.append(setting_to_update) # append/replace new
+      found_setting = True
+    else: 
+      updated_settings.append(setting) # append original
+  if found_setting is False: # append new setting to original settings
+      updated_settings.append(setting_to_update) # append/add new
+  return updated_settings
+
+def remove_setting_from_settings(setting_to_remove,settings):
+  updated_settings = []
+  for setting in settings:
+    if setting_to_remove[0] != setting[0]:
+      updated_settings.append(settings)
+  return updated_settings
+	
+
+def try_to_update_setting(setting_to_update,settings,cap_settings,update_settings_function):
+  s_str = get_setting_as_str(setting_to_update)
+  s_name = get_name_str_from_setting(setting_to_update)
+  updated_settings = settings
+  success = False
+  msg = ""
+  if s_name != "None":
+    if update_settings_function is not None:
+      if check_valid_setting(setting_to_update,cap_settings):
+        try:
+          [success, msg] = update_settings_function(setting_to_update)
+          if success:
+            msg = ("Updated setting: " + s_str )
+        except Exception as e:
+          msg = ("Failed to update setting: " + s_str + " with exception: " + str(e) )
+      else:
+        msg = ("Failed to update setting: " + s_str + " Invalid setting name or value")
+    else:
+      msg = ("Failed to update setting: " + s_str + " No update function provided")
+  else:
+    success = True
+  return success, msg
+
+
+def get_settings_by_type(settings,type_str):
+  settings_of_type = []
+  for setting in settings:
+    if len(setting) > 1:
+      if setting[0] == type_str :
+        settings_of_type.append(setting)
+  return settings_of_type
+
+def sort_settings_alphabetically(settings):
+  if len(settings) > 1:
+    sorted_settings = sorted(settings, key=lambda x: x[1])
+    return sorted_settings
+  else:
+    return settings
 
 #########################
 ### Misc Helper Functions

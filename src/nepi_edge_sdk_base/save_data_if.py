@@ -12,7 +12,7 @@ import time
 
 import rospy
 
-from std_msgs.msg import String
+from std_msgs.msg import String, Empty
 from nepi_ros_interfaces.msg import SaveData, SaveDataRate, SaveDataStatus
 from nepi_ros_interfaces.srv import DataProductQuery, DataProductQueryResponse, SystemStorageFolderQuery, SystemStorageFolderQueryResponse
 
@@ -24,9 +24,19 @@ class SaveDataIF(object):
     save_raw = False
     save_path = None
     save_data_prefix = ""
-    save_data_subfolder = ""
+    save_data_subfolder = ""    
+    snapshot_dict = dict()
+    
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
+        if (self.save_continuous is False) and (msg.save_continuous is True):
+            self.needs_save_calibration = True
+
+        save_continuous = msg.save_continuous
+        save_raw = msg.save_raw
+        self.save_data_enable(save_continuous, save_raw)
+        
+    def save_data_callback(self, msg):
         if (self.save_continuous is False) and (msg.save_continuous is True):
             self.needs_save_calibration = True
 
@@ -43,6 +53,16 @@ class SaveDataIF(object):
         rospy.set_param('~save_data_raw', save_raw)
         self.save_raw = save_raw
         self.publish_save_status()
+
+    def snapshot_callback(self,msg):
+        rospy.loginfo("Recieved Snapshot Trigger")
+        data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
+        for data_product_name in data_rate_dict.keys():
+            save_rate = data_rate_dict[data_product_name][0]
+            enabled = (save_rate > 0.0)
+            if enabled:
+                triggered = self.snapshot_dict[data_product_name] = True
+
 
     def save_data_prefix_pub_ns_callback(self, msg):
         new_prefix = msg.data
@@ -101,65 +121,118 @@ class SaveDataIF(object):
 
     def update_save_data_rate(self,data_product,save_rate_hz=0):
         save_all = SaveDataRate().ALL_DATA_PRODUCTS
+        data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
         if (data_product == save_all):
-            for d in self.data_rate_dict:
+            for d in data_rate_dict:
                 # Respect the max save rate
-                self.data_rate_dict[d][0] = save_rate_hz if save_rate_hz <= self.data_rate_dict[d][2] else self.data_rate_dict[d][2]
-        elif (data_product in self.data_rate_dict):
-            self.data_rate_dict[data_product][0] = save_rate_hz if save_rate_hz <= self.data_rate_dict[data_product][2] else self.data_rate_dict[data_product][2]
+                data_rate_dict[d][0] = save_rate_hz if save_rate_hz <= data_rate_dict[d][2] else data_rate_dict[d][2]
+        elif (data_product in data_rate_dict):
+            data_rate_dict[data_product][0] = save_rate_hz if save_rate_hz <= data_rate_dict[data_product][2] else data_rate_dict[data_product][2]
         else:
-            rospy.logerr("%s is not a known data product", data_product)
+            rospy.logerr("%s is not a known data product", data_product)           
+        rospy.set_param('~data_rate_dict',data_rate_dict)
+        self.publish_save_status()
+        
 
 
     def query_data_products_callback(self, req):
         return_list = []
-        for d in self.data_rate_dict:
-            return_list.append(SaveDataRate(data_product = d, save_rate_hz = self.data_rate_dict[d][0]))
+        data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
+        for d in data_rate_dict:
+            return_list.append(SaveDataRate(data_product = d, save_rate_hz = data_rate_dict[d][0]))
 
         return DataProductQueryResponse(return_list)
 
     def publish_save_status(self):
+        data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
+        data_rate_dict_str = "["
+        ind = 0
+        for data_name in data_rate_dict:
+            if ind != 0:
+                sep = ","
+            else:
+                sep = ""
+            data_rate_str = str(data_rate_dict[data_name][0])
+            data_rate_dict_str = data_rate_dict_str + sep + "[" + data_name + "," + data_rate_str + "]"
+            ind = ind + 1
+        data_rate_dict_str = data_rate_dict_str + "]"
         current_save_data = SaveData(save_continuous = self.save_continuous, save_raw = self.save_raw)
-        current_save_configs = self.getSaveDataConfigs()
-        save_configs_msg = self.create_save_configs_msg(current_save_configs)
         if self.save_data_root_directory is None:
-            self.save_data_status_pub.publish(current_data_dir = "", current_filename_prefix = self.save_data_prefix, save_data_configs = save_configs_msg, save_data = current_save_data)
+            self.save_data_status_pub.publish(current_data_dir = "", current_folder_prefix = self.save_data_subfolder, current_filename_prefix = self.save_data_prefix, save_data_rates = data_rate_dict_str, save_data = current_save_data)
         else:
-            self.save_data_status_pub.publish(current_data_dir = self.save_path, current_filename_prefix = self.save_data_prefix,save_data_configs = save_configs_msg, save_data = current_save_data)
+            self.save_data_status_pub.publish(current_data_dir = self.save_data_root_directory, current_folder_prefix = self.save_data_subfolder, current_filename_prefix = self.save_data_prefix, save_data_rates = data_rate_dict_str, save_data = current_save_data)
 
     def data_product_should_save(self, data_product_name):
         # If saving is disabled for this node, then it is not time to save this data product!
+        data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
         if not self.save_continuous:
             return False
 
-        if data_product_name not in self.data_rate_dict:
+        if data_product_name not in data_rate_dict:
             rospy.logwarn("Unknown data product %s", data_product_name)
             return False
 
-        save_rate = self.data_rate_dict[data_product_name][0]
+        save_rate = data_rate_dict[data_product_name][0]
         if save_rate == 0.0:
             return False
 
         save_period = 1.0 / save_rate
         now = rospy.get_rostime().to_sec()
-        elapsed = now - self.data_rate_dict[data_product_name][1]
+        elapsed = now - data_rate_dict[data_product_name][1]
         if (elapsed >= save_period):
-            self.data_rate_dict[data_product_name][1] = now
+            data_rate_dict[data_product_name][1] = now
+            rospy.set_param('~data_rate_dict',data_rate_dict)
             return True
-
         return False
+
+
+    def data_product_snapshot_enabled(self, data_product_name):
+        enabled = self.snapshot_dict[data_product_name]
+        return enabled
+
+    def data_product_snapshot_reset(self, data_product_name):
+        self.snapshot_dict[data_product_name] = False
+
+
+    def data_product_snapshot_reset(self, data_product_name):
+        triggered = self.snapshot_dict[data_product_name]
+        self.snapshot_dict[data_product_name] = False
+        return triggered
+    
+
+    def save_data_reset_callback(self,reset_msg):
+        rospy.loginfo("Recieved save data reset msg")
+        rospy.set_param('~data_rate_dict',self.init_data_rate_dict)
+        self.publish_save_status()
+
+    def save_data_reset_factory_callback(self,reset_msg):
+        rospy.loginfo("Recieved save data factory reset msg")
+        rospy.set_param('~data_rate_dict',self.factory_data_rate_dict)
+        self.publish_save_status()
+
+
+    def registerDataProduct(self, data_product_name):
+        data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
+        if data_product_name not in data_rate_dict.keys():
+            data_rate_dict[data_product_name] = [1.0, 0.0, 100.0] # Default to 1Hz save rate, max rate = 100.0Hz
+            rospy.set_param('~data_rate_dict',data_rate_dict)
+        self.publish_save_status()
     
     def data_product_saving_enabled(self, data_product_name):
         # If saving is disabled for this node, then no data products are saving
+        data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
         if not self.save_continuous:
             return False
 
-        if data_product_name not in self.data_rate_dict:
+        if data_product_name not in data_rate_dict:
             rospy.logwarn("Unknown data product %s", data_product_name)
             return False
 
-        save_rate = self.data_rate_dict[data_product_name][0]
+        save_rate = data_rate_dict[data_product_name][0]
         return (save_rate > 0.0)
+
+
+
 
     def calibration_should_save(self):
         needs_cal = False
@@ -187,20 +260,6 @@ class SaveDataIF(object):
         #rospy.loginfo("******* save data filename: " + filename)
         return filename
 
-
-    def getSaveDataConfigs(self):
-        save_data_configs = []
-        for data_product in self.data_rate_dict.keys():
-            config = [data_product,str(self.data_rate_dict[data_product][0])]
-            save_data_configs.append(config)
-        return save_data_configs
-
-    def create_save_configs_msg(self,configs):
-        msg_data = []
-        for config in configs:
-            for string in config:
-                msg_data.append(string)
-        return str(msg_data)
 
     def __init__(self, data_product_names=None):
         if data_product_names != None:
@@ -230,9 +289,15 @@ class SaveDataIF(object):
         self.DATA_UID = stat_info.st_uid
         self.DATA_GID = stat_info.st_gid
 
-        self.data_rate_dict = {}
+        self.factory_data_rate_dict= {}
         for d in data_product_names:
-            self.data_rate_dict[d] = [1.0, 0.0, 100.0] # Default to 1Hz save rate, max rate = 100.0Hz
+            self.factory_data_rate_dict[d] = [1.0, 0.0, 100.0] # Default to 1Hz save rate, set last save = 0.0 max rate = 100.0Hz
+            self.snapshot_dict[d] = False
+        
+        self.init_data_rate_dict = rospy.get_param('~data_rate_dict',self.factory_data_rate_dict)
+        rospy.set_param('~data_rate_dict',self.init_data_rate_dict)
+        
+
 
         self.save_continuous = rospy.get_param('~save_data_continuous', False)
         self.save_raw = rospy.get_param('~save_data_raw', False)
@@ -246,14 +311,18 @@ class SaveDataIF(object):
         
         self.needs_save_calibration = self.save_continuous
 
-        # Setup subscribers -- public and private versions
+        # Setup subscribers -- global and local versions
         rospy.Subscriber('save_data', SaveData, self.save_data_callback)
+        rospy.Subscriber('snapshot_trigger', Empty, self.snapshot_callback)
         rospy.Subscriber('save_data_prefix', String, self.save_data_prefix_pub_ns_callback)
         rospy.Subscriber('save_data_rate', SaveDataRate, self.save_data_rate_callback)
 
         rospy.Subscriber('~save_data', SaveData, self.save_data_callback)
-        rospy.Subscriber('~save_data_prefix', String, self.save_data_prefix_priv_ns_callback)
+        rospy.Subscriber('~snapshot_trigger', Empty, self.snapshot_callback)
+        rospy.Subscriber('~save_data_prefix', String, self.save_data_prefix_pub_ns_callback)
         rospy.Subscriber('~save_data_rate', SaveDataRate, self.save_data_rate_callback)
+        rospy.Subscriber('~save_data_reset', Empty, self.save_data_reset_callback)
+        rospy.Subscriber('~save_data_reset_factory', Empty, self.save_data_reset_factory_callback)
 
         rospy.Service('~query_data_products', DataProductQuery, self.query_data_products_callback)
 

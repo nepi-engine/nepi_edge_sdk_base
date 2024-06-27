@@ -671,7 +671,6 @@ class ROSIDXSensorIF:
 
         rospy.Subscriber('~idx/set_frame_3d', String, self.setFrame3dCb, queue_size=1)
 
-        rospy.Subscriber('~idx/reset_controls', Empty, self.resetControlsCb, queue_size=1) # start local callback
         rospy.Subscriber('~idx/reset_factory', Empty, self.resetFactoryCb, queue_size=1) # start local callback
 
         rospy.Subscriber('~idx/update_device_name', String, self.updateDeviceNameCb, queue_size=1) # start local callbac
@@ -858,8 +857,7 @@ class ROSIDXSensorIF:
             while (not rospy.is_shutdown()):
                 saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
                 has_subscribers = (img_publisher.get_num_connections() > 0)
-                snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
-                if (has_subscribers is True) or (saving_is_enabled is True) or (snapshot_enabled is True):
+                if (has_subscribers is True) or (saving_is_enabled is True):
                     acquiring = True
                     if data_product != "pointcloud_image":
                         status, msg, image, ros_timestamp, encoding = img_get_function()
@@ -879,7 +877,7 @@ class ROSIDXSensorIF:
                         if ros_img is not None:
                             # Publish image
                             img_publisher.publish(ros_img)
-                    if (saving_is_enabled is True or snapshot_enabled is True ):
+                    if (saving_is_enabled is True):
                         if isinstance(image,np.ndarray):  # CV2 image. Passthrough   
                             cv2_img = image
                         elif isinstance(image,Image): # ROS Image. Convert to CV2 Image
@@ -913,8 +911,7 @@ class ROSIDXSensorIF:
             while (not rospy.is_shutdown()):
                 saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
                 has_subscribers = (pc_publisher.get_num_connections() > 0)
-                snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
-                if (has_subscribers is True) or (saving_is_enabled is True) or (snapshot_enabled is True):
+                if (has_subscribers is True) or (saving_is_enabled is True):
                     acquiring = True
                     status, msg, pc, ros_timestamp, ros_frame = pc_get_function()
                     #********************
@@ -936,7 +933,7 @@ class ROSIDXSensorIF:
                         if ros_pc is not None:
                             # Publish Pointcloud
                             pc_publisher.publish(ros_pc)
-                    if (saving_is_enabled is True or snapshot_enabled is True ):
+                    if (saving_is_enabled is True):
                         if isinstance(pc,o3d.geometry.PointCloud):  # Open3d pointcloud. Passthrough   
                             o3d_pc = pc
                         elif isinstance(pc,PointCloud2): # ROS Pointcloud. Convert to Open3d pointcloud
@@ -984,30 +981,26 @@ class ROSIDXSensorIF:
     def save_img2file(self,data_product,cv2_img,ros_timestamp):
         if self.save_data_if is not None:
             saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-            snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
             # Save data if enabled
-            if saving_is_enabled or snapshot_enabled:
+            if saving_is_enabled:
                 eval("self." + data_product + "_lock.acquire()")
                 if cv2_img is not None:
                     device_name = rospy.get_param('~idx/device_name', self.init_device_name)
-                    if (self.save_data_if.data_product_should_save(data_product) or snapshot_enabled):
+                    if (self.save_data_if.data_product_should_save(data_product) is True):
                         full_path_filename = self.save_data_if.get_full_path_filename(nepi_ros.get_datetime_str_from_stamp(ros_timestamp), 
                                                                                                 device_name + "-" + data_product, 'png')
                         if os.path.isfile(full_path_filename) is False:
                             cv2.imwrite(full_path_filename, cv2_img)
-                            self.save_data_if.data_product_snapshot_reset(data_product)
                 eval("self." + data_product + "_lock.release()")
 
     def save_pc2file(self,data_product,o3d_pc,ros_timestamp):
         if self.save_data_if is not None:
             saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-            snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
-            # Save data if enabled
-            if saving_is_enabled or snapshot_enabled:
+            if saving_is_enabled:
                 eval("self." + data_product + "_lock.acquire()")
                 if o3d_pc is not None:
                     device_name = rospy.get_param('~idx/device_name', self.init_device_name)
-                    if (self.save_data_if.data_product_should_save(data_product) or snapshot_enabled):
+                    if (self.save_data_if.data_product_should_save(data_product) is True):
                         full_path_filename = self.save_data_if.get_full_path_filename(nepi_ros.get_datetime_str_from_stamp(ros_timestamp), 
                                                                                                 device_name + "-" + data_product, 'pcd')
                         if os.path.isfile(full_path_filename) is False:
