@@ -16,8 +16,8 @@ import rospy
 from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
 
 # Specialized discovery functions
-from nepi_edge_sdk_base.mavlink_rbx_auto_discovery import mavlink_discover
-from nepi_edge_sdk_base.sealite_auto_discovery import sealite_discover
+from nepi_edge_sdk_rbx.mavlink_rbx_auto_discovery import mavlink_discover
+from nepi_edge_sdk_lsx.sealite_auto_discovery import sealite_discover
 
 class NEPIAutolauncher:
   DEFAULT_NODE_NAME = "nepi_autolauncher"

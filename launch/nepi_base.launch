@@ -101,7 +101,7 @@
     <!-- IDX Sensor Manager -->
     <group if="$(arg run_idx_sensor_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/idx_sensor_mgr/idx_sensor_mgr.yaml" ns="idx_sensor_mgr" />
-      <node name="idx_sensor_mgr" pkg="nepi_edge_sdk_base" type="idx_sensor_mgr.py" respawn="true" output="$(arg output_destination)" />
+      <node name="idx_sensor_mgr" pkg="nepi_edge_sdk_idx" type="idx_sensor_mgr.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- OVIF Manager (IDX and PTX) -->

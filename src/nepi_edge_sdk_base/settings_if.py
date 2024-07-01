@@ -41,10 +41,10 @@ class SettingsIF(object):
             self.updateSetting(setting)
 
 
-    def resetFactorySettings(self):
+    def resetFactorySettings(self,update_status = True):
         #rospy.loginfo(self.init_settings)
         for setting in self.factory_settings:
-            self.updateSetting(setting)
+            self.updateSetting(setting,update_status)
 
 
     def updateSettingCb(self,msg):
@@ -63,7 +63,8 @@ class SettingsIF(object):
                 rospy.loginfo("Will try to update setting " + str(new_setting))
                 [success,msg] = nepi_ros.try_to_update_setting(new_setting,current_settings,self.cap_settings,self.settingUpdateFunction)
                 rospy.loginfo(msg)
-                self.publishSettingsStatus() 
+                if update_status:
+                	self.publishSettingsStatus() 
             else:
                 rospy.loginfo("Skipping setting update " + str(new_setting) + " because it matches current setting")
         else:
@@ -119,6 +120,7 @@ class SettingsIF(object):
             else:
                 self.getSettingsFunction = getSettingsFunction
             # Set init values for resets. Updated saveConfigCb() on save_config msg
+            self.resetFactorySettings(update_status = False)
             self.init_settings = rospy.get_param('~settings', self.factory_settings)
             rospy.set_param('~settings', self.init_settings )
 

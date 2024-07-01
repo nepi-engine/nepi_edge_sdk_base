@@ -19,9 +19,12 @@ class SaveCfgIF(object):
     def saveConfig(self, msg):
         if (self.updateParams):
             self.updateParams() # Callback provided by the container class to set values to param server, etc.
-        self.store_params_publisher.publish(rospy.get_name()) # Need the fully-qualified namespace name here
+        if self.namespace != None:
+            self.store_params_publisher.publish(self.namespace)
+        else:
+            self.store_params_publisher.publish(rospy.get_name()) # Need the fully-qualified namespace name here
 
-    def reset(self, msg):
+    def resetConfig(self, msg):
         reset_proxy = None
         if (msg.reset_type == Reset.USER_RESET):
             reset_proxy = rospy.ServiceProxy('user_reset', FileReset)
@@ -31,7 +34,11 @@ class SaveCfgIF(object):
         ret_val = False
         if (reset_proxy):
             try:
-                resp = reset_proxy(rospy.get_name()) # Need the fully-qualified namespace name here
+            
+                if self.namespace != None:
+                    resp = reset_proxy(self.namespace)
+                else:
+                    resp = reset_proxy(rospy.get_name()) # Need the fully-qualified namespace name here
                 ret_val = resp.success
             except rospy.ServiceException as e:
                 rospy.logerr("%s: service call failed: %s", rospy.get_name(), e)
@@ -41,11 +48,22 @@ class SaveCfgIF(object):
 
         return ret_val
 
-    def __init__(self, updateParamsCallback=None, paramsModifiedCallback=None):
+    def __init__(self, updateParamsCallback=None, paramsModifiedCallback=None, namespace = None):
         self.updateParams = updateParamsCallback
         self.paramsModified = paramsModifiedCallback
         self.store_params_publisher = rospy.Publisher('store_params', String, queue_size=1)
+        self.namespace = namespace
+        
+        if namespace != None:
+            save_topic = namespace + '/save_config'
+            reset_topic = namespace + '/reset_config'
+        else:
+            save_topic = '~save_config'
+            reset_topic = '~reset_config'   
+
+        
+        rospy.Subscriber(save_topic, Empty, self.saveConfig)
+        rospy.Subscriber(reset_topic, Reset, self.resetConfig)
+        
         rospy.Subscriber('save_config', Empty, self.saveConfig)
-        rospy.Subscriber('~save_config', Empty, self.saveConfig)
-        rospy.Subscriber('reset', Reset, self.reset)
-        rospy.Subscriber('~reset', Reset, self.reset)
+        rospy.Subscriber('reset_config', Reset, self.resetConfig)
