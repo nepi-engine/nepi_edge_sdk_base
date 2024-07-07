@@ -17,6 +17,7 @@ Basic interface for the global and private save_config topics.
 '''
 class SaveCfgIF(object):
     def saveConfig(self, msg):
+    	
         if (self.updateParams):
             self.updateParams() # Callback provided by the container class to set values to param server, etc.
         if self.namespace != None:

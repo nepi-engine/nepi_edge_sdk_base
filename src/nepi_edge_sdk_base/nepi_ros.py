@@ -680,18 +680,21 @@ def val_in_list(val2check,list2check):
         in_list = True
   return in_list
 
-def get_file_list(image_dir,ext_str="png"):
-  path, dirs, files = next(os.walk(image_dir))
+def get_file_list(self,path,ext_str="png"):
+  path, dirs, files = next(os.walk(path))
   data_size = len(files)
   ind = 0
   file_list = []
-  for f in os.listdir(image_dir):
-    if f.endswith(ext_str):
-      #print('Found image file')
+  for f in os.listdir(path):
+    print(f)
+    ext = os.path.splitext(f)[1]
+    ext = ext.replace('.','')
+    if ext == ext_str:
+      #print('Found ' + ext_str + ' file ' + f)
       ind = ind + 1
-      file = (image_dir + '/' + f)
+      file = (path + '/' + f)
       file_list.append(file)
-  return file_list,ind
+  return fil
  
 
   

@@ -46,6 +46,9 @@ def set_verbosity_level(level = "Error"):
 ###########################################
 ### Pointcloud conversion functions
 
+def create_empty_o3dpc():
+    return o3d.t.geometry.PointCloud()
+
 def rospc_to_o3dpc(ros_pc, remove_nans=False):
     ''' Convert ROS PointCloud2 to Open3D PointCloud
     
@@ -104,6 +107,19 @@ def cv2img_to_o3dimg(cv2_image):
     o3d_img = o3d.geometry.Image(np_array)
     return o3d_img
     
+###########################################
+### Pointcloud info functions    
+
+def get_min_range(o3d_pc):
+    min_bounds = np.asarray(pcd.get_min_bound()) 
+    return (np.min(min_bounds))
+    
+def get_max_range(o3d_pc):
+    max_bounds = np.asarray(pcd.get_max_bound()) 
+    return (np.max(max_bounds))
+	
+
+
 ###########################################
 ### Pointcloud filter functions    
 
