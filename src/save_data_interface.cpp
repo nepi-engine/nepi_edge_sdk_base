@@ -15,6 +15,7 @@
 
 #include "nepi_ros_interfaces/SaveDataStatus.h"
 #include "nepi_ros_interfaces/SystemStorageFolderQuery.h"
+#include "std_msgs/Empty.h"
 
 
 namespace Numurus
@@ -28,9 +29,9 @@ SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pu
 	_save_raw{"save_data_raw", false, parent}
 {
 	// First, get the data directory
-	if (false == ros::service::waitForService("system_storage_folder_query", 10000)) // Timeout is in ms, so 10 seconds
+	if (false == ros::service::waitForService("system_storage_folder_query", 20000)) // Timeout is in ms, so 20 seconds
 	{
-		ROS_ERROR("Failed to obtain system data folder");
+		ROS_ERROR("Failed to obtain system storage folder");
 	}
 	else
 	{
@@ -95,11 +96,13 @@ void SaveDataInterface::initSubscribers()
 		subscribers.push_back(_parent_pub_nh->subscribe("save_data", 3, &SaveDataInterface::saveDataHandler, this));
 		subscribers.push_back(_parent_pub_nh->subscribe("save_data_prefix", 3, &SaveDataInterface::saveDataPrefixPubNSHandler, this));
 		subscribers.push_back(_parent_pub_nh->subscribe("save_data_rate", 3, &SaveDataInterface::saveDataRateHandler, this));
+		subscribers.push_back(_parent_pub_nh->subscribe("snapshot_trigger", 3, &SaveDataInterface::snapshotTriggerHandler, this));
 
 		// Private namespace subscriptions
 		subscribers.push_back(_parent_priv_nh->subscribe("save_data", 3, &SaveDataInterface::saveDataHandler, this));
 		subscribers.push_back(_parent_priv_nh->subscribe("save_data_prefix", 3, &SaveDataInterface::saveDataPrefixPrivNSHandler, this));
 		subscribers.push_back(_parent_priv_nh->subscribe("save_data_rate", 3, &SaveDataInterface::saveDataRateHandler, this));
+		subscribers.push_back(_parent_priv_nh->subscribe("snapshot_trigger", 3, &SaveDataInterface::snapshotTriggerHandler, this));
 	}
 }
 
@@ -111,16 +114,41 @@ void SaveDataInterface::initServices()
 	}
 }
 
+bool SaveDataInterface::saveIFReady()
+{
+	if (_save_data_dir.length() == 0)
+	{
+		return false;
+	}
+	return true;
+}
+
+
 void SaveDataInterface::registerDataProduct(const std::string product_name, double save_rate_hz, double max_save_rate_hz)
 {
-	if (_save_data_dir.length() != 0)
-	{
 		if (save_rate_hz > max_save_rate_hz)
 		{
 			save_rate_hz = max_save_rate_hz;
 		}
-		data_product_registry[product_name] = {save_rate_hz, 0.0, max_save_rate_hz};
+		data_product_registry[product_name] = {save_rate_hz, 0.0, max_save_rate_hz, 0.0};
+		ROS_INFO("Registered new data product %s)", product_name.c_str());
+		publishSaveStatus();
+}
+
+bool SaveDataInterface::dataProductRegistered(const std::string product_name)
+{
+	data_product_registry_entry_t entry;
+	try
+	{
+		entry = data_product_registry.at(product_name);
 	}
+	catch (int e)
+	{
+		// Unregistered data product -- just return false
+		// TODO: Log warning?
+		return false;
+	}
+	return true;
 }
 
 bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ros::Time data_time)
@@ -184,6 +212,50 @@ bool SaveDataInterface::dataProductSavingEnabled(const std::string product_name)
 	return true;	
 }
 
+bool SaveDataInterface::snapshotEnabled(const std::string product_name)
+{
+	data_product_registry_entry_t entry;
+	try
+	{
+		entry = data_product_registry.at(product_name);
+	}
+	catch (int e)
+	{
+		// Unregistered data product -- just return false
+		// TODO: Log warning?
+		return false;
+	}
+
+	const float snapshot = entry[3];
+	if (snapshot > 0)
+	{
+		// Saving disabled for this data product
+		return true;
+	}
+	return false;	
+}
+
+void SaveDataInterface::snapshotReset(const std::string product_name)
+{
+	data_product_registry_entry_t entry;
+	try
+	{
+		entry = data_product_registry.at(product_name);
+	}
+	catch (int e)
+	{
+		// Unregistered data product -- just return false
+		// TODO: Log warning?
+		return;
+		
+	}
+
+	data_product_registry[product_name] = {0.0, entry[3]};
+	
+}
+
+
+
 bool SaveDataInterface::calibrationShouldSave()
 {
 	if (_save_data_dir.length() == 0)
@@ -238,6 +310,12 @@ const std::string SaveDataInterface::getFullPathFilename(const std::string &time
 	
 	return (_save_data_dir + "/" + _filename_prefix + timestamp_string + "_" + identifier + "." + extension);
 }
+
+const std::string SaveDataInterface::getSavePrefixString()
+{
+	return (_filename_prefix);
+}
+
 
 void SaveDataInterface::saveDataHandler(const nepi_ros_interfaces::SaveData::ConstPtr &msg)
 {
@@ -339,6 +417,21 @@ void SaveDataInterface::saveDataRateHandler(const nepi_ros_interfaces::SaveDataR
 	}
 	ROS_WARN("Updated save rate for data product %s", msg->data_product.c_str());
 	return;
+}
+
+
+void SaveDataInterface::snapshotTriggerHandler(const std_msgs::Empty::ConstPtr &msg)
+{
+
+	for (std::pair<std::string, data_product_registry_entry_t> entry : data_product_registry)
+	{
+		if (entry.second[0] > 0)
+		{
+		entry.second[3] = 1.0;
+		}
+
+	}
+	
 }
 
 bool SaveDataInterface::queryDataProductsHandler(nepi_ros_interfaces::DataProductQuery::Request &req, nepi_ros_interfaces::DataProductQuery::Response &res)

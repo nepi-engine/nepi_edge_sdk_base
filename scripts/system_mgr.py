@@ -128,8 +128,7 @@ class SystemMgrNode():
                     self.status_msg.warnings.flags[WarningFlags.HIGH_TEMPERATURE] = True
                     throttle_ratio_i = 1.0 - ((t - self.system_defs_msg.warning_temps[i]) / (
                         self.system_defs_msg.critical_temps[i] - self.system_defs_msg.warning_temps[i]))
-                    rospy.logwarn_throttle(
-                        10, "%s: temperature = %f", WarningFlags.HIGH_TEMPERATURE_STRING, t)
+                    #rospy.logwarn_throttle( 10, "%s: temperature = %f", WarningFlags.HIGH_TEMPERATURE_STRING, t)
                     throttle_ratio_min = min(
                         throttle_ratio_i, throttle_ratio_min)
                 else:
@@ -138,8 +137,7 @@ class SystemMgrNode():
             if (throttle_ratio_min != self.current_throttle_ratio):
                 self.throttle_ratio_pub.publish(Float32(throttle_ratio_min))
                 self.current_throttle_ratio = throttle_ratio_min
-                rospy.logwarn("New thermal rate throttle value: %f%%",
-                              self.current_throttle_ratio)
+                #rospy.logwarn("New thermal rate throttle value: %f%%", self.current_throttle_ratio)
 
     def update_storage(self):
         # Data partition

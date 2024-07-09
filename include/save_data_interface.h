@@ -57,17 +57,20 @@ public:
 
 	inline bool saveContinuousEnabled() {return (_save_continuous == true);}
 	inline bool saveRawEnabled() {return (_save_continuous == true && _save_raw == true);}
-	inline const std::string getFilenamePrefix() {return _filename_prefix;}
 
+	bool saveIFReady();
+	bool dataProductRegistered(const std::string product_name);
 	void registerDataProduct(const std::string product_name, double save_rate_hz = 1.0, double max_save_rate_hz = 100.0);
 	bool dataProductShouldSave(const std::string product_name, ros::Time data_time = ros::Time::now());
 	bool dataProductSavingEnabled(const std::string product_name);
+	bool snapshotEnabled(const std::string product_name);
+	void snapshotReset(const std::string product_name);
 	bool calibrationShouldSave();
 
 	static std::string getTimestampString(const ros::Time &time = ros::Time::now());
 
 	const std::string getFullPathFilename(const std::string &timestamp_string, const std::string &identifier, const std::string &extension);
-
+	const std::string getSavePrefixString();
 	/**
 	 * User-configurable base path (provided by service call)
 	 */
@@ -97,7 +100,7 @@ protected:
 	ros::Publisher _save_status_pub;
 
 	// Form for the array is <rate_hz, next_save_time_s, max_rate_hz>
-	typedef std::array<double, 3> data_product_registry_entry_t;
+	typedef std::array<double, 4> data_product_registry_entry_t;
 	std::unordered_map<std::string, data_product_registry_entry_t> data_product_registry;
 
 	bool _needs_save_calibration = false;
@@ -118,7 +121,7 @@ protected:
 	void saveDataPrefixPrivNSHandler(const std_msgs::String::ConstPtr &msg);
 
 	void saveDataRateHandler(const nepi_ros_interfaces::SaveDataRate::ConstPtr &msg);
-
+	void snapshotTriggerHandler(const std_msgs::Empty::ConstPtr &msg);
 	bool queryDataProductsHandler(nepi_ros_interfaces::DataProductQuery::Request &req, nepi_ros_interfaces::DataProductQuery::Response &res);
 
 	/**

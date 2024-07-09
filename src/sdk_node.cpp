@@ -295,7 +295,7 @@ void SDKNode::setThrottleRatio(float throttle_ratio)
 
   const double rate_spread = max_rate_hz - min_rate_hz;
   current_rate_hz = min_rate_hz + (rate_spread * throttle_ratio);
-	ROS_INFO("%s: Updating current rate to %.2fHz for throttle ratio %.2f", getUnqualifiedName().c_str(), current_rate_hz, throttle_ratio);
+	//ROS_INFO("%s: Updating current rate to %.2fHz for throttle ratio %.2f", getUnqualifiedName().c_str(), current_rate_hz, throttle_ratio);
 }
 
 } // namespace Numurus
