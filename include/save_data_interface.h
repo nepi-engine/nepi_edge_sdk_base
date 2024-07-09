@@ -57,6 +57,7 @@ public:
 
 	inline bool saveContinuousEnabled() {return (_save_continuous == true);}
 	inline bool saveRawEnabled() {return (_save_continuous == true && _save_raw == true);}
+	inline std::string getFilenamePrefix() {return _filename_prefix;}
 
 	bool saveIFReady();
 	bool dataProductRegistered(const std::string product_name);
@@ -65,7 +66,7 @@ public:
 	bool dataProductSavingEnabled(const std::string product_name);
 	bool snapshotEnabled(const std::string product_name);
 	void snapshotReset(const std::string product_name);
-	bool calibrationShouldSave();
+	bool newSaveTriggered();
 
 	static std::string getTimestampString(const ros::Time &time = ros::Time::now());
 
@@ -103,7 +104,7 @@ protected:
 	typedef std::array<double, 4> data_product_registry_entry_t;
 	std::unordered_map<std::string, data_product_registry_entry_t> data_product_registry;
 
-	bool _needs_save_calibration = false;
+	bool _new_save_triggered = false;
 
 	/**
 	 * @brief      Callback for save_data topic subscriptiion

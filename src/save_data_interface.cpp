@@ -77,7 +77,7 @@ void SaveDataInterface::retrieveParams()
 {
 	_save_continuous.retrieve();
 	_save_raw.retrieve();
-	_needs_save_calibration = _save_continuous;
+	//_new_save_triggered = _save_continuous;
 }
 
 void SaveDataInterface::initPublishers()
@@ -130,8 +130,9 @@ void SaveDataInterface::registerDataProduct(const std::string product_name, doub
 		{
 			save_rate_hz = max_save_rate_hz;
 		}
+		float rate_float = (float) save_rate_hz;
 		data_product_registry[product_name] = {save_rate_hz, 0.0, max_save_rate_hz, 0.0};
-		ROS_INFO("Registered new data product %s)", product_name.c_str());
+		ROS_INFO("Registered new data product %s, with %f hz", product_name.c_str(),rate_float);
 		publishSaveStatus();
 }
 
@@ -182,7 +183,7 @@ bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ro
 	if (data_time_s >= save_time)
 	{
 		// Update for the next save time
-		data_product_registry[product_name] = {rate_hz, data_time_s + (1.0/rate_hz), entry[2]};
+		data_product_registry[product_name] = {rate_hz, data_time_s + (1.0/rate_hz), entry[2], entry[3]};
 		return true;
 	}
 	// Otherwise, not time yet
@@ -256,7 +257,7 @@ void SaveDataInterface::snapshotReset(const std::string product_name)
 
 
 
-bool SaveDataInterface::calibrationShouldSave()
+bool SaveDataInterface::newSaveTriggered()
 {
 	if (_save_data_dir.length() == 0)
 	{
@@ -264,13 +265,13 @@ bool SaveDataInterface::calibrationShouldSave()
 	}
 
 	bool should_save = false;
-	if (_needs_save_calibration == true)
+	if (_new_save_triggered == true)
 	{
-		_needs_save_calibration = false;
+		_new_save_triggered = false;
 		should_save = true;
 	}
 	return should_save;
-};
+}
 
 std::string SaveDataInterface::getTimestampString(const ros::Time &timestamp)
 {
@@ -325,12 +326,11 @@ void SaveDataInterface::saveDataHandler(const nepi_ros_interfaces::SaveData::Con
 	{
 		if ((msg->save_continuous == true) && (_save_continuous == false)) // Must be enabling data saving
 		{
-			_needs_save_calibration = true;
+			_new_save_triggered = true;
 		}
 
 		_save_continuous = msg->save_continuous;
 		_save_raw = msg->save_raw;
-
 		ROS_INFO("%s data save settings updated to (save_continuous=%s, save_raw=%s)", _parent_node->getUnqualifiedName().c_str(),
 				  BOOL_TO_ENABLED(_save_continuous), BOOL_TO_ENABLED(_save_raw));
 	}
@@ -347,7 +347,7 @@ void SaveDataInterface::saveDataPrefixPubNSHandler(const std_msgs::String::Const
 	// saving calibration more often than necessary seems pretty benign
 	if (_filename_prefix.find('/') != std::string::npos)
 	{
-		_needs_save_calibration = true;
+		_new_save_triggered = true;
 	}
 	//TODO: Should we monitor here to ensure that a new folder gets created by system_mgr if required according to the new prefix before proceeding?
 
@@ -368,7 +368,7 @@ void SaveDataInterface::saveDataPrefixPrivNSHandler(const std_msgs::String::Cons
 		// Using boost because the equivalent std::filesystem::create_directories only exists since C++17
 		boost::filesystem::create_directories(parent_p);
 		// Mark that we should save calibration to the new folder
-		_needs_save_calibration = true;
+		_new_save_triggered = true;
 
 		if (0 != chown(parent_p.string().c_str(), _data_uid, _data_gid))
 		{
@@ -394,29 +394,34 @@ void SaveDataInterface::saveDataRateHandler(const nepi_ros_interfaces::SaveDataR
 		{
 			entry.second[0] = (msg->save_rate_hz <= entry.second[2])? msg->save_rate_hz : entry.second[2]; // Ensure max_save_rate is respected
 			entry.second[1] = 0.0;
-			ROS_WARN("Updating save rate for data product %s", entry.first.c_str());
+			float rate_float = (float) entry.second[0];
+			std::string product_name = entry.first;
+			ROS_INFO("Updating data product %s, to %f hz", product_name.c_str(),rate_float);
 			data_product_registry[entry.first] = entry.second;
 		}
 		ROS_WARN("Updated ALL data product save rates");
-		return;
-	}
 
-	try
-	{
-		data_product_registry_entry_t entry = data_product_registry.at(msg->data_product);
-		entry[0] = (msg->save_rate_hz <= entry[2])? msg->save_rate_hz : entry[2]; // Ensure max_save_rate is respected
-		entry[1] = 0.0;
-		data_product_registry[msg->data_product] = entry;
 	}
-	catch (...)
+	else
 	{
-		// No warning message since this could simply have been received when intended for other nodes because
-		// of namespace hierarchy
-		//ROS_WARN("Cannot update save rate for unregistered data product %s", msg->data_product.c_str());
-		return;
+		try
+		{
+			data_product_registry_entry_t entry = data_product_registry.at(msg->data_product);
+			entry[0] = (msg->save_rate_hz <= entry[2])? msg->save_rate_hz : entry[2]; // Ensure max_save_rate is respected
+			entry[1] = 0.0;
+			float rate_float = (float) entry[0];
+			std::string product_name = msg->data_product;
+			data_product_registry[msg->data_product] = entry;
+			ROS_INFO("Updating data product %s, to %f hz", product_name.c_str(),rate_float);
+		}
+		catch (...)
+		{
+			registerDataProduct(msg->data_product,msg->save_rate_hz,100);
+			ROS_WARN("Added data product to registry %s", msg->data_product.c_str());
+		}
+		ROS_WARN("Updated save rate for data product %s", msg->data_product.c_str());
 	}
-	ROS_WARN("Updated save rate for data product %s", msg->data_product.c_str());
-	return;
+	publishSaveStatus();
 }
 
 
@@ -463,10 +468,23 @@ void SaveDataInterface::publishSaveStatus()
 		prefixFileName = _filename_prefix.substr(1, _filename_prefix.find(delimiter));
 	}
 
-	std::string saveRates = "[NotImplemented,NotImplemented]";
-	
-	
-	
+
+	 std::string key_str = "";
+	 double val = 0.0;
+	 std::string rate_entry = "";
+	 std::string saveRates = "[";
+	for (std::pair<std::string, data_product_registry_entry_t> entry : data_product_registry)
+		{   
+			key_str = entry.first;
+			val = entry.second[0];
+			float val_float = (float) val;
+			std::string val_str = std::to_string(val_float);
+			rate_entry = "[" + key_str + "," + val_str + "],";
+			saveRates = saveRates + rate_entry;
+		}
+
+	saveRates = saveRates + "]";
+
 	nepi_ros_interfaces::SaveDataStatus stat_msg;
 	stat_msg.current_data_dir = _save_data_dir; 
 	stat_msg.current_folder_prefix = prefixDirName;
