@@ -130,9 +130,9 @@ void SaveDataInterface::registerDataProduct(const std::string product_name, doub
 		{
 			save_rate_hz = max_save_rate_hz;
 		}
-		float rate_float = (float) save_rate_hz;
+		float save_rate_float = (float) save_rate_hz;
 		data_product_registry[product_name] = {save_rate_hz, 0.0, max_save_rate_hz, 0.0};
-		ROS_INFO("Registered new data product %s, with %f hz", product_name.c_str(),rate_float);
+		ROS_INFO("Registered new data product %s, with %f hz", product_name.c_str(),save_rate_float);
 		publishSaveStatus();
 }
 
@@ -180,10 +180,12 @@ bool SaveDataInterface::dataProductShouldSave(const std::string product_name, ro
 
 	const double save_time = entry[1];
 	const double data_time_s = data_time.toSec();
-	if (data_time_s >= save_time)
+	const double dif_time = data_time_s - save_time;
+	const double dif_check = 1.0/rate_hz;
+	if (dif_time >= dif_check)
 	{
 		// Update for the next save time
-		data_product_registry[product_name] = {rate_hz, data_time_s + (1.0/rate_hz), entry[2], entry[3]};
+		data_product_registry[product_name] = {rate_hz, data_time_s + dif_check, entry[2], entry[3]};
 		return true;
 	}
 	// Otherwise, not time yet
@@ -242,6 +244,7 @@ void SaveDataInterface::snapshotReset(const std::string product_name)
 	try
 	{
 		entry = data_product_registry.at(product_name);
+		entry[3] = 0.0;
 	}
 	catch (int e)
 	{
@@ -251,7 +254,8 @@ void SaveDataInterface::snapshotReset(const std::string product_name)
 		
 	}
 
-	data_product_registry[product_name] = {0.0, entry[3]};
+	
+
 	
 }
 
@@ -309,7 +313,7 @@ const std::string SaveDataInterface::getFullPathFilename(const std::string &time
 		return "";
 	}
 	
-	return (_save_data_dir + "/" + _filename_prefix + timestamp_string + "_" + identifier + "." + extension);
+	return (_save_data_dir + "/" + _filename_prefix + "_" + timestamp_string + "_" + identifier + "." + extension);
 }
 
 const std::string SaveDataInterface::getSavePrefixString()
@@ -381,43 +385,41 @@ void SaveDataInterface::saveDataPrefixPrivNSHandler(const std_msgs::String::Cons
 
 void SaveDataInterface::saveDataRateHandler(const nepi_ros_interfaces::SaveDataRate::ConstPtr &msg)
 {
-	if (msg->save_rate_hz < 0.0)
+	double save_rate_double = (double) msg->save_rate_hz;
+	float save_rate_float = (float) save_rate_double;
+	std::string product_name = msg->data_product;
+	ROS_INFO("Recieved rate update for %s, to %f hz", product_name.c_str(),save_rate_float);
+	if (save_rate_double < 0.0)
 	{
 		ROS_ERROR("Can't set a negative save rate... aborting");
 		return;
 	}
 
 	// Handle the special ALL indicator
-	if (msg->data_product == nepi_ros_interfaces::SaveDataRate::ALL_DATA_PRODUCTS)
+	if ((msg->data_product == nepi_ros_interfaces::SaveDataRate::ALL_DATA_PRODUCTS) || (product_name == "all") || (product_name == "All"))
 	{
 		for (std::pair<std::string, data_product_registry_entry_t> entry : data_product_registry)
 		{
-			entry.second[0] = (msg->save_rate_hz <= entry.second[2])? msg->save_rate_hz : entry.second[2]; // Ensure max_save_rate is respected
+			entry.second[0] = (save_rate_double <= entry.second[2])? save_rate_double : entry.second[2]; // Ensure max_save_rate_double is respected
 			entry.second[1] = 0.0;
-			float rate_float = (float) entry.second[0];
-			std::string product_name = entry.first;
-			ROS_INFO("Updating data product %s, to %f hz", product_name.c_str(),rate_float);
 			data_product_registry[entry.first] = entry.second;
+			product_name = entry.first;
+			ROS_INFO("Updated data product %s, to %f hz", product_name.c_str(),save_rate_float);
 		}
-		ROS_WARN("Updated ALL data product save rates");
-
 	}
 	else
 	{
 		try
 		{
-			data_product_registry_entry_t entry = data_product_registry.at(msg->data_product);
-			entry[0] = (msg->save_rate_hz <= entry[2])? msg->save_rate_hz : entry[2]; // Ensure max_save_rate is respected
+			data_product_registry_entry_t entry = data_product_registry.at(product_name);
+			entry[0] = (save_rate_double <= entry[2])? save_rate_double : entry[2]; // Ensure max_save_rate_double is respected
 			entry[1] = 0.0;
-			float rate_float = (float) entry[0];
-			std::string product_name = msg->data_product;
-			data_product_registry[msg->data_product] = entry;
-			ROS_INFO("Updating data product %s, to %f hz", product_name.c_str(),rate_float);
+			data_product_registry[product_name] = entry;
+			ROS_INFO("Updating data product %s, to %f hz", product_name.c_str(),save_rate_float);
 		}
 		catch (...)
 		{
-			registerDataProduct(msg->data_product,msg->save_rate_hz,100);
-			ROS_WARN("Added data product to registry %s", msg->data_product.c_str());
+			ROS_WARN("Data product not registered %s", msg->data_product.c_str());
 		}
 		ROS_WARN("Updated save rate for data product %s", msg->data_product.c_str());
 	}

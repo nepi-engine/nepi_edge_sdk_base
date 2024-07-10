@@ -291,7 +291,7 @@ class SaveDataIF(object):
 
         self.factory_data_rate_dict= {}
         for d in data_product_names:
-            self.factory_data_rate_dict[d] = [1.0, 0.0, 100.0] # Default to 1Hz save rate, set last save = 0.0 max rate = 100.0Hz
+            self.factory_data_rate_dict[d] = [0.0, 0.0, 100.0] # Default to 1Hz save rate, set last save = 0.0, max rate = 100.0Hz
             self.snapshot_dict[d] = False
         
         self.init_data_rate_dict = rospy.get_param('~data_rate_dict',self.factory_data_rate_dict)
