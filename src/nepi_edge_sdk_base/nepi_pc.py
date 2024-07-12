@@ -111,11 +111,11 @@ def cv2img_to_o3dimg(cv2_image):
 ### Pointcloud info functions    
 
 def get_min_range(o3d_pc):
-    min_bounds = np.asarray(pcd.get_min_bound()) 
+    min_bounds = np.asarray(o3d_pc.get_min_bound()) 
     return (np.min(min_bounds))
     
 def get_max_range(o3d_pc):
-    max_bounds = np.asarray(pcd.get_max_bound()) 
+    max_bounds = np.asarray(o3d_pc.get_max_bound()) 
     return (np.max(max_bounds))
 	
 

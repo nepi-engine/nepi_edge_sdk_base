@@ -313,7 +313,7 @@ const std::string SaveDataInterface::getFullPathFilename(const std::string &time
 		return "";
 	}
 	
-	return (_save_data_dir + "/" + _filename_prefix + "_" + timestamp_string + "_" + identifier + "." + extension);
+	return (_save_data_dir + "/" + _filename_prefix + "_" + timestamp_string + "-" + identifier + "." + extension);
 }
 
 const std::string SaveDataInterface::getSavePrefixString()
