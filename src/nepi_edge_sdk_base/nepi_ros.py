@@ -18,6 +18,7 @@
 
   
 import os
+import shutil
 import rospy
 import rosnode
 import rostopic
@@ -685,11 +686,71 @@ def get_file_list(search_path,ext_str="png"):
   file_list = []
   for f in os.listdir(search_path):
     if f.endswith(ext_str):
-      #print('Found image file')
+      #rospy.loginfo('Found image file')
       ind = ind + 1
       file = (search_path + '/' + f)
       file_list.append(file)
   return file_list,ind
+
+def check_make_folder(pathname):
+  if not os.path.exists(pathname):
+    try:
+      os.makedirs(pathname)
+      rospy.loginfo("Made folder: " + pathname)
+    except rospy.ServiceException as e:
+      rospy.loginfo("Failed to make folder: " + pathname + " with exeption" + str(e))
+  return os.path.exists(pathname)
+
+def copy_files_from_folder(src_path,dest_path):
+  success = True
+  files_copied = []
+  files_not_copied = []
+  if os.path.exists(src_path):
+    dest_folders = dest_path.split('/')
+    dest_folders.remove('')
+    check_folder = ""
+    for folder in dest_folders:
+      check_folder = check_folder + "/" + folder
+      check_make_folder(check_folder)
+    if os.path.exists(dest_path):
+        files = os.listdir(src_path)
+        for file in files:
+          srcFile = src_path + "/" + file
+          destFile = dest_path + "/" + file
+          if not os.path.exists(destFile):
+            try:
+              shutil.copyfile(srcFile, destFile)
+            # If source and destination are same
+            except shutil.SameFileError:
+                rospy.loginfo("Source and destination represents the same file: " + destFile)
+            
+            # If destination is a directory.
+            except IsADirectoryError:
+                rospy.loginfo("Destination is a directory: " + destFile)
+            
+            # If there is any permission issue
+            except PermissionError:
+                rospy.loginfo("Permission denied for file copy: " + destFile)
+            
+            # For other errors
+            except:
+                rospy.loginfo("Error occurred while copying file: " + destFile)
+          if not os.path.exists(destFile):
+            files_not_copied.append(file)
+            success = False
+          else: 
+            files_copied.append(file)
+            #rospy.loginfo("Copied file: " + file)
+    else:
+      rospy.loginfo("Did not find and can't make destination folder: " + dest_path)
+      success = False
+  else:
+    rospy.loginfo("Did not find source folder: " + src_path)
+    success = False
+  return success, files_copied, files_not_copied
+
+
+
  
 
   

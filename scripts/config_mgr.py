@@ -22,7 +22,7 @@ import errno
 from std_msgs.msg import String, Empty
 from nepi_ros_interfaces.srv import FileReset
 
-CFG_PATH = '/opt/nepi/ros/etc/'
+CFG_PATH = '/opt/nepi/ros/etc'
 CFG_SUFFIX = '.yaml'
 FACTORY_SUFFIX = '.num_factory'
 
