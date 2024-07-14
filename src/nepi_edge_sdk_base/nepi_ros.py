@@ -642,6 +642,7 @@ def sleep(sleep_sec,sleep_steps):
   while delay_timer < sleep_sec and not rospy.is_shutdown():
     time.sleep(delay_sec)
     delay_timer = delay_timer + delay_sec
+  return True
 
 def get_datetime_str_now():
   date_str=datetime.utcnow().strftime('%Y-%m-%d')
@@ -735,12 +736,12 @@ def copy_files_from_folder(src_path,dest_path):
             # For other errors
             except:
                 rospy.loginfo("Error occurred while copying file: " + destFile)
-          if not os.path.exists(destFile):
-            files_not_copied.append(file)
-            success = False
-          else: 
-            files_copied.append(file)
-            #rospy.loginfo("Copied file: " + file)
+            if not os.path.exists(destFile):
+              files_not_copied.append(file)
+              success = False
+            else: 
+              files_copied.append(file)
+              #rospy.loginfo("Copied file: " + file)
     else:
       rospy.loginfo("Did not find and can't make destination folder: " + dest_path)
       success = False

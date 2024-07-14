@@ -18,6 +18,7 @@
   <arg name="run_automation_mgr" default="true" />
   <arg name="run_sequential_image_mux" default="true" />
   <arg name="run_onvif_mgr" default="true" />
+    <arg name="run_pointcloud_app" default="true" />
         
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
@@ -114,6 +115,12 @@
     <group if="$(arg run_automation_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/automation_mgr/automation_mgr.yaml" ns="automation_mgr" />
       <node name="automation_mgr" pkg="nepi_automation_mgr" type="automation_manager.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- Pointcloud App -->
+    <group if="$(arg run_pointcloud_app)" >
+      <rosparam command="load" file="$(arg config_file_root)/pointcloud_app/pointcloud_app.yaml" ns="pointcloud_app" />
+      <node name="pointcloud_app" pkg="pointcloud_app" type="pointcloud_app_node.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
   </group>
