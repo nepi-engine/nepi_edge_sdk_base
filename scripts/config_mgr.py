@@ -18,6 +18,7 @@ import rosparam
 
 import os
 import errno
+from nepi_edge_sdk_base import nepi_ros
 
 from std_msgs.msg import String, Empty
 from nepi_ros_interfaces.srv import FileReset
@@ -83,7 +84,20 @@ def update_from_file(file_pathname, namespace):
 
 def get_cfg_pathname(qualified_node_name):
     node_name = separate_node_name_in_msg(qualified_node_name)
-    cfg_pathname = CFG_PATH + node_name  + '/' + node_name + CFG_SUFFIX
+    subfolder_name = "/"
+    if nepi_ros.find_topic(qualified_node_name + "/idx").find("idx") != -1:
+    	subfolder_name = "/drivers/"
+    elif nepi_ros.find_topic(qualified_node_name + "/lsx").find("lsx") != -1:
+    	subfolder_name = "/drivers/"
+    elif nepi_ros.find_topic(qualified_node_name + "/ptx").find("ptx") != -1:
+    	subfolder_name = "/drivers/"
+    elif nepi_ros.find_topic(qualified_node_name + "/rbx").find("rbx") != -1:
+    	subfolder_name = "/drivers/"
+    elif nepi_ros.find_topic(qualified_node_name + "/npx").find("npx") != -1:
+    	subfolder_name = "/drivers/"
+    rospy.loginfo(node_name)
+    cfg_pathname = CFG_PATH + subfolder_name + node_name  + '/' + node_name + CFG_SUFFIX
+    rospy.loginfo(cfg_pathname)
     return cfg_pathname
 
 def get_user_cfg_pathname(qualified_node_name):

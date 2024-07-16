@@ -10,7 +10,6 @@
   <arg name="run_robot_state_publisher" default="false" />
   <arg name="run_web_utils" default="true" />
   <arg name="run_darknet_ros_mgr" default="true" />
-  <arg name="run_target_localizer" default="false" />
   <arg name="run_nepi_link" default="true" />
   <arg name="run_nav_pose" default="true" />
   <arg name="run_nepi_autolauncher" default="true" />
@@ -18,7 +17,7 @@
   <arg name="run_automation_mgr" default="true" />
   <arg name="run_sequential_image_mux" default="true" />
   <arg name="run_onvif_mgr" default="true" />
-    <arg name="run_pointcloud_app" default="true" />
+    <arg name="run_pointcloud_app" default="false" />
         
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
@@ -65,12 +64,6 @@
     <group if="$(arg run_darknet_ros_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/nepi_darknet_ros_mgr/nepi_darknet_ros_mgr.yaml" ns="nepi_darknet_ros_mgr" />
       <node name="nepi_darknet_ros_mgr" pkg="nepi_darknet_ros" type="nepi_darknet_ros_mgr.py" respawn="true" output="$(arg output_destination)" />
-    </group>
-
-    <!-- NEPI Target Localizer -->
-    <group if="$(arg run_target_localizer)" >
-      <rosparam command="load" file="$(arg config_file_root)/target_localizer/target_localizer.yaml" ns="target_localizer" />
-      <node name="target_localizer" pkg="nepi_edge_sdk_ai" type="target_localizer" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- NEPI Link (NEPI-Bot via nepi_link_ros_bridge) -->
@@ -120,7 +113,7 @@
     <!-- Pointcloud App -->
     <group if="$(arg run_pointcloud_app)" >
       <rosparam command="load" file="$(arg config_file_root)/pointcloud_app/pointcloud_app.yaml" ns="pointcloud_app" />
-      <node name="pointcloud_app" pkg="pointcloud_app" type="pointcloud_app_node.py" respawn="true" output="$(arg output_destination)" />
+      <node name="pointcloud_app" pkg="nepi_pointcloud_app" type="pointcloud_app_node.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
   </group>
