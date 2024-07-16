@@ -78,12 +78,6 @@
       <rosparam command="load" file="$(arg config_file_root)/nav_pose_mgr/nav_pose_mgr.yaml" ns="nav_pose_mgr" />
       <node name="nav_pose_mgr" pkg="nepi_edge_sdk_nav_pose" type="nav_pose_mgr_node" respawn="true" output="$(arg output_destination)" />
       
-    <!-- NEPI Nav Pose Publisher -->
-    <group if="$(arg run_nav_pose_publisher)" >
-      <rosparam command="load" file="$(arg config_file_root)/nav_pose_publisher/nav_pose_publisher.yaml" ns="nav_pose_publisher" />
-      <node name="nav_pose_publisher" pkg="nepi_nav_pose_publisher" type="nav_pose_publisher.py" respawn="true" output="$(arg output_destination)" />
-    </group>
-
       <!-- GPSD ROS Client -->
       <rosparam command="load" file="$(arg config_file_root)/gpsd_ros_client/gpsd_ros_client.yaml" ns="gpsd_ros_client" />
       <node name="gpsd_ros_client" pkg="nepi_edge_sdk_nav_pose" type="gpsd_ros_client_node" respawn="true" output="$(arg output_destination)" />
@@ -122,6 +116,12 @@
     <group if="$(arg run_pointcloud_app)" >
       <rosparam command="load" file="$(arg config_file_root)/pointcloud_app/pointcloud_app.yaml" ns="pointcloud_app" />
       <node name="pointcloud_app" pkg="nepi_pointcloud_app" type="pointcloud_app_node.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- NEPI Nav Pose Publisher -->
+    <group if="$(arg run_nav_pose_publisher)" >
+      <rosparam command="load" file="$(arg config_file_root)/nav_pose_publisher/nav_pose_publisher.yaml" ns="nav_pose_publisher" />
+      <node name="nav_pose_publisher" pkg="nepi_nav_pose_publisher" type="nav_pose_publisher.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
   </group>
