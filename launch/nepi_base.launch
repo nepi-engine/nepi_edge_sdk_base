@@ -9,7 +9,7 @@
   <!-- Args. to run or not run specific nodes -->
   <arg name="run_robot_state_publisher" default="false" />
   <arg name="run_web_utils" default="true" />
-  <arg name="run_darknet_ros_mgr" default="true" />
+  <arg name="run_ai_detector_mgr" default="true" />
   <arg name="run_nepi_link" default="true" />
   <arg name="run_nav_pose" default="true" />
   <arg name="run_nepi_autolauncher" default="true" />
@@ -60,11 +60,6 @@
       <node name="sequential_image_mux" pkg="nepi_edge_sdk_base" type="sequential_image_mux.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
-    <!-- NEPI Darknet Mgr -->
-    <group if="$(arg run_darknet_ros_mgr)" >
-      <rosparam command="load" file="$(arg config_file_root)/nepi_darknet_ros_mgr/nepi_darknet_ros_mgr.yaml" ns="nepi_darknet_ros_mgr" />
-      <node name="nepi_darknet_ros_mgr" pkg="nepi_darknet_ros" type="nepi_darknet_ros_mgr.py" respawn="true" output="$(arg output_destination)" />
-    </group>
 
     <!-- NEPI Link (NEPI-Bot via nepi_link_ros_bridge) -->
     <group if="$(arg run_nepi_link)" >
@@ -102,6 +97,12 @@
     <group if="$(arg run_onvif_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/onvif_mgr/onvif_mgr.yaml" ns="onvif_mgr" />
       <node name="onvif_mgr" pkg="nepi_edge_sdk_onvif" type="onvif_mgr.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- NEPI AI Detector Mgr -->
+    <group if="$(arg run_ai_detector_mgr)" >
+      <rosparam command="load" file="$(arg config_file_root)/ai_detector_mgr/ai_detector_mgr.yaml" ns="ai_detector_mgr" />
+      <node name="ai_detector_mgr" pkg="nepi_ai_detector_mgr" type="ai_detector_mgr.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- Automation Mgr -->
