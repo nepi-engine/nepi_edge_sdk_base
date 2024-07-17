@@ -12,7 +12,7 @@
   <arg name="run_ai_detector_mgr" default="true" />
   <arg name="run_nepi_link" default="true" />
   <arg name="run_nav_pose" default="true" />
-  <arg name="run_nav_pose_publisher" default="false" />
+  <arg name="run_nav_pose_publisher" default="true" />
   <arg name="run_nepi_autolauncher" default="true" />
   <arg name="run_idx_sensor_mgr" default="true" />
   <arg name="run_automation_mgr" default="true" />
