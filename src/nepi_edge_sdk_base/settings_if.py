@@ -31,9 +31,11 @@ class SettingsIF(object):
         return self.capabilities_report
 
     def resetInitSettingsCb(self, msg):
-        #rospy.loginfo(msg)
         rospy.loginfo("Received settings reset msg")
         self.resetInitSettings()
+        
+    def publishSettingsCb(self, msg):
+        self.publishSettingsStatus()
 
     def resetInitSettings(self):
         #rospy.loginfo(self.init_settings)
@@ -74,7 +76,7 @@ class SettingsIF(object):
 
 
     def publishSettingsStatus(self):
-        if self.getSettingsFunction is not None:
+        if self.getSettingsFunction is not None and not rospy.is_shutdown():
             current_settings = nepi_ros.sort_settings_alphabetically(self.getSettingsFunction()) 
             rospy.set_param('~settings', current_settings)
         else:
@@ -126,6 +128,7 @@ class SettingsIF(object):
 
 
         rospy.Subscriber('~update_setting', SettingUpdate, self.updateSettingCb, queue_size=1) # start local callbac
+        rospy.Subscriber('~publish_settings', Empty, self.publishSettingsCb, queue_size=1) # start local callback
         rospy.Subscriber('~reset_settings', Empty, self.resetInitSettingsCb, queue_size=1) # start local callback
 
         # Subscribe to global resets as well
