@@ -114,7 +114,7 @@ def rbx_initialize(self, rbx_namespace):
   self.rbx_goto_location_pub = rospy.Publisher(NEPI_RBX_GOTO_LOCATION_TOPIC, RBXGotoLocation, queue_size=1)
 
   # Fake GPS Controls
-  NEPI_RBX_FAKE_GPS_ENABLE_TOPIC = NEPI_RBX_NAMESPACE + "set_fake_gps_enable" 
+  NEPI_RBX_FAKE_GPS_ENABLE_TOPIC = NEPI_RBX_NAMESPACE + "enable_fake_gps" 
   NEPI_RBX_FAKE_GPS_RESET_TOPIC = NEPI_RBX_NAMESPACE + "reset_fake_gps" 
   self.rbx_enable_fake_gps_pub = rospy.Publisher(NEPI_RBX_FAKE_GPS_ENABLE_TOPIC, Bool, queue_size=1)
   self.rbx_reset_fake_gps_pub = rospy.Publisher(NEPI_RBX_FAKE_GPS_RESET_TOPIC, Empty, queue_size=1)
