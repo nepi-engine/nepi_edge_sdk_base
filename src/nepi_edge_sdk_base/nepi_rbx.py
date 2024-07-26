@@ -81,6 +81,49 @@ def rbx_initialize(self, rbx_namespace):
   for action in self.rbx_cap_actions:
      rospy.loginfo("NEPI_RBX:  - " + action)
 
+  ## Setup Settings Callback
+  self.NEPI_RBX_SETTINGS_TOPIC = NEPI_ROBOT_NAMESPACE + "settings_status"
+  rospy.loginfo("DRONE_INSPECT: Waiting for topic: " + self.NEPI_RBX_SETTINGS_TOPIC)
+  nepi_ros.wait_for_topic(self.NEPI_RBX_SETTINGS_TOPIC)
+  rbx_settings_pub = rospy.Publisher(NEPI_ROBOT_NAMESPACE + 'publish_settings', Empty, queue_size=1)
+  rospy.loginfo("DRONE_INSPECT: Starting rbx settings scubscriber callback")
+  rospy.Subscriber(self.NEPI_RBX_SETTINGS_TOPIC, String, self.rbx_settings_callback, queue_size=None)
+  while self.rbx_settings is None and not rospy.is_shutdown():
+    rospy.loginfo("DRONE_INSPECT: Waiting for current rbx settings to publish")
+    time.sleep(1)
+    rbx_settings_pub.publish(Empty())
+  settings_str = str(self.rbx_settings)
+  rospy.loginfo("DRONE_INSPECT: Initial settings:" + settings_str)
+
+
+    ## Setup Info Update Callback
+  self.NEPI_RBX_INFO_TOPIC = NEPI_RBX_NAMESPACE + "info" # RBX Info Message
+  rospy.loginfo("DRONE_INSPECT: Waiting for topic: " + self.NEPI_RBX_INFO_TOPIC)
+  nepi_ros.wait_for_topic(self.NEPI_RBX_INFO_TOPIC)
+  rbx_info_pub = rospy.Publisher(NEPI_RBX_NAMESPACE + 'publish_info', Empty, queue_size=1)
+  rospy.loginfo("DRONE_INSPECT: Starting rbx info scubscriber callback")
+  rospy.Subscriber(self.NEPI_RBX_INFO_TOPIC,RBXInfo, self.rbx_info_callback, queue_size=None)
+  while self.rbx_info is None and not rospy.is_shutdown():
+    rospy.loginfo("DRONE_INSPECT: Waiting for current rbx info to publish")
+    time.sleep(1)
+    rbx_info_pub.publish(Empty())
+  info_str = str(self.rbx_info)
+  rospy.loginfo("DRONE_INSPECT: " + info_str)
+
+  ## Setup Status Update Callback
+  self.NEPI_RBX_STATUS_TOPIC = NEPI_RBX_NAMESPACE + "status" # RBX Status Message
+  rospy.loginfo("DRONE_INSPECT: Waiting for topic: " + self.NEPI_RBX_STATUS_TOPIC)
+  nepi_ros.wait_for_topic(self.NEPI_RBX_STATUS_TOPIC)
+  rbx_status_pub = rospy.Publisher(NEPI_RBX_NAMESPACE + 'publish_status', Empty, queue_size=1)
+  rospy.loginfo("DRONE_INSPECT: Starting rbx status scubscriber callback")
+  rospy.Subscriber(self.NEPI_RBX_STATUS_TOPIC, RBXStatus, self.rbx_status_callback, queue_size=None)
+  while self.rbx_status is None and not rospy.is_shutdown():
+    rospy.loginfo("DRONE_INSPECT: Waiting for current rbx status to publish")
+    time.sleep(0.1)
+    rbx_status_pub.publish(Empty())
+  status_str = str(self.rbx_status)
+  rospy.loginfo("DRONE_INSPECT: " + status_str)
+
  # NEPI RBX Driver Control Topics
   NEPI_RBX_SETTINGS_UPDATE_TOPIC = NEPI_ROBOT_NAMESPACE + "update_setting" # Int to Defined Dictionary RBX_STATES
   rospy.loginfo("NEPI_RBX: Setting robot setting update topic to: " + NEPI_RBX_SETTINGS_UPDATE_TOPIC)
@@ -125,7 +168,21 @@ def rbx_initialize(self, rbx_namespace):
 
   rospy.loginfo("NEPI_RBX: RBX initialize process complete")
 
+#######################
+### RBX Settings, Info, and Status Callbacks
+def rbx_settings_callback(self, msg):
+  self.rbx_settings = nepi_ros.parse_settings_msg_data(msg.data)
 
+
+def rbx_info_callback(self, msg):
+  self.rbx_info = msg
+
+
+def rbx_status_callback(self, msg):
+  self.rbx_status = msg
+
+#######################
+### RBX Helper Functions
 
 def get_capabilities(self,caps_topic):
   nepi_ros.wait_for_service(caps_topic)
@@ -141,8 +198,7 @@ def get_navpose_capabilities(self,caps_navpose_topic):
   rbx_cap_navpose = rbx_cap_navpose_service()
   return rbx_caps_navpose
 
-#######################
-# RBX Settings Functions
+
 
 ### Function to set rbx state
 def set_rbx_state(self,state_str,timeout_sec = 5):
