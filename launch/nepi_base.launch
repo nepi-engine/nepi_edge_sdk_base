@@ -114,8 +114,8 @@
 
     <!-- Pointcloud App -->
     <group if="$(arg run_pointcloud_app)" >
-      <rosparam command="load" file="$(arg config_file_root)/pointcloud_app/pointcloud_app.yaml" ns="pointcloud_app" />
-      <node name="pointcloud_app" pkg="nepi_pointcloud_app" type="pointcloud_app_node.py" respawn="true" output="$(arg output_destination)" />
+      <rosparam command="load" file="$(arg config_file_root)/app_pointcloud/app_pointcloud.yaml" ns="app_pointcloud" />
+      <node name="app_pointcloud" pkg="nepi_app_pointcloud" type="pointcloud_app_node.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- NEPI Nav Pose Publisher -->
