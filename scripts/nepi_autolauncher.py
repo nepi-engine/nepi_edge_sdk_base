@@ -16,8 +16,8 @@ import rospy
 from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
 
 # Specialized discovery functions
-from nepi_edge_sdk_rbx.mavlink_rbx_auto_discovery import mavlink_discover
-from nepi_edge_sdk_lsx.sealite_auto_discovery import sealite_discover
+from nepi_drivers_rbx.mavlink_rbx_auto_discovery import mavlink_discover
+from nepi_drivers_lsx.sealite_auto_discovery import sealite_discover
 
 class NEPIAutolauncher:
   DEFAULT_NODE_NAME = "nepi_autolauncher"
@@ -32,7 +32,7 @@ class NEPIAutolauncher:
   DEFAULT_PATH_DEVICE_LIST = [
     {
       'path': '/dev/iqr_pan_tilt',
-      'ros_package': 'nepi_edge_sdk_ptx',
+      'ros_package': 'nepi_drivers_ptx',
       'ros_node_type': 'iqr_ros_pan_tilt_node',
       'ros_node_basename': 'iqr_pan_tilt',
       'ros_params': [],

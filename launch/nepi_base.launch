@@ -11,14 +11,15 @@
   <arg name="run_web_utils" default="true" />
   <arg name="run_ai_detector_mgr" default="true" />
   <arg name="run_nepi_link" default="true" />
-  <arg name="run_nav_pose" default="true" />
+  <arg name="run_mgr_nav_pose" default="true" />
   <arg name="run_nav_pose_publisher" default="true" />
   <arg name="run_nepi_autolauncher" default="true" />
   <arg name="run_idx_sensor_mgr" default="true" />
   <arg name="run_automation_mgr" default="true" />
-  <arg name="run_sequential_image_mux" default="true" />
-  <arg name="run_onvif_mgr" default="true" />
-    <arg name="run_pointcloud_app" default="false" />
+  <arg name="run_app_image_sequencer" default="true" />
+  <arg name="run_onvif_mgr" default="false" />
+  <arg name="run_image_sequencer_app" default="true" />
+  <arg name="run_pointcloud_app" default="false" />
         
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
@@ -56,9 +57,9 @@
     </group>
 
     <!-- Sequential Image Mux -->
-    <group if="$(arg run_sequential_image_mux)" >
-      <rosparam command="load" file="$(arg config_file_root)/sequential_image_mux/sequential_image_mux.yaml" ns="sequential_image_mux" />
-      <node name="sequential_image_mux" pkg="nepi_edge_sdk_base" type="sequential_image_mux.py" respawn="true" output="$(arg output_destination)" />
+    <group if="$(arg run_app_image_sequencer)" >
+      <rosparam command="load" file="$(arg config_file_root)/app_image_sequencer/app_image_sequencer.yaml" ns="app_image_sequencer" />
+      <node name="app_image_sequencer" pkg="nepi_app_image_sequencer" type="sequential_image_mux.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
 
@@ -73,10 +74,10 @@
     </group>
 
     <!-- NEPI Nav/Pose -->
-    <group if="$(arg run_nav_pose)" >
+    <group if="$(arg run_mgr_nav_pose)" >
       <!-- Nav/Pose Mgr -->
       <rosparam command="load" file="$(arg config_file_root)/nav_pose_mgr/nav_pose_mgr.yaml" ns="nav_pose_mgr" />
-      <node name="nav_pose_mgr" pkg="nepi_edge_sdk_nav_pose" type="nav_pose_mgr_node" respawn="true" output="$(arg output_destination)" />
+      <node name="nav_pose_mgr" pkg="nepi_mgr_nav_pose" type="nav_pose_mgr_node" respawn="true" output="$(arg output_destination)" />
       
       <!-- GPSD ROS Client -->
       <rosparam command="load" file="$(arg config_file_root)/gpsd_ros_client/gpsd_ros_client.yaml" ns="gpsd_ros_client" />
@@ -97,7 +98,7 @@
     <!-- OVIF Manager (IDX and PTX) -->
     <group if="$(arg run_onvif_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/onvif_mgr/onvif_mgr.yaml" ns="onvif_mgr" />
-      <node name="onvif_mgr" pkg="nepi_edge_sdk_onvif" type="onvif_mgr.py" respawn="true" output="$(arg output_destination)" />
+      <node name="onvif_mgr" pkg="nepi_mgr_onvif" type="onvif_mgr.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- NEPI AI Detector Mgr -->
@@ -122,6 +123,12 @@
     <group if="$(arg run_nav_pose_publisher)" >
       <rosparam command="load" file="$(arg config_file_root)/nav_pose_publisher/nav_pose_publisher.yaml" ns="nav_pose_publisher" />
       <node name="nav_pose_publisher" pkg="nepi_nav_pose_publisher" type="nav_pose_publisher.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- NEPI Image Sequencer App -->
+    <group if="$(arg run_image_sequencer_app)" >
+      <rosparam command="load" file="$(arg config_file_root)/app_image_sequencer/app_image_sequencer.yaml" ns="sequential_image_mux" />
+      <node name="sequential_image_mux" pkg="nepi_app_image_sequencer" type="sequential_image_mux.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
   </group>
