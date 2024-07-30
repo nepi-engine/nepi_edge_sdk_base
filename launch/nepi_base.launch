@@ -81,7 +81,7 @@
       
       <!-- GPSD ROS Client -->
       <rosparam command="load" file="$(arg config_file_root)/gpsd_ros_client/gpsd_ros_client.yaml" ns="gpsd_ros_client" />
-      <node name="gpsd_ros_client" pkg="nepi_edge_sdk_nav_pose" type="gpsd_ros_client_node" respawn="true" output="$(arg output_destination)" />
+      <node name="gpsd_ros_client" pkg="nepi_mgr_nav_pose" type="gpsd_ros_client_node" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <group if="$(arg run_nepi_autolauncher)" >
@@ -92,7 +92,7 @@
     <!-- IDX Sensor Manager -->
     <group if="$(arg run_idx_sensor_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/idx_sensor_mgr/idx_sensor_mgr.yaml" ns="idx_sensor_mgr" />
-      <node name="idx_sensor_mgr" pkg="nepi_edge_sdk_idx" type="idx_sensor_mgr.py" respawn="true" output="$(arg output_destination)" />
+      <node name="idx_sensor_mgr" pkg="nepi_drivers_idx" type="idx_sensor_mgr.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- OVIF Manager (IDX and PTX) -->
@@ -122,7 +122,7 @@
     <!-- NEPI Nav Pose Publisher -->
     <group if="$(arg run_nav_pose_publisher)" >
       <rosparam command="load" file="$(arg config_file_root)/nav_pose_publisher/nav_pose_publisher.yaml" ns="nav_pose_publisher" />
-      <node name="nav_pose_publisher" pkg="nepi_nav_pose_publisher" type="nav_pose_publisher.py" respawn="true" output="$(arg output_destination)" />
+      <node name="nav_pose_publisher" pkg="nepi_app_navpose_publisher" type="nav_pose_publisher.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- NEPI Image Sequencer App -->
