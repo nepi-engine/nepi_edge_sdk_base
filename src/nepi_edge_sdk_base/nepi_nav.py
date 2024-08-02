@@ -121,10 +121,33 @@ def get_navpose_geoid_height(navpose_response):
   geoid_height = ginterpolator(single_position)
   current_geoid_height =  geoid_height
   return current_geoid_height
+  
 
 
 #######################
 # NavPose Conversion Functions
+
+def get_navpose_geoid_height_at_geopoint(geopoint):
+  single_position=LatLon(geopoint.latitude,geopoint.longitude)
+  geoid_height = ginterpolator(single_position)
+  current_geoid_height =  geoid_height
+  return current_geoid_height
+  
+def convert_amsl_to_wgs84(geopoint_in):
+  geoid_height = get_navpose_geoid_height_at_geopoint(geopoint_in)
+  geopoint_out = GeoPoint()
+  geopoint_out.latitude = geopoint_in.latitude
+  geopoint_out.longitude = geopoint_in.longitude
+  geopoint_out.altitude = geopoint_in.altitude - geoid_height
+  return geopoint_out
+  
+def convert_wgs84_to_amsl(geopoint_in):
+  geoid_height = get_navpose_geoid_height_at_geopoint(geopoint_in)
+  geopoint_out = GeoPoint()
+  geopoint_out.latitude = geopoint_in.latitude
+  geopoint_out.longitude = geopoint_in.longitude
+  geopoint_out.altitude = geopoint_in.altitude + geoid_height
+  return geopoint_out
 
 ### Function to Convert Quaternion Attitude to Roll, Pitch, Yaw Degrees
 def convert_quat2rpy(xyzw_attitude):

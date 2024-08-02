@@ -134,7 +134,6 @@ def rbx_initialize(self, rbx_namespace):
   NEPI_RBX_SET_MODE_TOPIC = NEPI_RBX_NAMESPACE + "set_mode"  # Int to Defined Dictionary RBX_MODES
   NEPI_RBX_SET_CMD_TIMEOUT_TOPIC = NEPI_RBX_NAMESPACE + "set_cmd_timeout" # Int Seconds  - Any command that changes ready state
   NEPI_RBX_SET_HOME_TOPIC = NEPI_RBX_NAMESPACE + "set_home" # GeoPoint
-  NEPI_RBX_SET_HOME_CURRENT_TOPIC = NEPI_RBX_NAMESPACE + "set_home_current" # Empty
   NEPI_RBX_SET_STATUS_IMAGE_TOPIC = NEPI_RBX_NAMESPACE + "set_image_topic" # full or partial ROS namespace
   NEPI_RBX_SET_PROCESS_NAME_TOPIC = NEPI_RBX_NAMESPACE + "set_process_name"  # string name of current process
 
@@ -142,7 +141,6 @@ def rbx_initialize(self, rbx_namespace):
   self.rbx_set_mode_pub = rospy.Publisher(NEPI_RBX_SET_MODE_TOPIC, UInt8, queue_size=1)
   self.rbx_set_cmd_timeout_pub = rospy.Publisher(NEPI_RBX_SET_CMD_TIMEOUT_TOPIC, UInt32, queue_size=1)
   self.rbx_set_home_pub = rospy.Publisher(NEPI_RBX_SET_HOME_TOPIC, GeoPoint, queue_size=1)
-  self.rbx_set_home_current_pub = rospy.Publisher(NEPI_RBX_SET_HOME_CURRENT_TOPIC, Empty, queue_size=1)
   self.rbx_set_image_topic_pub = rospy.Publisher(NEPI_RBX_SET_STATUS_IMAGE_TOPIC, String, queue_size=1)
   self.rbx_set_process_name_pub = rospy.Publisher(NEPI_RBX_SET_PROCESS_NAME_TOPIC, String, queue_size=1)
 
@@ -162,9 +160,7 @@ def rbx_initialize(self, rbx_namespace):
 
   # Fake GPS Controls
   NEPI_RBX_FAKE_GPS_ENABLE_TOPIC = NEPI_RBX_NAMESPACE + "enable_fake_gps" 
-  NEPI_RBX_FAKE_GPS_RESET_TOPIC = NEPI_RBX_NAMESPACE + "reset_fake_gps" 
   self.rbx_enable_fake_gps_pub = rospy.Publisher(NEPI_RBX_FAKE_GPS_ENABLE_TOPIC, Bool, queue_size=1)
-  self.rbx_reset_fake_gps_pub = rospy.Publisher(NEPI_RBX_FAKE_GPS_RESET_TOPIC, Empty, queue_size=1)
 
   rospy.loginfo("NEPI_RBX: RBX initialize process complete")
 
@@ -423,7 +419,7 @@ def goto_rbx_position(self,goto_data,timeout_sec = 10):
   
 ### Function to wait for goto control process to complete
 def wait_for_rbx_status_ready(self,timeout_sec = 10):
-  rospy.loginfo("NEPI_RBX: Waiting for status ready = True")
+  rospy.loginfo("NEPI_RBX: Waiting for status ready")
   self.rbx_set_cmd_timeout_pub.publish(timeout_sec)
   time.sleep(0.1)
   count_goal = 3 # fix for strange ready glitch
@@ -447,7 +443,7 @@ def wait_for_rbx_status_ready(self,timeout_sec = 10):
 
 ### Function to wait for goto control process to complete
 def wait_for_rbx_status_busy(self,timeout_sec = 10):
-  rospy.loginfo("NEPI_RBX: Waiting for status ready = False")
+  rospy.loginfo("NEPI_RBX: Waiting for status busy")
   self.rbx_set_cmd_timeout_pub.publish(timeout_sec)
   time.sleep(0.1)
   count_goal = 3 # fix for strange ready glitch
@@ -466,7 +462,7 @@ def wait_for_rbx_status_busy(self,timeout_sec = 10):
   if timeout_timer > timeout_sec:
     rospy.loginfo("NEPI_RBX: Aborted Wait for Busy due to timeout: " + str(timeout_timer))
   else:
-    rospy.loginfo("NEPI_RBX: Got status ready True")
+    rospy.loginfo("NEPI_RBX: Got status busy True")
   return self.rbx_status.ready == False
 
 

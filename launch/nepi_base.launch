@@ -13,6 +13,7 @@
   <arg name="run_nepi_link" default="true" />
   <arg name="run_mgr_nav_pose" default="true" />
   <arg name="run_nav_pose_publisher" default="true" />
+  <arg name="run_gpsd_client" default="false" />
   <arg name="run_nepi_autolauncher" default="true" />
   <arg name="run_idx_sensor_mgr" default="true" />
   <arg name="run_automation_mgr" default="true" />
@@ -78,8 +79,10 @@
       <!-- Nav/Pose Mgr -->
       <rosparam command="load" file="$(arg config_file_root)/nav_pose_mgr/nav_pose_mgr.yaml" ns="nav_pose_mgr" />
       <node name="nav_pose_mgr" pkg="nepi_mgr_nav_pose" type="nav_pose_mgr_node" respawn="true" output="$(arg output_destination)" />
-      
+    </group>      
+
       <!-- GPSD ROS Client -->
+    <group if="$(arg run_gpsd_client)" >
       <rosparam command="load" file="$(arg config_file_root)/gpsd_ros_client/gpsd_ros_client.yaml" ns="gpsd_ros_client" />
       <node name="gpsd_ros_client" pkg="nepi_mgr_nav_pose" type="gpsd_ros_client_node" respawn="true" output="$(arg output_destination)" />
     </group>

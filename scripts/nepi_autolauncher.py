@@ -124,7 +124,8 @@ class NEPIAutolauncher:
     try:
       self.active_path_list = sealite_discover(self.active_path_list)
     except Exception as e:
-      rospy.logwarn("%s: Sealite discovery threw an exception (%s)", self.node_name, str(e))
+      pass
+      #rospy.logwarn("%s: Sealite discovery threw an exception (%s)", self.node_name, str(e))
 
   def startNode(self, package, node_type, node_name, dev_path, params=[]):
     node_namespace = rospy.get_namespace() + node_name
