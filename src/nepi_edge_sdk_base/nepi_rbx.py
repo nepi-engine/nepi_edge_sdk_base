@@ -44,14 +44,15 @@ def rbx_initialize(self, rbx_namespace):
   rbx_caps = RBXCapabilitiesQueryResponse()
   self.rbx_cap_states = [""]
   self.rbx_cap_modes = [""]
-  self.rbx_cap_actions = [""]
+  self.rbx_cap_setup_actions = [""]
+  self.rbx_cap_go_actions = [""]
   rbx_caps_navpose = NavPoseCapabilitiesQueryResponse()
   self.rbx_settings = None
   self.rbx_info = None
   self.rbx_status= None
 
 
-  ## Define Class Namespaces
+  ## Define Namespaces
   # NEPI RBX DEVICE NAMESPACE
   rbx_topic=nepi_ros.wait_for_topic(rbx_namespace)
   NEPI_ROBOT_NAMESPACE = rbx_topic.rpartition("rbx")[0]
@@ -69,7 +70,8 @@ def rbx_initialize(self, rbx_namespace):
   rospy.loginfo(rbx_caps)
   self.rbx_cap_states = eval(rbx_caps.state_options)
   self.rbx_cap_modes = eval(rbx_caps.mode_options)
-  self.rbx_cap_actions = eval(rbx_caps.action_options)
+  self.rbx_cap_setup_actions = eval(rbx_caps.setup_action_options)
+  self.rbx_cap_go_actions = eval(rbx_caps.go_action_options)
   # rospy.loginfo some results
   rospy.loginfo("NEPI_RBX: RBX State Options: ")
   for state in self.rbx_cap_states:
@@ -77,8 +79,11 @@ def rbx_initialize(self, rbx_namespace):
   rospy.loginfo("NEPI_RBX: RBX Mode Options: ")
   for mode in self.rbx_cap_modes:
      rospy.loginfo("NEPI_RBX:  - " + mode)
-  rospy.loginfo("NEPI_RBX: RBX Action Options: ")
-  for action in self.rbx_cap_actions:
+  rospy.loginfo("NEPI_RBX: RBX Setup Action Options: ")
+  for action in self.rbx_cap_setup_actions:
+     rospy.loginfo("NEPI_RBX:  - " + action)
+  rospy.loginfo("NEPI_RBX: RBX Go Action Options: ")
+  for action in self.rbx_cap_go_actions:
      rospy.loginfo("NEPI_RBX:  - " + action)
 
   ## Setup Settings Callback
@@ -132,6 +137,7 @@ def rbx_initialize(self, rbx_namespace):
   # NEPI RBX Driver Control Topics
   NEPI_RBX_SET_STATE_TOPIC = NEPI_RBX_NAMESPACE + "set_state" # Int to Defined Dictionary RBX_STATES
   NEPI_RBX_SET_MODE_TOPIC = NEPI_RBX_NAMESPACE + "set_mode"  # Int to Defined Dictionary RBX_MODES
+  NEPI_RBX_SETUP_ACTION_TOPIC = NEPI_RBX_NAMESPACE + "setup_action"  # Int to Defined Dictionary RBX_MODES
   NEPI_RBX_SET_CMD_TIMEOUT_TOPIC = NEPI_RBX_NAMESPACE + "set_cmd_timeout" # Int Seconds  - Any command that changes ready state
   NEPI_RBX_SET_HOME_TOPIC = NEPI_RBX_NAMESPACE + "set_home" # GeoPoint
   NEPI_RBX_SET_STATUS_IMAGE_TOPIC = NEPI_RBX_NAMESPACE + "set_image_topic" # full or partial ROS namespace
@@ -139,6 +145,7 @@ def rbx_initialize(self, rbx_namespace):
 
   self.rbx_set_state_pub = rospy.Publisher(NEPI_RBX_SET_STATE_TOPIC, UInt8, queue_size=1)
   self.rbx_set_mode_pub = rospy.Publisher(NEPI_RBX_SET_MODE_TOPIC, UInt8, queue_size=1)
+  self.rbx_setup_action_pub = rospy.Publisher(NEPI_RBX_SETUP_ACTION_TOPIC, UInt8, queue_size=1)
   self.rbx_set_cmd_timeout_pub = rospy.Publisher(NEPI_RBX_SET_CMD_TIMEOUT_TOPIC, UInt32, queue_size=1)
   self.rbx_set_home_pub = rospy.Publisher(NEPI_RBX_SET_HOME_TOPIC, GeoPoint, queue_size=1)
   self.rbx_set_image_topic_pub = rospy.Publisher(NEPI_RBX_SET_STATUS_IMAGE_TOPIC, String, queue_size=1)
@@ -251,14 +258,31 @@ def set_rbx_mode(self,mode_str, timeout_sec = 5):
   rospy.loginfo("NEPI_RBX: Current rbx mode is " + self.rbx_cap_modes[self.rbx_info.mode])
   time.sleep(1)
   return success
-
-### Function to set home current
-def set_rbx_set_home_current(self):
+  
+ ### Function to send rbx action control
+def setup_rbx_action(self,action_str,timeout_sec = 10):
   rospy.loginfo("NEPI_RBX: *******************************")  
-  rospy.loginfo("NEPI_RBX: Set Home Current Request Recieved: ")
+  rospy.loginfo("NEPI_RBX: Setup Action Request Recieved: " + action_str)
   success = False
-  self.rbx_set_home_current_pub.publish(Empty())
-  success = True
+  self.rbx_set_cmd_timeout_pub.publish(timeout_sec)
+  time.sleep(0.1)
+  action_ind = -1
+  for ind, action in enumerate(self.rbx_cap_setup_actions):
+    if action == action_str:
+      action_ind = ind
+  if action_ind == -1:
+    rospy.loginfo("NEPI_RBX: No matching action found")
+  else:
+    rospy.loginfo("NEPI_RBX: Waiting for ready state for takeoff")
+    ready = wait_for_rbx_status_ready(self,timeout_sec)
+    if ready:
+      rospy.loginfo("NEPI_RBX: Sending takeoff command")
+      self.rbx_setup_action_pub.publish(action_ind)
+      busy = wait_for_rbx_status_busy(self,timeout_sec)
+      if busy:
+        ready = wait_for_rbx_status_ready(self,timeout_sec)
+    time.sleep(1)
+    success = self.rbx_status.cmd_success
   return success
 
 ### Function to set image topic name
@@ -281,14 +305,6 @@ def set_rbx_process_name(self,process_name):
   success = True
   return success
 
-### Function to set home current
-def set_rbx_set_home_current(self):
-  rospy.loginfo("NEPI_RBX: *******************************")  
-  rospy.loginfo("NEPI_RBX: Set Home Current Request Recieved: ")
-  success = False
-  self.rbx_set_home_current_pub.publish(Empty())
-  success = True
-  return success
 
 #######################
 # RBX Control Functions
@@ -301,7 +317,7 @@ def go_rbx_action(self,action_str,timeout_sec = 10):
   self.rbx_set_cmd_timeout_pub.publish(timeout_sec)
   time.sleep(0.1)
   action_ind = -1
-  for ind, action in enumerate(self.rbx_cap_actions):
+  for ind, action in enumerate(self.rbx_cap_go_actions):
     if action == action_str:
       action_ind = ind
   if action_ind == -1:
