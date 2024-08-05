@@ -189,18 +189,18 @@ class SaveDataIF(object):
 
 
     def data_product_snapshot_enabled(self, data_product_name):
-        enabled = self.snapshot_dict[data_product_name]
-        return enabled
+        try:
+            enabled = self.snapshot_dict[data_product_name]
+            return enabled
+        except:
+            return False
 
     def data_product_snapshot_reset(self, data_product_name):
-        self.snapshot_dict[data_product_name] = False
-
-
-    def data_product_snapshot_reset(self, data_product_name):
-        triggered = self.snapshot_dict[data_product_name]
-        self.snapshot_dict[data_product_name] = False
-        return triggered
-    
+        try:
+            self.snapshot_dict[data_product_name] = False
+        except:
+            pass
+   
 
     def save_data_reset_callback(self,reset_msg):
         rospy.loginfo("Recieved save data reset msg")
@@ -222,16 +222,19 @@ class SaveDataIF(object):
     
     def data_product_saving_enabled(self, data_product_name):
         # If saving is disabled for this node, then no data products are saving
-        data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
-        if not self.save_continuous:
-            return False
+        try:
+            data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
+            if not self.save_continuous:
+                return False
 
-        if data_product_name not in data_rate_dict:
-            rospy.logwarn("Unknown data product %s", data_product_name)
-            return False
+            if data_product_name not in data_rate_dict:
+                rospy.logwarn("Unknown data product %s", data_product_name)
+                return False
 
-        save_rate = data_rate_dict[data_product_name][0]
-        return (save_rate > 0.0)
+            save_rate = data_rate_dict[data_product_name][0]
+            return (save_rate > 0.0)
+        except:
+            return False
 
 
 
