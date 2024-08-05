@@ -21,7 +21,7 @@ import time
 import sys
 from nepi_edge_sdk_base import nepi_ros
 
-from std_msgs.msg import Empty, Int8, UInt8, UInt32, Bool, String, Float32, Float64, Float64MultiArray
+from std_msgs.msg import Empty, Int8, UInt32, Int32, Bool, String, Float32, Float64, Float64MultiArray
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3, PoseStamped
@@ -143,9 +143,9 @@ def rbx_initialize(self, rbx_namespace):
   NEPI_RBX_SET_STATUS_IMAGE_TOPIC = NEPI_RBX_NAMESPACE + "set_image_topic" # full or partial ROS namespace
   NEPI_RBX_SET_PROCESS_NAME_TOPIC = NEPI_RBX_NAMESPACE + "set_process_name"  # string name of current process
 
-  self.rbx_set_state_pub = rospy.Publisher(NEPI_RBX_SET_STATE_TOPIC, UInt8, queue_size=1)
-  self.rbx_set_mode_pub = rospy.Publisher(NEPI_RBX_SET_MODE_TOPIC, UInt8, queue_size=1)
-  self.rbx_setup_action_pub = rospy.Publisher(NEPI_RBX_SETUP_ACTION_TOPIC, UInt8, queue_size=1)
+  self.rbx_set_state_pub = rospy.Publisher(NEPI_RBX_SET_STATE_TOPIC, Int32, queue_size=1)
+  self.rbx_set_mode_pub = rospy.Publisher(NEPI_RBX_SET_MODE_TOPIC, Int32, queue_size=1)
+  self.rbx_setup_action_pub = rospy.Publisher(NEPI_RBX_SETUP_ACTION_TOPIC, Int32, queue_size=1)
   self.rbx_set_cmd_timeout_pub = rospy.Publisher(NEPI_RBX_SET_CMD_TIMEOUT_TOPIC, UInt32, queue_size=1)
   self.rbx_set_home_pub = rospy.Publisher(NEPI_RBX_SET_HOME_TOPIC, GeoPoint, queue_size=1)
   self.rbx_set_image_topic_pub = rospy.Publisher(NEPI_RBX_SET_STATUS_IMAGE_TOPIC, String, queue_size=1)
@@ -158,7 +158,7 @@ def rbx_initialize(self, rbx_namespace):
   NEPI_RBX_GOTO_POSITION_TOPIC = NEPI_RBX_NAMESPACE + "goto_position" # Ignored if any active goto processes
   NEPI_RBX_GOTO_LOCATION_TOPIC = NEPI_RBX_NAMESPACE + "goto_location" # Ignored if any active goto processes
 
-  self.rbx_go_action_pub = rospy.Publisher(NEPI_RBX_GO_ACTION_TOPIC, UInt8, queue_size=1)
+  self.rbx_go_action_pub = rospy.Publisher(NEPI_RBX_GO_ACTION_TOPIC, Int32, queue_size=1)
   self.rbx_go_home_pub = rospy.Publisher(NEPI_RBX_GO_HOME_TOPIC, Empty, queue_size=1)
   self.rbx_go_stop_pub = rospy.Publisher(NEPI_RBX_GO_STOP_TOPIC, Empty, queue_size=1)
   self.rbx_goto_pose_pub = rospy.Publisher(NEPI_RBX_GOTO_POSE_TOPIC, RBXGotoPose, queue_size=1)
