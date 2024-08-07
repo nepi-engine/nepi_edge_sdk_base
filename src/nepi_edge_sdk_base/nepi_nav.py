@@ -185,6 +185,36 @@ def convert_yaw_enu2ned(yaw_enu_deg):
     yaw_ned_deg = yaw_ned_deg - 360
   return yaw_ned_deg
 
+
+### Function to Convert Yaw from Body to ENU Frame
+def convert_yaw_body2enu(yaw_body_deg,cur_heading_deg):
+  cur_yaw_enu_deg = - cur_heading_deg
+  if cur_yaw_enu_deg > 180: # Convert to +-180
+    cur_yaw_enu_deg = cur_yaw_enu_deg - 360
+  yaw_enu_deg =  cur_yaw_enu_deg + yaw_body_deg
+  return yaw_enu_deg
+
+### Function to Convert Point from Body to ENU Frame
+def convert_point_body2enu(point_body_m,yaw_enu_deg):
+  point_bearing_enu_deg = yaw_enu_deg + math.degrees(math.atan2(point_body_m[1],point_body_m[0]))
+  point_bearing_enu_rad = math.radians(point_bearing_enu_deg)
+  xy_body_m = math.sqrt(point_body_m[0]**2 + point_body_m[1]**2)
+  x_enu_m = xy_body_m * math.cos(point_bearing_enu_rad)
+  y_enu_m = xy_body_m * math.sin(point_bearing_enu_rad)
+  point_enu_m = [x_enu_m,y_enu_m,point_body_m[2]]
+  return point_enu_m
+  
+### Function to Convert from ENU Frame to Point from Body
+def convert_point_enu2body(point_enu_m,yaw_enu_deg):
+  point_bearing_body_deg = yaw_enu_deg + math.degrees(math.atan2(point_enu_m[1],point_enu_m[0]))
+  point_bearing_body_rad = math.radians(point_bearing_body_deg)
+  xy_enu_m = math.sqrt(point_enu_m[0]**2 + point_enu_m[1]**2)
+  x_body_m = xy_enu_m * math.cos(point_bearing_body_rad)
+  y_body_m = xy_enu_m * math.sin(point_bearing_body_rad)
+  point_body_m = [x_body_m,y_body_m,point_enu_m[2]]
+  return point_body_m
+
+
 ### Function to Convert Yaw from Body to NED Frame
 def convert_yaw_body2ned(yaw_body_deg,cur_heading_deg):
   cur_yaw_ned_deg = cur_heading_deg
@@ -194,22 +224,25 @@ def convert_yaw_body2ned(yaw_body_deg,cur_heading_deg):
   return yaw_ned_deg
 
 ### Function to Convert Point from Body to NED Frame
-def convert_point_body2ned(setpoint_position,yaw_ned_deg):
-  point_bearing_ned_deg = yaw_ned_deg + math.degrees(math.atan2(setpoint_position[1],setpoint_position[0]))
+def convert_point_body2ned(point_body_m,yaw_ned_deg):
+  point_bearing_ned_deg = yaw_ned_deg - math.degrees(math.atan2(point_body_m[1],point_body_m[0]))
   point_bearing_ned_rad = math.radians(point_bearing_ned_deg)
-  xy_body_m = math.sqrt(setpoint_position[0]**2 + setpoint_position[1]**2)
+  xy_body_m = math.sqrt(point_body_m[0]**2 + point_body_m[1]**2)
   x_ned_m = xy_body_m * math.cos(point_bearing_ned_rad)
   y_ned_m = xy_body_m * math.sin(point_bearing_ned_rad)
-  point_ned_m = [x_ned_m,y_ned_m,setpoint_position[2]]
+  point_ned_m = [x_ned_m,y_ned_m,-point_body_m[2]]
   return point_ned_m
 
+  
 ### Function to get new latlong at body relative point
-def get_geopoint_at_body_point(cur_geopoint_geo, cur_bearing_deg, point_body_m):
+def get_geopoint_at_body_point(cur_geopoint_geo, cur_bearing_enu_deg, point_body_m):
   # cur_geopoint_geo is list [Lat,Long,Alt] with Alt passed through
   earth_radius_km = 6378.137
   earth_circ_m = np.float64(2 * math.pi * earth_radius_km*1000)
   # Calculate bearing in NED frame
-  point_bearing_ned_deg = cur_bearing_deg + math.degrees(math.atan2(point_body_m[1],point_body_m[0]))
+  point_body_m[1] = - point_body_m[1] # adjust for y = right frame from body y left frame.
+  cur_bearing_ned_deg = convert_yaw_enu2ned(cur_bearing_enu_deg)
+  point_bearing_ned_deg = cur_bearing_ned_deg + math.degrees(math.atan2(point_body_m[1],point_body_m[0]))
   point_bearing_ned_rad = math.radians(point_bearing_ned_deg)
   # Calculate distances NED frame
   delta_body_m = math.sqrt(point_body_m[0]**2+point_body_m[1]**2)
@@ -225,12 +258,59 @@ def get_geopoint_at_body_point(cur_geopoint_geo, cur_bearing_deg, point_body_m):
   m_per_long = m_per_lat * math.cos(math.radians(cur_lat)) 
   delta_long = delta_y_ned_m / m_per_long
   new_long = cur_long + delta_long
+  rospy.loginfo(point_body_m)
+  rospy.loginfo(cur_bearing_ned_deg)
+  rospy.loginfo(point_bearing_ned_deg)
+  rospy.loginfo(delta_x_ned_m)
+  rospy.loginfo(delta_y_ned_m)
+  rospy.loginfo(cur_geopoint_geo.latitude)
+  rospy.loginfo(new_lat)
+  rospy.loginfo(cur_geopoint_geo.longitude)
+  rospy.loginfo(new_long)
+
+
   # Return New Geo Position
   new_geopoint_geo=GeoPoint()
   new_geopoint_geo.latitude = new_lat
   new_geopoint_geo.longitude = new_long
   new_geopoint_geo.altitude = cur_geopoint_geo.altitude
   return  new_geopoint_geo
+
+
+  ### Function to get new latlong at body relative point
+def get_geopoint_at_enu_point(cur_geopoint_geo, point_enu_m):
+  # cur_geopoint_geo is list [Lat,Long,Alt] with Alt passed through
+  earth_radius_km = 6378.137
+  earth_circ_m = np.float64(2 * math.pi * earth_radius_km*1000)
+  # Calculate point in NED frame
+  delta_x_ned_m = point_enu_m[1] # north:pos,south:neg
+  delta_y_ned_m = point_enu_m[0] # east:pos,west:neg
+  # Calculate New Lat Position
+  cur_lat = cur_geopoint_geo.latitude
+  m_per_lat = np.float64(earth_circ_m/360)
+  delta_lat = delta_x_ned_m / m_per_lat
+  new_lat = cur_lat + delta_lat
+  # Calculate New Long Position
+  cur_long = cur_geopoint_geo.longitude
+  m_per_long = m_per_lat * math.cos(math.radians(cur_lat)) 
+  delta_long = delta_y_ned_m / m_per_long
+  new_long = cur_long + delta_long
+  rospy.loginfo(point_enu_m)
+  rospy.loginfo(delta_x_ned_m)
+  rospy.loginfo(delta_y_ned_m)
+  rospy.loginfo(cur_geopoint_geo.latitude)
+  rospy.loginfo(new_lat)
+  rospy.loginfo(cur_geopoint_geo.longitude)
+  rospy.loginfo(new_long)
+
+
+  # Return New Geo Position
+  new_geopoint_geo=GeoPoint()
+  new_geopoint_geo.latitude = new_lat
+  new_geopoint_geo.longitude = new_long
+  new_geopoint_geo.altitude = cur_geopoint_geo.altitude
+  return  new_geopoint_geo
+
 
 ### Function to get distance between two geo latlong locations
 def distance_geopoints(geopoint1,geopoint2):
@@ -255,5 +335,26 @@ def distance_geopoints(geopoint1,geopoint2):
  
   # calculate the result
   return(distance_m)
+  
+### Function to get point between two geo latlong locations
+def point_from_geopoints(geopoint1,geopoint2,current_heading):
+  lat1 = math.radians(geopoint1[0])
+  lat2 = math.radians(geopoint2[0])
+  lon1 = math.radians(geopoint1[1])
+  lon2 = math.radians(geopoint2[1])
+  # Haversine formula 
+  dlon = (lon2 - lon1)
+  dlat = (lat2 - lat1)
+  a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+  c = 2 * math.asin(math.sqrt(a))
+
+  # Radius of earth in kilometers. Use 3956 for miles
+  r = 6371
+  xy_m=c*r*1000
+  delta_x_ned_m = xy_m * math.cos(point_bearing_ned_rad) # north:pos,south:neg
+  delta_y_ned_m = xy_m * math.sin(point_bearing_ned_rad) # east:pos,west:neg
+  delta_alt_m = abs(geopoint1[2]-geopoint2[2])
+
+  return delta_x_ned_m,delta_y_ned_m,delta_alt_m
 
 

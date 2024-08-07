@@ -28,6 +28,7 @@ class SaveDataIF(object):
     save_data_prefix = ""
     save_data_subfolder = ""    
     snapshot_dict = dict()
+    init_data_rate_dict = dict()
     
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
