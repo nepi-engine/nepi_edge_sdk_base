@@ -59,12 +59,13 @@ class SettingsIF(object):
         self.updateSetting(setting, update_status = True, update_param = True)
 
 
-    def resetFactorySettings(self, update_params = True):
+    def resetFactorySettings(self, update_params = True, update_status = True):
         rospy.loginfo("SETTINGS_IF: Applying Factory Settings")
         #rospy.loginfo(self.init_settings)
         for setting in self.factory_settings:
             self.updateSetting(setting,update_status = False, update_param = update_params)
-        self.publishSettingsStatus()
+        if update_status:
+            self.publishSettingsStatus()
 
 
     def updateSetting(self,new_setting,update_status = True, update_param = True):
@@ -88,7 +89,8 @@ class SettingsIF(object):
         return success
 
     def initializeParamServer(self, do_updates = True):
-        self.init_settings = rospy.get_param('~settings', self.factory_settings)
+        current_settings = nepi_ros.sort_settings_alphabetically(self.getSettingsFunction())
+        self.init_settings = rospy.get_param('~settings', current_settings)
         rospy.set_param('~settings', self.init_settings)
         if do_updates:
             for setting in self.init_settings:
@@ -141,9 +143,9 @@ class SettingsIF(object):
             else:
                 self.getSettingsFunction = getSettingsFunction
 
-            self.initializeParamServer(do_updates = False)     
-
-            self.resetFactorySettings(update_params = False)
+            #Reset Settings and Update Param Server
+            self.resetFactorySettings(update_params = False, update_status = False)
+            self.initializeParamServer(do_updates = False)              
   
        # Update settings  and publish current values
         self.updateFromParamServer()
