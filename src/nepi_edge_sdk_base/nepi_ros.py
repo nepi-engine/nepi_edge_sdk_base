@@ -18,13 +18,14 @@
 
   
 import os
+import sys
+import importlib
 import shutil
 import rospy
 import rosnode
 import rostopic
 import rosservice
 import time
-import sys
 
 
 from datetime import datetime
@@ -32,6 +33,57 @@ from std_msgs.msg import Empty, Float32
 from std_srvs.srv import Empty, EmptyRequest, Trigger
 from nepi_ros_interfaces.srv import GetScriptsQuery,GetRunningScriptsQuery ,LaunchScript, StopScript
 from nepi_ros_interfaces.msg import  SettingUpdate
+
+
+#######################
+### Driver Utility Functions
+
+def getDriverDict(driver_search_key, search_paths):
+    driver_dict = dict()
+    # Find driver files
+    ind = 0
+    file_list = []
+    for search_path in search_paths:
+        if os.path.exists(search_path):
+            if search_path[-1] != "/":
+                searc_path = search_path + "/"
+            sys.path.append(search_path)
+            for f in os.listdir(search_path):
+                if f.find(driver_search_key) != -1:
+                    #rospy.loginfo('Found image file')
+                    ind = ind + 1
+                    file_list.append(f)
+            # Build Dictionary from driver files
+            for f in file_list:
+                driver_name = f.split(".")[0]
+                driver = __import__(driver_name)
+                try:
+                    driver_dict[driver.DRIVER_ID] = driver_name
+                except:
+                    rospy.loginfo("No DRIVER_ID found in driver file: " + f)
+                sys.modules.pop(driver_name)
+        else:
+            rospy.loginfo("Driver path %s does not exist",  search_path)
+    return driver_dict
+
+def importDriver(driver_name):
+    try:
+        driver = __import__(driver_name)
+        return driver
+    except:
+        rospy.loginfo("Failed to import driver: " + driver_name)
+        return None
+      
+
+def delDriver(driver_name):
+    if driver is not None:
+        try:
+           sys.modules.pop(driver_name)
+        except:
+            rospy.loginfo("Failed to delete driver: " + driver)
+
+
+
 
 #######################
 ### Node Utility Functions
