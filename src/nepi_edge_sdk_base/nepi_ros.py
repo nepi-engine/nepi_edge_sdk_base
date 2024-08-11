@@ -56,12 +56,16 @@ def getDriverDict(driver_search_key, search_paths):
             # Build Dictionary from driver files
             for f in file_list:
                 driver_name = f.split(".")[0]
-                driver = __import__(driver_name)
                 try:
-                    driver_dict[driver.DRIVER_ID] = driver_name
+                    driver = __import__(driver_name)
+                    try:
+                    	driver_dict[driver.DRIVER_ID] = driver_name
+                    	sys.modules.pop(driver_name)
+                    except:
+                    	rospy.loginfo("No DRIVER_ID found in driver file: " + f)
                 except:
-                    rospy.loginfo("No DRIVER_ID found in driver file: " + f)
-                sys.modules.pop(driver_name)
+                    rospy.loginfo("Driver %s failed to import found in driver file", f)
+                
         else:
             rospy.loginfo("Driver path %s does not exist",  search_path)
     return driver_dict
