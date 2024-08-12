@@ -699,6 +699,13 @@ def sort_settings_alphabetically(settings):
 #########################
 ### Misc Helper Functions
 
+def parse_string_list_msg_data(msg_data):
+  str_list = []
+  if msg_data[0] == "[" and msg_data[-1] == "]" :
+    str_list = eval(msg_data)
+  return(str_list)
+
+
 # Sleep process that breaks sleep into smaller times for better shutdown
 def sleep(sleep_sec,sleep_steps):
   delay_timer = 0
