@@ -111,12 +111,22 @@ def cv2img_to_o3dimg(cv2_image):
 ### Pointcloud info functions    
 
 def get_min_range(o3d_pc):
-    min_bounds = np.asarray(o3d_pc.get_min_bound()) 
-    return (np.min(min_bounds))
+    min_range = get_min_ranges(o3d_pc)
+    min_distance = np.linalg.norm(min_range)
+    return min_distance
     
 def get_max_range(o3d_pc):
+    max_range = get_max_ranges(o3d_pc)
+    max_distance = np.linalg.norm(max_range)
+    return max_distance
+   
+def get_min_ranges(o3d_pc):
+    min_bounds = np.asarray(o3d_pc.get_min_bound())
+    return (min_bounds)
+    
+def get_max_ranges(o3d_pc):
     max_bounds = np.asarray(o3d_pc.get_max_bound()) 
-    return (np.max(max_bounds))
+    return (max_bounds)	
 	
 
 
@@ -167,8 +177,26 @@ def crop_with_2dmask(o3d_pc, mask, K=None):
     o3d_pc = open3d_ros_helper.crop_with_2dmask(o3d_pc, mask, K=None)
     return o3d_pc
 
-def range_clip( o3d_pc, range_clip_min_range_m, range_clip_max_range_m):
-    ''' Clip input Open3d PointCloud based on min range meters and max range meters
+def range_clip_spherical(o3d_pc, range_clip_min_range_m, range_clip_max_range_m):
+    points = np.asarray(o3d_pc.points)
+    distances = np.linalg.norm(points, axis=1)
+    clipped_points = (distances >= range_clip_min_range_m) & (distances <= range_clip_max_range_m)
+    o3d_pc_has_colors = o3d_pc.colors
+    if o3d_pc_has_colors:
+        has_colors = True
+        o3d_pc_colors = np.asarray(o3d_pc.colors)
+        o3d_pc_colors = o3d_pc_colors[clipped_points]    
+    
+    o3d_pc_points = points[clipped_points]
+    
+    o3d_pc = o3d.geometry.PointCloud()
+    o3d_pc.points = o3d.utility.Vector3dVector(o3d_pc_points)
+    if o3d_pc_has_colors:
+        o3d_pc.colors = o3d.utility.Vector3dVector(o3d_pc_colors)
+    return o3d_pc
+
+def range_clip_x_axis( o3d_pc, range_clip_min_range_m, range_clip_max_range_m):
+    ''' Clip input Open3d PointCloud on x-axis based on min range meters and max range meters
     
     Args:
       o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
@@ -197,6 +225,66 @@ def range_clip( o3d_pc, range_clip_min_range_m, range_clip_max_range_m):
       o3d_pc.colors = o3d.utility.Vector3dVector(o3d_pc_colors)
     return o3d_pc
     
+def range_clip_y_axis(o3d_pc, range_clip_min_range_m, range_clip_max_range_m):
+    ''' Clip input Open3d PointCloud on y-axis based on min range meters and max range meters
+    
+    Args:
+      o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+      range_clip_min_range_m (float): minimum clip range in meters
+      range_clip_max_range_m (float): maximum clip range in meters
+     
+    Returns:
+      o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+    '''
+    
+    o3d_pc_points = np.asarray(o3d_pc.points)
+    # Check if pointcloud has color
+    o3d_pc_has_colors = o3d_pc.colors
+    if o3d_pc_has_colors:
+      has_colors = True
+      #print("o3d_pc has colors")
+      ### Need to Add color data as well if it has color data
+      o3d_pc_colors = np.asarray(o3d_pc.colors)
+      o3d_pc_colors = o3d_pc_colors[(o3d_pc_points[:, 1] >= range_clip_min_range_m) & (o3d_pc_points[:, 1] <= range_clip_max_range_m)]
+    o3d_pc_points = o3d_pc_points[(o3d_pc_points[:, 1] >= range_clip_min_range_m) & (o3d_pc_points[:, 1] <= range_clip_max_range_m)]
+    # Clear and create new pointcloud      
+    o3d_pc = o3d.geometry.PointCloud()
+    o3d_pc.points = o3d.utility.Vector3dVector(o3d_pc_points)
+    if o3d_pc_has_colors:
+      #print("adding colors to new o3d_pc")
+      o3d_pc.colors = o3d.utility.Vector3dVector(o3d_pc_colors)
+    return o3d_pc
+
+def range_clip_z_axis(o3d_pc, range_clip_min_range_m, range_clip_max_range_m):
+    ''' Clip input Open3d PointCloud on z-axis based on min range meters and max range meters
+    
+    Args:
+      o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+      range_clip_min_range_m (float): minimum clip range in meters
+      range_clip_max_range_m (float): maximum clip range in meters
+     
+    Returns:
+      o3d_pc (o3d.geometry.PointCloud): Open3D PointCloud
+    '''
+    
+    o3d_pc_points = np.asarray(o3d_pc.points)
+    # Check if pointcloud has color
+    o3d_pc_has_colors = o3d_pc.colors
+    if o3d_pc_has_colors:
+      has_colors = True
+      #print("o3d_pc has colors")
+      ### Need to Add color data as well if it has color data
+      o3d_pc_colors = np.asarray(o3d_pc.colors)
+      o3d_pc_colors = o3d_pc_colors[(o3d_pc_points[:, 2] >= range_clip_min_range_m) & (o3d_pc_points[:, 2] <= range_clip_max_range_m)]
+    o3d_pc_points = o3d_pc_points[(o3d_pc_points[:, 2] >= range_clip_min_range_m) & (o3d_pc_points[:, 2] <= range_clip_max_range_m)]
+    # Clear and create new pointcloud      
+    o3d_pc = o3d.geometry.PointCloud()
+    o3d_pc.points = o3d.utility.Vector3dVector(o3d_pc_points)
+    if o3d_pc_has_colors:
+      #print("adding colors to new o3d_pc")
+      o3d_pc.colors = o3d.utility.Vector3dVector(o3d_pc_colors)
+    return o3d_pc
+    
 def angles_to_rotation_matrix( rotation_angles_deg):
     ''' Convert angles (degrees) to 3D Rotation Matrix
         Args:
@@ -209,8 +297,10 @@ def angles_to_rotation_matrix( rotation_angles_deg):
     rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(angles_rad)
     return rotation_matrix
 
-
-
+def add_pointcloud(o3d_pc, o3d_pc_add):
+    o3d_pc += o3d_pc_add
+    return o3d_pc
+    
 def clip_bounding_box( o3d_pc, bounding_box_center, bounding_box_extent, bounding_box_rotation):
     ''' Clip a Open3D Pointcloud with a bounding box
         Args:
@@ -437,6 +527,7 @@ def render_img(img_renderer,center,eye,up,post_proccessing=False):
     img_renderer.scene.view.set_post_processing(post_proccessing)
     img_o3d = img_renderer.render_to_image()
     return img_o3d
+    	
 
 ###########################################
 ### Pointcloud saving functions
