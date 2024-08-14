@@ -10,17 +10,18 @@
   <arg name="run_robot_state_publisher" default="false" />
   <arg name="run_web_utils" default="true" />
   <arg name="run_ai_detector_mgr" default="true" />
+  <arg name="run_ai_targeting_app" default="true" />
   <arg name="run_nepi_link" default="true" />
   <arg name="run_mgr_nav_pose" default="true" />
   <arg name="run_nav_pose_publisher" default="true" />
-  <arg name="run_gpsd_client" default="false" />
+  <arg name="run_gpsd_client" default="true" />
   <arg name="run_nepi_autolauncher" default="true" />
   <arg name="run_idx_sensor_mgr" default="true" />
   <arg name="run_automation_mgr" default="true" />
   <arg name="run_app_image_sequencer" default="true" />
   <arg name="run_onvif_mgr" default="true" />
   <arg name="run_image_sequencer_app" default="true" />
-  <arg name="run_pointcloud_app" default="false" />
+  <arg name="run_pointcloud_app" default="true" />
         
   <!-- Everything lives in the device namespace -->
   <group ns="$(arg device_ns)">
@@ -108,6 +109,12 @@
     <group if="$(arg run_ai_detector_mgr)" >
       <rosparam command="load" file="$(arg config_file_root)/ai_detector_mgr/ai_detector_mgr.yaml" ns="ai_detector_mgr" />
       <node name="ai_detector_mgr" pkg="nepi_ai_detector_mgr" type="ai_detector_mgr.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- AI Targeting App -->
+    <group if="$(arg run_ai_targeting_app)" >
+      <rosparam command="load" file="$(arg config_file_root)/app_ai_targeting/app_ai_targeting.yaml" ns="app_ai_targeting" />
+      <node name="app_ai_targeting" pkg="nepi_app_ai_targeting" type="ai_targeting_app_node.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
     <!-- Automation Mgr -->

@@ -308,7 +308,7 @@ def get_geopoint_at_enu_point(cur_geopoint_geo, point_enu_m):
   new_geopoint_geo=GeoPoint()
   new_geopoint_geo.latitude = new_lat
   new_geopoint_geo.longitude = new_long
-  new_geopoint_geo.altitude = cur_geopoint_geo.altitude
+  new_geopoint_geo.altitude = cur_geopoint_geo.altitude + point_enu_m[2]
   return  new_geopoint_geo
 
 
