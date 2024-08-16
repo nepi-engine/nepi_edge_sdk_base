@@ -40,7 +40,8 @@ SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pu
 		data_folder_query.request.type = "data";
 		if (false == data_folder_query_client.call(data_folder_query))
 		{
-			ROS_ERROR("Failed to obtain system data folder");
+			ROS_ERROR("Failed to obtain system data folder falling back to /mnt/nepi_storage/data/");
+			_save_data_dir = '/mnt/nepi_storage/data/';
 		}
 		else
 		{

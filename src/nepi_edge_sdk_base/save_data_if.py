@@ -21,6 +21,8 @@ from nepi_ros_interfaces.srv import DataProductQuery, DataProductQueryResponse, 
 '''
 Basic interface for the global and private save_data topics.
 '''
+
+DATA_FOLDER_FALLBACK = '/mnt/nepi_storage/data/'
 class SaveDataIF(object):
     save_continuous = False
     save_raw = False
@@ -280,6 +282,7 @@ class SaveDataIF(object):
         self.save_data_root_directory = None # Flag it as non-existent
         get_folder_name_service = NEPI_BASE_NAMESPACE + 'system_storage_folder_query'
         rospy.loginfo("Calling system storage folder query service " + get_folder_name_service)
+        
         try:
             rospy.loginfo("Getting storage folder query service " + get_folder_name_service)
             system_storage_folder_query = rospy.ServiceProxy(get_folder_name_service, SystemStorageFolderQuery)
@@ -287,8 +290,8 @@ class SaveDataIF(object):
             rospy.loginfo("Calling system storage folder query service " + get_folder_name_service)
             self.save_data_root_directory = system_storage_folder_query('data').folder_path
         except Exception as e:
-            self.save_data_root_directory = None
-            rospy.logwarn("Failed to obtain system data folder: " + str(e))
+            self.save_data_root_directory = DATA_FOLDER_FALLBACK
+            rospy.logwarn("Failed to obtain system data folder, falling back to: " + DATA_FOLDER_FALLBACK)
             
         if self.save_data_root_directory is not None:
             # Ensure the data folder exists with proper ownership
