@@ -31,7 +31,8 @@ SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pu
 	// First, get the data directory
 	if (false == ros::service::waitForService("system_storage_folder_query", 20000)) // Timeout is in ms, so 20 seconds
 	{
-		ROS_ERROR("Failed to obtain system storage folder");
+		ROS_WARN("Failed to obtain system storage folder falling back to /mnt/nepi_storage/data/");
+		_save_data_dir = "/mnt/nepi_storage/data/";
 	}
 	else
 	{
@@ -40,8 +41,8 @@ SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pu
 		data_folder_query.request.type = "data";
 		if (false == data_folder_query_client.call(data_folder_query))
 		{
-			ROS_ERROR("Failed to obtain system data folder falling back to /mnt/nepi_storage/data/");
-			_save_data_dir = '/mnt/nepi_storage/data/';
+			ROS_WARN("Failed to obtain system data folder falling back to /mnt/nepi_storage/data/");
+			_save_data_dir = "/mnt/nepi_storage/data/";
 		}
 		else
 		{
@@ -53,8 +54,15 @@ SaveDataInterface::SaveDataInterface(SDKNode *parent, ros::NodeHandle *parent_pu
 	boost::filesystem::path p(_save_data_dir);
 	if (false == boost::filesystem::exists(p))
 	{
-		ROS_ERROR("Reported data folder does not exist... data saving is disabled");
-		_save_data_dir = ""; // Set it back to blank
+		ROS_WARN("Reported data folder does not exist... falling back to /mnt/nepi_storage/data/");
+			_save_data_dir = "/mnt/nepi_storage/data/";
+	}
+
+	boost::filesystem::path p2(_save_data_dir);
+	if (false == boost::filesystem::exists(p2))
+	{
+		ROS_ERROR("Reported data folder does not exist... Data saving disabled");
+		_save_data_dir = "";
 	}
 	else
 	{

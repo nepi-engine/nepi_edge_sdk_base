@@ -38,7 +38,7 @@ from nepi_ros_interfaces.msg import  SettingUpdate
 #######################
 ### Driver Utility Functions
 
-def getDriverDict(driver_search_key, search_paths):
+def getDriverDict(driver_type, driver_search_key, search_paths): # Type example "idx","ptx"...
     driver_dict = dict()
     # Find driver files
     ind = 0
@@ -48,26 +48,31 @@ def getDriverDict(driver_search_key, search_paths):
             if search_path[-1] != "/":
                 searc_path = search_path + "/"
             sys.path.append(search_path)
+            rospy.loginfo("NEPI_ROS: Searching for drivers in path: " + search_path)
             for f in os.listdir(search_path):
-                if f.find(driver_search_key) != -1:
-                    #rospy.loginfo('Found image file')
-                    ind = ind + 1
-                    file_list.append(f)
+                if f.find(driver_type) != -1:
+                    if f.find(driver_search_key) != -1:
+                      rospy.loginfo("NEPI_ROS: found driver: " + f)
+                      ind = ind + 1
+                      file_list.append(f)
             # Build Dictionary from driver files
             for f in file_list:
                 driver_name = f.split(".")[0]
+                rospy.loginfo("NEPI_ROS: Will try to improt driver: " + driver_name)
                 try:
                     driver = __import__(driver_name)
                     try:
                     	driver_dict[driver.DRIVER_ID] = driver_name
                     	sys.modules.pop(driver_name)
                     except:
-                    	rospy.loginfo("No DRIVER_ID found in driver file: " + f)
-                except:
-                    rospy.loginfo("Driver %s failed to import found in driver file", f)
+                    	rospy.loginfo("NEPI_ROS: No DRIVER_ID found in driver file: " + f)
+                except Exception as e:
+                    rospy.loginfo("NEPI_ROS: Driver %s failed to import found in driver file with exception %s", f, str(e))
                 
         else:
-            rospy.loginfo("Driver path %s does not exist",  search_path)
+            rospy.loginfo("NEPI_ROS: Driver path %s does not exist",  search_path)
+    for id in driver_dict.keys():
+      rospy.loginfo("NEPI_ROS: Returning driver dict with Driver %s and ID %s",  driver_name, id)
     return driver_dict
 
 def importDriver(driver_name):
@@ -75,7 +80,7 @@ def importDriver(driver_name):
         driver = __import__(driver_name)
         return driver
     except:
-        rospy.loginfo("Failed to import driver: " + driver_name)
+        rospy.loginfo("NEPI_ROS: Failed to import driver: " + driver_name)
         return None
       
 
@@ -84,7 +89,7 @@ def delDriver(driver_name):
         try:
            sys.modules.pop(driver_name)
         except:
-            rospy.loginfo("Failed to delete driver: " + driver)
+            rospy.loginfo("NEPI_ROS: Failed to delete driver: " + driver)
 
 
 
@@ -120,12 +125,12 @@ def check_for_node(node_name):
 
 ### Function to wait for a node
 def wait_for_node(node_name):
-  rospy.loginfo("Waiting for node with name: " + node_name)
+  rospy.loginfo("NEPI_ROS: Waiting for node with name: " + node_name)
   node = ""
   while node == "" and not rospy.is_shutdown():
     node=find_node(node_name)
     time.sleep(.1)
-  rospy.loginfo("Found node: " + node)
+  rospy.loginfo("NEPI_ROS: Found node: " + node)
   return node
 
 def get_base_namespace():
@@ -167,12 +172,12 @@ def check_for_topic(topic_name):
 
 # Function to wait for a topic
 def wait_for_topic(topic_name):
-  rospy.loginfo("Waiting for topic with name: " + topic_name)
+  rospy.loginfo("NEPI_ROS: Waiting for topic with name: " + topic_name)
   topic = ""
   while topic == "" and not rospy.is_shutdown():
     topic=find_topic(topic_name)
     time.sleep(.1)
-  rospy.loginfo("Found topic: " + topic)
+  rospy.loginfo("NEPI_ROS: Found topic: " + topic)
   return topic
 
 #######################
@@ -212,12 +217,12 @@ def check_for_service(service_name):
 
 # Function to wait for a service
 def wait_for_service(service_name):
-  rospy.loginfo("Waiting for servcie name: " + service_name)
+  rospy.loginfo("NEPI_ROS: Waiting for servcie name: " + service_name)
   service = ""
   while service == "" and not rospy.is_shutdown():
     service=find_service(service_name)
     time.sleep(.1)
-  rospy.loginfo("Found service: " + service)
+  rospy.loginfo("NEPI_ROS: Found service: " + service)
   return service
 
 #######################
@@ -240,29 +245,29 @@ def startup_script_initialize(self,NEPI_BASE_NAMESPACE):
   ## Create Class Publishers
   ## Start Class Subscribers
   ## Start Node Processes
-  rospy.loginfo("")
-  rospy.loginfo("***********************")
-  rospy.loginfo("Starting Initialization")
+  rospy.loginfo("NEPI_ROS: ")
+  rospy.loginfo("NEPI_ROS: ***********************")
+  rospy.loginfo("NEPI_ROS: Starting Initialization")
   ### Get list of installed scripts
-  rospy.loginfo("Getting list of installed scripts")
+  rospy.loginfo("NEPI_ROS: Getting list of installed scripts")
   rospy.loginfo(["Calling service name: " + AUTO_GET_INSTALLED_SCRIPTS_SERVICE_NAME])
   while self.scripts_installed_at_start == None and not rospy.is_shutdown():
       self.scripts_installed_at_start = get_installed_scripts(self.get_installed_scripts_service)
       if self.scripts_installed_at_start == None:
-        rospy.loginfo("Service call failed, waiting 1 second then retrying")
+        rospy.loginfo("NEPI_ROS: Service call failed, waiting 1 second then retrying")
         time.sleep(1)
-  #rospy.loginfo("Scripts installed at start:")
+  #rospy.loginfo("NEPI_ROS: Scripts installed at start:")
   #rospy.loginfo(self.scripts_installed_at_start)
   ### Get list of running scripts
-  rospy.loginfo("")
-  rospy.loginfo("Getting list of running scripts at start")
+  rospy.loginfo("NEPI_ROS: ")
+  rospy.loginfo("NEPI_ROS: Getting list of running scripts at start")
   rospy.loginfo(["Calling service name: " + AUTO_GET_RUNNING_SCRIPTS_SERVICE_NAME])
   while self.scripts_running_at_start == None and not rospy.is_shutdown():
       self.scripts_running_at_start = get_running_scripts(self.get_running_scripts_service)
       if self.scripts_running_at_start == None:
-        rospy.loginfo("Service call failed, waiting 1 second then retrying")
+        rospy.loginfo("NEPI_ROS: Service call failed, waiting 1 second then retrying")
         time.sleep(1)
-  #rospy.loginfo("Scripts running at start:")
+  #rospy.loginfo("NEPI_ROS: Scripts running at start:")
   #rospy.loginfo(self.scripts_running_at_start)
 
 
@@ -273,9 +278,9 @@ def get_installed_scripts(get_installed_scripts_service):
   try:
     response = get_installed_scripts_service()
     installed_scripts = response.scripts
-    #rospy.loginfo("Installed Scripts = " + str(installed_scripts))
+    #rospy.loginfo("NEPI_ROS: Installed Scripts = " + str(installed_scripts))
   except Exception as e:
-    rospy.loginfo("Get installed scripts service call failed: " + str(e))
+    rospy.loginfo("NEPI_ROS: Get installed scripts service call failed: " + str(e))
   return installed_scripts
 
 # Function to get list of running scripts
@@ -284,9 +289,9 @@ def get_running_scripts(get_running_scripts_service):
   try:
     response = get_running_scripts_service()
     running_scripts = response.running_scripts
-    #rospy.loginfo("Running Scripts = " + str(running_scripts))
+    #rospy.loginfo("NEPI_ROS: Running Scripts = " + str(running_scripts))
   except Exception as e:
-    rospy.loginfo("Get running scripts service call failed: " + str(e))
+    rospy.loginfo("NEPI_ROS: Get running scripts service call failed: " + str(e))
   return running_scripts
 
 
@@ -295,10 +300,10 @@ def launch_script(script2launch,launch_script_service):
   launch_success=False
   try:
     success = launch_script_service(script=script2launch)
-    rospy.loginfo("Launched script: " + str(success))
+    rospy.loginfo("NEPI_ROS: Launched script: " + str(success))
     launch_success=True
   except Exception as e:
-    rospy.loginfo("Launch script service call failed: " + str(e))
+    rospy.loginfo("NEPI_ROS: Launch script service call failed: " + str(e))
   return launch_success
 
 ### Function to stop script
@@ -306,10 +311,10 @@ def stop_script(script2stop,stop_script_service):
   stop_success=False
   try:
     success = stop_script_service(script=script2stop)
-    rospy.loginfo("Stopped script: " + str(success))
+    rospy.loginfo("NEPI_ROS: Stopped script: " + str(success))
     stop_success=True
   except Exception as e:
-    rospy.loginfo("Stop script service call failed: " + str(e))
+    rospy.loginfo("NEPI_ROS: Stop script service call failed: " + str(e))
   return stop_success
 
 # Function to start scripts from list
@@ -322,26 +327,26 @@ def launch_scripts(script_list,launch_script_service,get_installed_scripts_servi
       if script_installed:
         script_running = val_in_list(script2launch,running_scripts)
         if script_running is False:
-            rospy.loginfo("")
+            rospy.loginfo("NEPI_ROS: ")
             rospy.loginfo(["Launching script: " + script2launch])
             script_launch = launch_script(script2launch,launch_script_service)
             if script_launch:
-              rospy.loginfo("Script launch call success")
+              rospy.loginfo("NEPI_ROS: Script launch call success")
               script_running = False
               while script_running is False and not rospy.is_shutdown():
                 running_scripts = get_running_scripts(get_running_scripts_service)
                 script_running = val_in_list(script2launch,running_scripts)
-                rospy.loginfo("Waiting for script to launch")
+                rospy.loginfo("NEPI_ROS: Waiting for script to launch")
                 time.sleep(.5) # Sleep before checking again
-              rospy.loginfo("Script started successfully")
+              rospy.loginfo("NEPI_ROS: Script started successfully")
             else:
-               rospy.loginfo("Scipt launch call failed")
+               rospy.loginfo("NEPI_ROS: Scipt launch call failed")
         else:
-          rospy.loginfo("Script already running, skipping launch process")
+          rospy.loginfo("NEPI_ROS: Script already running, skipping launch process")
       else:
-        rospy.loginfo("Script not found, skipping launch process")
+        rospy.loginfo("NEPI_ROS: Script not found, skipping launch process")
   else:
-    rospy.loginfo("Failed to get installed and running script list")
+    rospy.loginfo("NEPI_ROS: Failed to get installed and running script list")
   #running_scripts = get_running_scripts()
   #rospy.loginfo(running_scripts)
           
@@ -357,19 +362,19 @@ def stop_scripts(script_list,stop_script_service,get_installed_scripts_service,g
       if script_running is True and script_ignore is False:
         script_running = val_in_list(script2stop,running_scripts)
         if script_running is True:
-            rospy.loginfo("")
+            rospy.loginfo("NEPI_ROS: ")
             rospy.loginfo(["Stopping script: " + script2stop])
             script_stop = stop_script(script2stop,stop_script_service)
             if script_stop:
-              rospy.loginfo("Script stop call success")
+              rospy.loginfo("NEPI_ROS: Script stop call success")
             else:
-               rospy.loginfo("Scipt stop call failed")
+               rospy.loginfo("NEPI_ROS: Scipt stop call failed")
         else:
-          rospy.loginfo("Scipt in ignore list, skipping launch process")
+          rospy.loginfo("NEPI_ROS: Scipt in ignore list, skipping launch process")
       else:
-        rospy.loginfo("Script not found, skipping launch process")
+        rospy.loginfo("NEPI_ROS: Script not found, skipping launch process")
   else:
-    rospy.loginfo("Failed to get installed and running script list")
+    rospy.loginfo("NEPI_ROS: Failed to get installed and running script list")
   #running_scripts = get_running_scripts()
   #rospy.loginfo(running_scripts)
 
@@ -411,18 +416,18 @@ TEST_SETTINGS_UPDATE = [["Menu","TestMenu","Menu_C:2"],
 
 def TEST_UPDATE_FUNCTION_SUCCESS(setting):
   s_str = get_setting_as_str(setting)
-  rospy.loginfo("Setting update success: " + s_str)
+  rospy.loginfo("NEPI_ROS: Setting update success: " + s_str)
   return True, "Success"
 
 def TEST_UPDATE_FUNCTION_FAIL(setting):
   s_str = get_setting_as_str(setting)
-  rospy.loginfo("Setting update failed: " + s_str)
+  rospy.loginfo("NEPI_ROS: Setting update failed: " + s_str)
   str(2+[2])
   return False, "Failed just because"
 
 def TEST_UPDATE_FUNCTION_EXCEPTION(setting):
   s_str = get_setting_as_str(setting)
-  rospy.loginfo("Setting update will cauase exception: " + s_str)
+  rospy.loginfo("NEPI_ROS: Setting update will cauase exception: " + s_str)
   str(2+[2])
   return True, "Failed with exception"
 
@@ -549,7 +554,7 @@ def get_data_from_setting(setting):
         elif s_type == "Menu":
           data = int(s_value.split(":")[1])
       except Exception as e:
-        rospy.loginfo("Setting conversion failed for setting " + s_str + "with exception" + str(e) )
+        rospy.loginfo("NEPI_ROS: Setting conversion failed for setting " + s_str + "with exception" + str(e) )
   return s_name, s_type, data
 
 
@@ -768,9 +773,9 @@ def check_make_folder(pathname):
   if not os.path.exists(pathname):
     try:
       os.makedirs(pathname)
-      rospy.loginfo("Made folder: " + pathname)
+      rospy.loginfo("NEPI_ROS: Made folder: " + pathname)
     except rospy.ServiceException as e:
-      rospy.loginfo("Failed to make folder: " + pathname + " with exeption" + str(e))
+      rospy.loginfo("NEPI_ROS: Failed to make folder: " + pathname + " with exeption" + str(e))
   return os.path.exists(pathname)
 
 def copy_files_from_folder(src_path,dest_path):
@@ -794,30 +799,30 @@ def copy_files_from_folder(src_path,dest_path):
               shutil.copyfile(srcFile, destFile)
             # If source and destination are same
             except shutil.SameFileError:
-                rospy.loginfo("Source and destination represents the same file: " + destFile)
+                rospy.loginfo("NEPI_ROS: Source and destination represents the same file: " + destFile)
             
             # If destination is a directory.
             except IsADirectoryError:
-                rospy.loginfo("Destination is a directory: " + destFile)
+                rospy.loginfo("NEPI_ROS: Destination is a directory: " + destFile)
             
             # If there is any permission issue
             except PermissionError:
-                rospy.loginfo("Permission denied for file copy: " + destFile)
+                rospy.loginfo("NEPI_ROS: Permission denied for file copy: " + destFile)
             
             # For other errors
             except:
-                rospy.loginfo("Error occurred while copying file: " + destFile)
+                rospy.loginfo("NEPI_ROS: Error occurred while copying file: " + destFile)
             if not os.path.exists(destFile):
               files_not_copied.append(file)
               success = False
             else: 
               files_copied.append(file)
-              #rospy.loginfo("Copied file: " + file)
+              #rospy.loginfo("NEPI_ROS: Copied file: " + file)
     else:
-      rospy.loginfo("Did not find and can't make destination folder: " + dest_path)
+      rospy.loginfo("NEPI_ROS: Did not find and can't make destination folder: " + dest_path)
       success = False
   else:
-    rospy.loginfo("Did not find source folder: " + src_path)
+    rospy.loginfo("NEPI_ROS: Did not find source folder: " + src_path)
     success = False
   return success, files_copied, files_not_copied
 

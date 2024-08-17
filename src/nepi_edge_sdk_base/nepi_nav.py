@@ -32,11 +32,11 @@ if os.path.exists(GEOID_DATABASE_FILE):
   try:
     import pygeodesy
     GEOID_DATABASE_FILE=GEOID_DATABASE_FILE
-    rospy.loginfo(['Loading Geoids Database from: ' + GEOID_DATABASE_FILE])
+    rospy.loginfo("NEPI_NAV: Loading Geoids Database from: " + GEOID_DATABASE_FILE)
     ginterpolator = pygeodesy.GeoidKarney(GEOID_DATABASE_FILE)
     file_loaded = True
   except rospy.ServiceException as e:
-    rospy.loginfo("Geoids database failed to import: %s"%e)
+    rospy.loginfo("NEPI_NAV: Geoids database failed to import: %s"%e)
 if file_loaded is False:
   def ginterpolator(single_position):
     return FALLBACK_GEOID_HEIGHT_M
@@ -59,7 +59,7 @@ def get_navpose_response():
     get_navpose_service = rospy.ServiceProxy(self.NAVPOSE_SERVICE_NAME, NavPoseQuery)
     navpose_response = get_navpose_service(NavPoseQueryRequest())
   except rospy.ServiceException as e:
-    rospy.loginfo("Service call failed: %s"%e)
+    rospy.loginfo("NEPI_NAV: Service call failed: %s"%e)
     time.sleep(1)
     rospy.signal_shutdown("Service call failed")
   return navpose_response
@@ -258,15 +258,15 @@ def get_geopoint_at_body_point(cur_geopoint_geo, cur_bearing_enu_deg, point_body
   m_per_long = m_per_lat * math.cos(math.radians(cur_lat)) 
   delta_long = delta_y_ned_m / m_per_long
   new_long = cur_long + delta_long
-  rospy.loginfo(point_body_m)
-  rospy.loginfo(cur_bearing_ned_deg)
-  rospy.loginfo(point_bearing_ned_deg)
-  rospy.loginfo(delta_x_ned_m)
-  rospy.loginfo(delta_y_ned_m)
-  rospy.loginfo(cur_geopoint_geo.latitude)
-  rospy.loginfo(new_lat)
-  rospy.loginfo(cur_geopoint_geo.longitude)
-  rospy.loginfo(new_long)
+  #rospy.loginfo(point_body_m)
+  #rospy.loginfo(cur_bearing_ned_deg)
+  #rospy.loginfo(point_bearing_ned_deg)
+  #rospy.loginfo(delta_x_ned_m)
+  #rospy.loginfo(delta_y_ned_m)
+  #rospy.loginfo(cur_geopoint_geo.latitude)
+  #rospy.loginfo(new_lat)
+  #rospy.loginfo(cur_geopoint_geo.longitude)
+  #rospy.loginfo(new_long)
 
 
   # Return New Geo Position
@@ -295,13 +295,13 @@ def get_geopoint_at_enu_point(cur_geopoint_geo, point_enu_m):
   m_per_long = m_per_lat * math.cos(math.radians(cur_lat)) 
   delta_long = delta_y_ned_m / m_per_long
   new_long = cur_long + delta_long
-  rospy.loginfo(point_enu_m)
-  rospy.loginfo(delta_x_ned_m)
-  rospy.loginfo(delta_y_ned_m)
-  rospy.loginfo(cur_geopoint_geo.latitude)
-  rospy.loginfo(new_lat)
-  rospy.loginfo(cur_geopoint_geo.longitude)
-  rospy.loginfo(new_long)
+  #rospy.loginfo(point_enu_m)
+  #rospy.loginfo(delta_x_ned_m)
+  #rospy.loginfo(delta_y_ned_m)
+  #rospy.loginfo(cur_geopoint_geo.latitude)
+  #rospy.loginfo(new_lat)
+  #rospy.loginfo(cur_geopoint_geo.longitude)
+  #rospy.loginfo(new_long)
 
 
   # Return New Geo Position
@@ -329,9 +329,9 @@ def distance_geopoints(geopoint1,geopoint2):
   xy_m=c*r*1000
   alt_m = abs(geopoint1[2]-geopoint2[2])
   distance_m = math.sqrt(alt_m**2 + xy_m**2)
-  #rospy.loginfo("Moving : " + "%.2f" % (xy_m) + " meters in xy plane")
-  #rospy.loginfo("Moving : " + "%.2f" % (alt_m) + " meters in z axis")
-  #rospy.loginfo("Moving : " + "%.2f" % (distance_m) + " total meters")
+  #rospy.loginfo("NEPI_NAV: Moving : " + "%.2f" % (xy_m) + " meters in xy plane")
+  #rospy.loginfo("NEPI_NAV: Moving : " + "%.2f" % (alt_m) + " meters in z axis")
+  #rospy.loginfo("NEPI_NAV: Moving : " + "%.2f" % (distance_m) + " total meters")
  
   # calculate the result
   return(distance_m)
