@@ -32,7 +32,7 @@ from datetime import datetime
 from std_msgs.msg import Empty, Float32
 from std_srvs.srv import Empty, EmptyRequest, Trigger
 from nepi_ros_interfaces.srv import GetScriptsQuery,GetRunningScriptsQuery ,LaunchScript, StopScript
-from nepi_ros_interfaces.msg import  SettingUpdate
+from nepi_ros_interfaces.msg import  Setting
 
 
 #######################
@@ -463,7 +463,7 @@ def create_msg_data_from_settings(settings):
   return str(msg_data)
 
 def create_update_msg_from_setting(setting):
-  update_msg = SettingUpdate()
+  update_msg = Setting()
   update_msg.type_str = setting[0]
   update_msg.name_str = setting[1]
   update_msg.value_str = setting[2]
