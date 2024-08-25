@@ -47,8 +47,13 @@ class NEPIAutolauncher:
     self.launchedPathDevices = []
     self.active_path_list = []
 
-    self.resetFromParamServer() # Set up parameters
 
+
+
+
+
+    self.resetFromParamServer() # Set up parameters
+    
     self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.updateParamServer, paramsModifiedCallback=self.resetFromParamServer)
 
     rospy.Timer(rospy.Duration(self.DEVICE_CHECK_INTERVAL_S), self.detectAndManageDevices)
