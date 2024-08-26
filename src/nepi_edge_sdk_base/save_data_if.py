@@ -130,7 +130,8 @@ class SaveDataIF(object):
         if (data_product == save_all):
             for d in data_rate_dict:
                 # Respect the max save rate
-                data_rate_dict[d][0] = save_rate_hz if save_rate_hz <= data_rate_dict[d][2] else data_rate_dict[d][2]
+                if data_rate_dict[d][0] > 0:
+                    data_rate_dict[d][0] = save_rate_hz if save_rate_hz <= data_rate_dict[d][2] else data_rate_dict[d][2]
         elif (data_product in data_rate_dict):
             data_rate_dict[data_product][0] = save_rate_hz if save_rate_hz <= data_rate_dict[data_product][2] else data_rate_dict[data_product][2]
         else:
@@ -270,7 +271,7 @@ class SaveDataIF(object):
 
 
 
-    def __init__(self, data_product_names=None):
+    def __init__(self, data_product_names=None,factory_data_rate_dict = None):
         NEPI_BASE_NAMESPACE = nepi_ros.get_base_namespace()
         if data_product_names != None:
             data_products_str = str(data_product_names)
@@ -305,14 +306,17 @@ class SaveDataIF(object):
             self.DATA_UID = stat_info.st_uid
             self.DATA_GID = stat_info.st_gid
 
-            self.factory_data_rate_dict= {}
+
+            if factory_data_rate_dict is None:
+                self.factory_data_rate_dict= {}
+                for d in data_product_names:
+                    self.factory_data_rate_dict[d] = [0.0, 0.0, 100.0] # Default to 0Hz save rate, set last save = 0.0, max rate = 100.0Hz
+            else:
+                self.factory_data_rate_dict = factory_data_rate_dict
             for d in data_product_names:
-                self.factory_data_rate_dict[d] = [0.0, 0.0, 100.0] # Default to 1Hz save rate, set last save = 0.0, max rate = 100.0Hz
                 self.snapshot_dict[d] = False
-            
             self.init_data_rate_dict = rospy.get_param('~data_rate_dict',self.factory_data_rate_dict)
             rospy.set_param('~data_rate_dict',self.init_data_rate_dict)
-            
 
 
             self.save_continuous = rospy.get_param('~save_data_continuous', False)
