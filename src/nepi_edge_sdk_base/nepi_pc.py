@@ -391,7 +391,8 @@ def translate_pc( o3d_pc, translation_vector):
         Returns:
         o3d_pc (o3d.geometry.PointCloud) Translated Open3D PointCloud
     '''
-
+    for i in range(3):
+        translation_vector[i] = -1 * translation_vector[i]
     points = np.asarray(o3d_pc.points)
     translated_points = points + translation_vector
     o3d_pc.points = o3d.utility.Vector3dVector(translated_points)
