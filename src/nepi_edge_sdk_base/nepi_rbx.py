@@ -29,7 +29,7 @@ from geographic_msgs.msg import GeoPoint, GeoPose, GeoPoseStamped
 from mavros_msgs.msg import State, AttitudeTarget
 from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest, CommandTOL, CommandHome
 from nepi_ros_interfaces.msg import RBXInfo, RBXStatus, AxisControls, RBXErrorBounds, RBXGotoErrors, \
-    RBXGotoPose, RBXGotoPosition, RBXGotoLocation, SettingUpdate
+    RBXGotoPose, RBXGotoPosition, RBXGotoLocation, Setting
 from nepi_ros_interfaces.srv import NavPoseQuery, NavPoseQueryRequest, RBXCapabilitiesQuery, \
      RBXCapabilitiesQueryResponse, NavPoseCapabilitiesQuery, NavPoseCapabilitiesQueryResponse
 
@@ -132,7 +132,7 @@ def rbx_initialize(self, rbx_namespace):
  # NEPI RBX Driver Control Topics
   NEPI_RBX_SETTINGS_UPDATE_TOPIC = NEPI_ROBOT_NAMESPACE + "update_setting" # Int to Defined Dictionary RBX_STATES
   rospy.loginfo("NEPI_RBX: Setting robot setting update topic to: " + NEPI_RBX_SETTINGS_UPDATE_TOPIC)
-  self.rbx_setting_update_pub = rospy.Publisher(NEPI_RBX_SETTINGS_UPDATE_TOPIC, SettingUpdate, queue_size=1)
+  self.rbx_setting_update_pub = rospy.Publisher(NEPI_RBX_SETTINGS_UPDATE_TOPIC, Setting, queue_size=1)
 
   # NEPI RBX Driver Control Topics
   NEPI_RBX_SET_STATE_TOPIC = NEPI_RBX_NAMESPACE + "set_state" # Int to Defined Dictionary RBX_STATES

@@ -1,0 +1,146 @@
+<launch>
+  <arg name="global_ns" value="$(env ROOTNAME)" />
+  <arg name="device_ns" value="$(env ROOTNAME)/$(env DEVICE_ID)" />
+  <arg name="output_destination" value="screen" />
+  <arg name="config_file_root" value="/opt/nepi/ros/etc" />
+  <arg name="partition_layout_file" default="s2x_xavier_nx_nepi_partition_layout.yaml" />
+  <arg name="nepi_edge_sdk_link_libpath" value="/opt/nepi/nepi_link/nepi_edge_sdk_link/lib" />
+
+  <!-- Args. to run or not run specific nodes -->
+  <arg name="run_robot_state_publisher" default="false" />
+  <arg name="run_web_utils" default="true" />
+  <arg name="run_ai_detector_mgr" default="true" />
+  <arg name="run_ai_targeting_app" default="true" />
+  <arg name="run_nepi_link" default="true" />
+  <arg name="run_mgr_nav_pose" default="true" />
+  <arg name="run_nav_pose_publisher" default="true" />
+  <arg name="run_gpsd_client" default="true" />
+  <arg name="run_nepi_autolauncher" default="true" />
+  <arg name="run_idx_sensor_mgr" default="true" />
+  <arg name="run_automation_mgr" default="true" />
+  <arg name="run_app_image_sequencer" default="true" />
+  <arg name="run_onvif_mgr" default="true" />
+  <arg name="run_image_sequencer_app" default="true" />
+  <arg name="run_pointcloud_app" default="true" />
+        
+  <!-- Everything lives in the device namespace -->
+  <group ns="$(arg device_ns)">
+    <node name="config_mgr" pkg="nepi_edge_sdk_base" type="config_mgr.py" respawn="true" output="$(arg output_destination)" />
+
+    <rosparam command="load" file="$(arg config_file_root)/system_mgr/system_mgr.yaml" ns="system_mgr" />
+    <!-- Partition layout depends on system type. Should be passed in from specialized launch file -->
+    <rosparam command="load" file="$(arg config_file_root)/system_mgr/$(arg partition_layout_file)" ns="system_mgr" />
+    <node name="system_mgr" pkg="nepi_edge_sdk_base" type="system_mgr.py" respawn="true" output="$(arg output_destination)" />
+
+    <rosparam command="load" file="$(arg config_file_root)/time_sync_mgr/time_sync_mgr.yaml" ns="time_sync_mgr" />
+    <node name="time_sync_mgr" pkg="nepi_edge_sdk_base" type="time_sync_mgr.py" respawn="true" output="$(arg output_destination)" />
+
+    <rosparam command="load" file="$(arg config_file_root)/network_mgr/network_mgr.yaml" ns="network_mgr" />
+    <node name="network_mgr" pkg="nepi_edge_sdk_base" type="network_mgr.py" respawn="true" output="$(arg output_destination)" />
+
+    <rosparam command="load" file="$(arg config_file_root)/trigger_mgr/trigger_mgr.yaml" ns="trigger_mgr" />
+    <node name="trigger_mgr" pkg="nepi_edge_sdk_base" type="trigger_mgr_no_hardware" respawn="true" output="$(arg output_destination)" />
+
+    <node if="$(arg run_robot_state_publisher)" name="nepi_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" required="true" />
+
+    <group if="$(arg run_web_utils)" >
+      <!-- Rosbridge_websocket (for RUI or stand-alone)-->
+      <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" >
+        <arg name="address" value="0.0.0.0"/>
+        <arg name="port" value="9090"/>
+        <!-- Use a long unregister_timeout as a work-around for the well-known unregister rospy bug -->
+        <arg name="unregister_timeout" value="31536000"/>
+      </include>
+
+      <!-- Web Video Server (for RUI or stand-alone) -->
+      <node name="web_video_server" pkg="web_video_server" type="web_video_server" output="$(arg output_destination)">
+        <param name="port" value="9091"/>
+      </node>
+    </group>
+
+    <!-- Sequential Image Mux -->
+    <group if="$(arg run_app_image_sequencer)" >
+      <rosparam command="load" file="$(arg config_file_root)/app_image_sequencer/app_image_sequencer.yaml" ns="app_image_sequencer" />
+      <node name="app_image_sequencer" pkg="nepi_app_image_sequencer" type="sequential_image_mux.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+
+    <!-- NEPI Link (NEPI-Bot via nepi_link_ros_bridge) -->
+    <group if="$(arg run_nepi_link)" >
+      <rosparam command="load" file="$(arg config_file_root)/nepi_link_ros_bridge/nepi_link_ros_bridge.yaml" ns="nepi_link_ros_bridge" />
+      <node name="nepi_link_ros_bridge" pkg="nepi_link_ros_bridge" type="nepi_link_ros_bridge.py" respawn="true" output="$(arg output_destination)" >
+        <!-- To use the nepi_edge_sdk_link components, must update the LD_LIBRARY_PATH and PYTHONPATH as described in that package's README -->
+        <env name="LD_LIBRARY_PATH" value="$(env LD_LIBRARY_PATH):$(arg nepi_edge_sdk_link_libpath)" />
+        <env name="PYTHONPATH" value="$(arg nepi_edge_sdk_link_libpath):$(env PYTHONPATH)" />
+      </node>
+    </group>
+
+    <!-- NEPI Nav/Pose -->
+    <group if="$(arg run_mgr_nav_pose)" >
+      <!-- Nav/Pose Mgr -->
+      <rosparam command="load" file="$(arg config_file_root)/nav_pose_mgr/nav_pose_mgr.yaml" ns="nav_pose_mgr" />
+      <node name="nav_pose_mgr" pkg="nepi_mgr_nav_pose" type="nav_pose_mgr_node" respawn="true" output="$(arg output_destination)" />
+    </group>      
+
+      <!-- GPSD ROS Client -->
+    <group if="$(arg run_gpsd_client)" >
+      <rosparam command="load" file="$(arg config_file_root)/gpsd_ros_client/gpsd_ros_client.yaml" ns="gpsd_ros_client" />
+      <node name="gpsd_ros_client" pkg="nepi_mgr_nav_pose" type="gpsd_ros_client_node" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <group if="$(arg run_nepi_autolauncher)" >
+      <rosparam command="load" file="$(arg config_file_root)/nepi_autolauncher/nepi_autolauncher.yaml" ns="nepi_autolauncher" />
+      <node name="nepi_autolauncher" pkg="nepi_edge_sdk_base" type="nepi_autolauncher.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- IDX Sensor Manager -->
+    <group if="$(arg run_idx_sensor_mgr)" >
+      <rosparam command="load" file="$(arg config_file_root)/idx_sensor_mgr/idx_sensor_mgr.yaml" ns="idx_sensor_mgr" />
+      <node name="idx_sensor_mgr" pkg="nepi_drivers_idx" type="idx_sensor_mgr.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- OVIF Manager (IDX and PTX) -->
+    <group if="$(arg run_onvif_mgr)" >
+      <rosparam command="load" file="$(arg config_file_root)/onvif_mgr/onvif_mgr.yaml" ns="onvif_mgr" />
+      <node name="onvif_mgr" pkg="nepi_mgr_onvif" type="onvif_mgr.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- NEPI AI Detector Mgr -->
+    <group if="$(arg run_ai_detector_mgr)" >
+      <rosparam command="load" file="$(arg config_file_root)/ai_detector_mgr/ai_detector_mgr.yaml" ns="ai_detector_mgr" />
+      <node name="ai_detector_mgr" pkg="nepi_ai_detector_mgr" type="ai_detector_mgr.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- AI Targeting App -->
+    <group if="$(arg run_ai_targeting_app)" >
+      <rosparam command="load" file="$(arg config_file_root)/app_ai_targeting/app_ai_targeting.yaml" ns="app_ai_targeting" />
+      <node name="app_ai_targeting" pkg="nepi_app_ai_targeting" type="ai_targeting_app_node.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- Automation Mgr -->
+    <group if="$(arg run_automation_mgr)" >
+      <rosparam command="load" file="$(arg config_file_root)/automation_mgr/automation_mgr.yaml" ns="automation_mgr" />
+      <node name="automation_mgr" pkg="nepi_automation_mgr" type="automation_manager.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- Pointcloud App -->
+    <group if="$(arg run_pointcloud_app)" >
+      <rosparam command="load" file="$(arg config_file_root)/app_pointcloud/app_pointcloud.yaml" ns="app_pointcloud" />
+      <node name="app_pointcloud" pkg="nepi_app_pointcloud" type="pointcloud_app_node.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- NEPI Nav Pose Publisher -->
+    <group if="$(arg run_nav_pose_publisher)" >
+      <rosparam command="load" file="$(arg config_file_root)/nav_pose_publisher/nav_pose_publisher.yaml" ns="nav_pose_publisher" />
+      <node name="nav_pose_publisher" pkg="nepi_app_navpose_publisher" type="nav_pose_publisher.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+    <!-- NEPI Image Sequencer App -->
+    <group if="$(arg run_image_sequencer_app)" >
+      <rosparam command="load" file="$(arg config_file_root)/app_image_sequencer/app_image_sequencer.yaml" ns="sequential_image_mux" />
+      <node name="sequential_image_mux" pkg="nepi_app_image_sequencer" type="sequential_image_mux.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+
+  </group>
+
+</launch>
