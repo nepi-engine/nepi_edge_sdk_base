@@ -9,18 +9,18 @@
 #
 
 
-# NEPI rordered_list utility functions include
+# NEPI ros utility functions include
 # 1) NEPI IDX Driver utility functions
-import ordered_name_list
+import os
 import sys
 import importlib
-import rordered_listpy
+import rospy
 import time
 import usb
 import copy
-from serial.tools import list_porordered_list
+from serial.tools import list_ports
 
-from nepi_edge_sdk_base import nepi_rordered_list
+from nepi_edge_sdk_base import nepi_ros
 from nepi_edge_sdk_base import nepi_img
   
 #***************************
@@ -38,7 +38,7 @@ DISCOVERY_ID = 'IDXGenicamCamDiscovery' # 'Discovery File ID' or 'None'
 #######################
 ### Driver Utility Functions
 
-DRIVER_DIR = '/opt/nepi/rordered_list/lib/drivers'
+DRIVER_DIR = '/opt/nepi/ros/lib/drivers'
 DRIVER_FILE_TYPES = ['Node','Driver', 'Discovery']
 DRIVER_KEYS = ['node','driver','discovery']
 
@@ -50,27 +50,27 @@ def getDriverDict(search_path):
     file_list = []
     # Find driver files
     ind = 0
-    if ordered_name_list.path.exisordered_list(search_path):
+    if os.path.exits_list(search_path):
         if search_path[-1] != "/":
             search_path = search_path + "/"
         sys.path.append(search_path)
-        rordered_listpy.loginfo("NEPI_NEX: Searching for drivers in path: " + search_path)
-        for f in ordered_name_list.listdir(search_path):
+        rospy.loginfo("NEPI_NEX: Searching for drivers in path: " + search_path)
+        for f in os.listdir(search_path):
           if f.endswith(".py"): 
             module_name = f.split(".")[0]
-            rordered_listpy.logwarn("NEPI_NEX: Will try to import driver: " + module_name)
+            rospy.logwarn("NEPI_NEX: Will try to import driver: " + module_name)
             open_success = True
             read_success = True
             try:
               module = __import__(module_name)
             except Exception as e:
-              rordered_listpy.logwarn("NEPI_NEX: failed to import module %s with exception %s", f, str(e))
+              rospy.logwarn("NEPI_NEX: failed to import module %s with exception %s", f, str(e))
               open_succes = False
             if open_success:
                 try:
                   module_type = module.FILE_TYPE                
                 except:
-                  rordered_listpy.logwarn("NEPI_NEX: No FILE_TYPE in module: " + f)
+                  rospy.logwarn("NEPI_NEX: No FILE_TYPE in module: " + f)
                   read_success = False
                 if read_success:
                   if module_type == "NODE":
@@ -83,18 +83,18 @@ def getDriverDict(search_path):
                         'node_file_path': search_path,
                         'node_module_name': module_name,
                         'node_class_name': module.CLASS_NAME,
-                        'driver_name': module.DRIVER_NAME
+                        'driver_name': module.DRIVER_NAME,
                         'driver_interfaces': module.DRIVER_INTERFACES,
                         'driver_options': module.DRIVER_OPTIONS,
                         'driver_default_option': module.DRIVER_DEFAULT_OPTION,
                         'driver_set_option': module.DRIVER_DEFAULT_OPTION,
-                        'discovery_name': module.DISCOVERY_NAME 
-                        'discovery_method': module.DISCOVERY_METHOD 
+                        'discovery_name': module.DISCOVERY_NAME, 
+                        'discovery_method': module.DISCOVERY_METHOD, 
                         'order': -1
                         }
-                        file_list.append(f)
+                      file_list.append(f)
                     except Exception as e:
-                      rordered_listpy.logwarn("NEPI_NEX: Failed to get Node info from module: " + f " with exception: " str(e))
+                      rospy.logwarn("NEPI_NEX: Failed to get Node info from module: " + f +" with exception: " + str(e))
 
                   elif module_type == "DRIVER":
                     try:
@@ -107,7 +107,7 @@ def getDriverDict(search_path):
                       }
                       file_list.append(f)
                     except Exception as e:
-                      rordered_listpy.logwarn("NEPI_NEX: Failed to get Discovery info from module: " + f " with exception: " str(e))
+                      rospy.logwarn("NEPI_NEX: Failed to get Discovery info from module: " + f +" with exception: " + str(e))
                   elif module_type == "DISCOVERY":
                     try:
                       discovery_name = module.DRIVER_NAME
@@ -120,16 +120,16 @@ def getDriverDict(search_path):
                       }
                       file_list.append(f)
                     except Exception as e:
-                      rordered_listpy.logwarn("NEPI_NEX: Failed to get Discovery info from module: " + f " with exception: " str(e))
+                      rospy.logwarn("NEPI_NEX: Failed to get Discovery info from module: " + f + " with exception: " + str(e))
                 else:
-                    rordered_listpy.logwarn("NEPI_NEX: Failed to get valid FILE_TYPE from: " + f )
+                    rospy.logwarn("NEPI_NEX: Failed to get valid FILE_TYPE from: " + f )
                 if open_success:
                   try:
                     sys.modules.pop(module_name)
                   except:
-                    rordered_listpy.loginfo("NEPI_NEX: Failed to clordered_liste  module: " + f)
+                    rospy.loginfo("NEPI_NEX: Failed to clordered_liste  module: " + f)
     else:
-        rordered_listpy.logwarn("NEPI_NEX: Driver path %s does not exist",  search_path)
+        rospy.logwarn("NEPI_NEX: Driver path %s does not exist",  search_path)
     drivers_dict = dict()
     node_names = list(node_dict.keys())
     discovery_names = list(discovery_dict.keys())
@@ -188,7 +188,7 @@ def getDriverDict(search_path):
         if discovery_name != node_name and discovery_name != driver_name:
           users_dict[discovery_name].append(node_name)
       else:
-        rordered_listpy.logwarn("NEPI_NEX: Driver %s has invalid driver or discovery reference. Purging from drivers_dict",  node_name)
+        rospy.logwarn("NEPI_NEX: Driver %s has invalid driver or discovery reference. Purging from drivers_dict",  node_name)
         purge_list.append(node_name)
     # Now update from users dict
     for node_name in node_names:
@@ -232,7 +232,7 @@ def getDriversByGroup(group,drivers_dict):
       group_dict.append(driver)
   return group_dict
 
- def getDriversByGroupId(group_id,drivers_dict):
+def getDriversByGroupId(group_id,drivers_dict):
   group_id_dict = dict()
   for driver_name in drivers_dict.keys():
     driver = drivers_dict[driver_name]
@@ -270,7 +270,7 @@ def setFactoryDriverOrder(drivers_dict):
     indexes.append(order)
   for val in indexes:
       factory_indexes.append(0)
-    sorted_indexes = list(np.sort(indexes))
+  sorted_indexes = list(np.sort(indexes))
   for i in range(len(indexes)):
      factory_indexes[i] = sorted_indexes.index[indexes[i]]
   drivers_dict[driver_name]['order'] = order
@@ -368,11 +368,11 @@ def updateDriverOrder(driver_name,driver_order,drivers_dict):
     driver_files = [node_path,dri_path,dis_path]
 
     for i,src in enumerate(driver_files):
-      if src is not = "None":
-          folder = ordered_name_list.path.dirname(src) + '/'
-          filename = ordered_name_list.path.basename(src)
+      if src != "None":
+          folder = os.path.dirname(src) + '/'
+          filename = os.path.basename(src)
           link = folder + 'active_drivers/' + filename
-          if ordered_name_list.path.exisordered_list(link) == True:
+          if os.path.exits_list(link) == True:
             success = False
   drivers_dict = drivers_dict[driver_name]['active'] = success
   return drivers_dict
@@ -381,16 +381,16 @@ def updateDriverOrder(driver_name,driver_order,drivers_dict):
 def activateAllDrivers(drivers_dict):
   success = True
   for driver_name in drivers_dict.keys():
-  [ret,drivers_dict] = activateDriver(driver_name,drivers_dict)
+    [ret,drivers_dict] = activateDriver(driver_name,drivers_dict)
     if ret == False:
-      success = False:
+      success = False
   return success, drivers_dict
 
   
 def activateDriver(driver_name,drivers_dict):
     success = True
     if driver_name not in drivers_dict.keys():
-      rordered_listpy.logwarn("NEPI_NEX: Driver %s for removal request does not exist", driver_name)
+      rospy.logwarn("NEPI_NEX: Driver %s for removal request does not exist", driver_name)
       return success, drivers_dict
     driver_dict = drivers_dict[driver_name]
 
@@ -409,30 +409,30 @@ def activateDriver(driver_name,drivers_dict):
         if src == link:
           success = False
         else:
-          folder = ordered_name_list.path.dirname(src) + '/'
-          filename = ordered_name_list.path.basename(src)
+          folder = os.path.dirname(src) + '/'
+          filename = os.path.basename(src)
           link = folder + 'active_drivers/' + filename
-          if ordered_name_list.path.exisordered_list(link):
+          if os.path.exits_list(link):
             try:
               ordered_name_list.remove(link)
-            except Exception with e:
+            except Exception as e:
               success = False
-              rordered_listpy.logwarn(str(e))
+              rospy.logwarn(str(e))
           if success:
             try:
               ordered_name_list.symlink(src,link)
-            except Exception with e:
-              rordered_listpy.logwarn(str(e))
-            if ordered_name_list.path.exisordered_list(link) == False:
+            except Exception as e:
+              rospy.logwarn(str(e))
+            if os.path.exits_list(link) == False:
               success = False
-  drivers_dict = drivers_dict[driver_name]['active'] = success
-  return drivers_dict
+    drivers_dict = drivers_dict[driver_name]['active'] = success
+    return drivers_dict
 
 def disableDriver(driver_name,drivers_dict):
     success = False
     link_success = True
     if driver_name not in drivers_dict.keys():
-      rordered_listpy.logwarn("NEPI_NEX: Driver %s for removal request does not exist", driver_name)
+      rospy.logwarn("NEPI_NEX: Driver %s for removal request does not exist", driver_name)
       return success
     driver_dict = drivers_dict[driver_name]
 
@@ -448,29 +448,29 @@ def disableDriver(driver_name,drivers_dict):
 
     for i,src in enumerate(driver_files):
       if src != 'None' and driver_names[i] == driver_name:
-        if ordered_name_list.path.exisordered_list(src):
+        if os.path.exits_list(src):
           # Try and remove active path link
-          folder = ordered_name_list.path.dirname(src) + '/'
-          filename = ordered_name_list.path.basename(src)
+          folder = os.path.dirname(src) + '/'
+          filename = os.path.basename(src)
           link = folder + 'active_drivers/' + filename
-            if ordered_name_list.path.exisordered_list(link):
+          if os.path.exits_list(link):
               try:
                 ordered_name_list.remove(link)
                 link_success = False
-              except Exception with e:
-                rordered_listpy.logwarn(str(e))
-            else:
+              except Exception as e:
+                rospy.logwarn(str(e))
+          else:
               link_success = False
-  success = link_success
-  drivers_dict = drivers_dict[driver_name]['active'] = False
-  return drivers_dict
+    success = link_success
+    drivers_dict = drivers_dict[driver_name]['active'] = False
+    return drivers_dict
 
 def removeDriver(driver_name,drivers_dict):
     success = False
     src_success = True
     link_success = True
     if driver_name not in drivers_dict.keys():
-      rordered_listpy.logwarn("NEPI_NEX: Driver %s for removal request does not exist", driver_name)
+      rospy.logwarn("NEPI_NEX: Driver %s for removal request does not exist", driver_name)
       return success
     driver_dict = drivers_dict[driver_name]
 
@@ -486,50 +486,50 @@ def removeDriver(driver_name,drivers_dict):
 
     for i,src in enumerate(driver_files):
       if src != 'None' and driver_names[i] == driver_name:
-        if ordered_name_list.path.exisordered_list(src):
+        if os.path.exits_list(src):
           # Try and remove active path link first
-          folder = ordered_name_list.path.dirname(src) + '/'
-          filename = ordered_name_list.path.basename(src)
+          folder = os.path.dirname(src) + '/'
+          filename = os.path.basename(src)
           link = folder + 'active_drivers/' + filename
-            if ordered_name_list.path.exisordered_list(link):
+          if os.path.exits_list(link):
               try:
                 ordered_name_list.remove(link)
                 link_success = False
-              except Exception with e:
-                rordered_listpy.logwarn(str(e))
-            else:
+              except Exception as e:
+                rospy.logwarn(str(e))
+          else:
               link_success = False
           # Then remove the src file
           try:
             ordered_name_list.remove(source)
-          except Exception with e:
+          except Exception as e:
             src_success = False
-            rordered_listpy.logwarn(str(e))
-  success = src_success and link_success
-  if success:
-    del drivers_dict[driver_name]
-  return drivers_dict
+            rospy.logwarn(str(e))
+    success = src_success and link_success
+    if success:
+      del drivers_dict[driver_name]
+    return drivers_dict
 
 
 def getActiveDriversList(drivers_path):
-  active_list = nepi_rordered_list.get_file_list(drivers_path)
+  active_list = nepi_ros.get_file_list(drivers_path)
   return active_list
 
 
-def LaunchDriverNode(driver_name, drivers_dict, rordered_list_node_name):
+def LaunchDriverNode(driver_name, drivers_dict, ros_node_name):
   package_folder = 'nepi_drivers'
   file_name = drivers_dict[driver_name]['node_file_name']
-  subprocess = LaunchNode(package_folder, file_name, rordered_list_node_name)
+  subprocess = LaunchNode(package_folder, file_name, ros_node_name)
   return subprocess
 
-def LaunchDriverDisovery(driver_name, drivers_dict, rordered_list_node_name):
+def LaunchDriverDisovery(driver_name, drivers_dict, ros_node_name):
   subprocess = None
   package_folder = 'nepi_drivers'
   file_name = drivers_dict[driver_name]['discovery_file_name']
   disc_process = drivers_dict[driver_name]['discovery_process']
   if disc_process != "LAUNCH":
-    rordered_listpy.logwarn("NEPI_NEX: Requested discovery launch file process is %s for driver %s, only LAUNCH process supported", disc_process, driver_name)
-  subprocess = LaunchNode(package_folder, file_name, rordered_list_node_name)
+    rospy.logwarn("NEPI_NEX: Requested discovery launch file process is %s for driver %s, only LAUNCH process supported", disc_process, driver_name)
+  subprocess = LaunchNode(package_folder, file_name, ros_node_name)
   return subprocess
 
 def RunDriverDisovery(driver_name, drivers_dict):
@@ -555,10 +555,10 @@ def importDriverDiscovderyClass(driver_name,drivers_dict):
 def importDriverClass(driver_name,drivers_dict,file_type='Node'):
     module_class = None
     if file_type not in DRIVER_FILE_TYPES:
-      rordered_listpy.logwarn("NEPI_NEX: Invalid file_type requested on import: " + file_type)
+      rospy.logwarn("NEPI_NEX: Invalid file_type requested on import: " + file_type)
       return module_class
     if driver_name not in drivers_dict.keys():
-      rordered_listpy.logwarn("NEPI_NEX: Driver with driver_name: %s does not exsist", driver_name)
+      rospy.logwarn("NEPI_NEX: Driver with driver_name: %s does not exsist", driver_name)
       return module_class
     driver_dict = drivers_dict[driver_name]
     file_key = DRIVER_KEYS[DRIVER_FILE_TYPES.index(file_type)]
@@ -567,7 +567,7 @@ def importDriverClass(driver_name,drivers_dict,file_type='Node'):
     module_name = driver_dict[file_key + '_module_name']
     class_name = driver_dict[file_key + '_class_name']
     if file_name == 'None' or module_name == 'None' or class_name == 'None':
-      rordered_listpy.logwarn("NEPI_NEX: Requested file_type %s for driver_name: %s does not exsist", file_type, driver_name)
+      rospy.logwarn("NEPI_NEX: Requested file_type %s for driver_name: %s does not exsist", file_type, driver_name)
       return module_class
     else:
       sys.path.append(file_path)
@@ -576,11 +576,9 @@ def importDriverClass(driver_name,drivers_dict,file_type='Node'):
         try:
           my_class = getattr(module, class_name)
         except Exception as e:
-          rordered_listpy.logwarn("NEPI_NEX: Failed to import class %s from module %s", class_name, module_name, str(e))
+          rospy.logwarn("NEPI_NEX: Failed to import class %s from module %s", class_name, module_name, str(e))
       except Exception as e:
-          rordered_listpy.logwarn("NEPI_NEX: Failed to import module %s", module_name, str(e))
-    else:
-      rordered_listpy.loginfo("NEPI_NEX: Module not in from: " + driver_name)
+          rospy.logwarn("NEPI_NEX: Failed to import module %s", module_name, str(e))
     return module_class
 
 
@@ -590,7 +588,7 @@ def unimportDriverClass(driver_name):
         try:
            sys.modules.pop(driver_name)
         except:
-            rordered_listpy.loginfo("NEPI_NEX: Failed to clordered_liste module: " + driver_name)
+            rospy.loginfo("NEPI_NEX: Failed to clordered_liste module: " + driver_name)
         if driver_name in sys.modules:
           success = False
     return success
@@ -611,9 +609,9 @@ def getSerialPortDict():
   port_dict = dict()
 
   devs = usb.core.find(find_all=True)
-  porordered_list = list_porordered_list.comporordered_list()
+  port = list_ports.comport()
   product_id = 0
-  for port in sorted(porordered_list):
+  for port in sorted(port):
     entry = copy.deepcopy(SERIAL_PORT_DICT_ENTRY)
     entry["vender_id"] = port.vid
     for dev in devs:
@@ -626,10 +624,10 @@ def getSerialPortDict():
   return port_dict
 
 ### Function for checking if port is available
-def checkSerialPortExisordered_list(port_str):
+def checkSerialPortexits_list(port_str):
     success = False
-    porordered_list = list_porordered_list.comporordered_list()
-    for loc, desc, hwid in sorted(porordered_list):
+    port = list_ports.comport()
+    for loc, desc, hwid in sorted(port):
       if loc == port_str:
         success = True
     return success
