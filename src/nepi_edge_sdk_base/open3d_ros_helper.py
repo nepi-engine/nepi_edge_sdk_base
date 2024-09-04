@@ -32,7 +32,7 @@ import cv2
 from sensor_msgs.msg import PointCloud2, PointField
 from geometry_msgs.msg import Pose, PoseStamped, Transform, TransformStamped
 import numpy as np
-import numpy.matlib as npm
+#import numpy.matlib as npm
 
 
 
@@ -237,7 +237,8 @@ def average_q(qs):
     """
     # Number of quaternions to average
     M = qs.shape[0]
-    A = npm.zeros(shape=(4,4))
+    A = pm.zeros(shape=(4,4))
+    #A = npm.zeros(shape=(4,4))
     for i in range(0,M):
         q = qs[i,:]
         # multiply q with its transposed version q' and add A

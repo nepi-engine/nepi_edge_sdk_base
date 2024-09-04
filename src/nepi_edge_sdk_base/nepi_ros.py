@@ -99,7 +99,6 @@ def delDriver(driver_name):
 
 # Function to get list of active topics
 def get_node_list():
-  node = ""
   node_list=rosnode.get_node_names()
   return node_list
 

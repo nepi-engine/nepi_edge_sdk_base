@@ -46,6 +46,7 @@ class SystemMgrNode():
 
     storage_uid = 1000 # default to nepi
     storage_gid = 130 # default to "sambashare" # TODO This is very fragile
+
     REQD_STORAGE_SUBDIRS = ["ai_models", 
                             "automation_scripts", 
                             "data", 
@@ -55,8 +56,12 @@ class SystemMgrNode():
                             "logs/automation_script_logs", 
                             "nepi_full_img", 
                             "nepi_full_img_archive", 
-                            "nepi_src", 
-                            "user_cfg"]
+                            "nepi_src",
+                            "nepi_src/drivers" 
+                            "user_cfg",
+                            "sample_data"]
+    
+    DRIVERS_PATH = '/opt/nepi/ros/lib/drivers'
 
     # disk_usage_deque = deque(maxlen=10)
     # Shorter period for more responsive updates
@@ -210,7 +215,11 @@ class SystemMgrNode():
     def provide_system_data_folder(self, req):
         if req.type not in self.storage_subdirs:
             return None
-        
+        return SystemStorageFolderQueryResponse(self.storage_subdirs[req.type])
+
+    def provide_driver_folder(self, req):
+        if req.type not in self.storage_subdirs:
+            return None
         return SystemStorageFolderQueryResponse(self.storage_subdirs[req.type])
 
     def publish_periodic_status(self, event):
@@ -266,6 +275,21 @@ class SystemMgrNode():
             #os.chown(full_path_subdir, self.storage_uid, self.storage_gid)
             os.system('chmod -R 0775 ' + full_path_subdir)
             self.storage_subdirs[subdir] = full_path_subdir
+        # Do the same for the Drivers Folder
+        if not os.path.isdir(self.DRIVERS_PATH):
+                rospy.logwarn("Driver folder " + self.DRIVERS_PATH + " not present... will create")
+                os.makedirs(self.DRIVERS_PATH)
+        os.system('chown -R ' + str(self.storage_uid) + ':' + str(self.storage_gid) + ' ' + self.DRIVERS_PATH) # Use os.system instead of os.chown to have a recursive option
+        os.system('chmod -R 0775 ' + self.DRIVERS_PATH)
+        self.storage_subdirs['drivers'] = self.DRIVERS_PATH
+        # Do the same for the Drivers Active Folder
+        self.DRIVERS_PATH_ACTIVE = self.DRIVERS_PATH + '/active_drivers'
+        if not os.path.isdir(self.DRIVERS_PATH_ACTIVE):
+                rospy.logwarn("Driver folder " + self.DRIVERS_PATH_ACTIVE + " not present... will create")
+                os.makedirs(self.DRIVERS_PATH_ACTIVE)
+        os.system('chown -R ' + str(self.storage_uid) + ':' + str(self.storage_gid) + ' ' + self.DRIVERS_PATH_ACTIVE) # Use os.system instead of os.chown to have a recursive option
+        os.system('chmod -R 0775 ' + self.DRIVERS_PATH)
+        self.storage_subdirs['active_drivers'] = self.DRIVERS_PATH_ACTIVE
 
         return True
 

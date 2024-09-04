@@ -16,8 +16,10 @@ from nepi_ros_interfaces.srv import *
 Basic interface for the global and private save_config topics.
 '''
 class SaveCfgIF(object):
-    def saveConfig(self, msg):
-    	
+    def saveConfigCb(self, msg):
+    	self.saveConfig()
+    
+    def saveConfig(self):
         if (self.updateParams):
             self.updateParams() # Callback provided by the container class to set values to param server, etc.
         if self.namespace != None:
@@ -25,7 +27,7 @@ class SaveCfgIF(object):
         else:
             self.store_params_publisher.publish(rospy.get_name()) # Need the fully-qualified namespace name here
 
-    def resetConfig(self, msg):
+    def resetConfigCb(self, msg):
         reset_proxy = None
         if (msg.reset_type == Reset.USER_RESET):
             reset_proxy = rospy.ServiceProxy('user_reset', FileReset)
@@ -63,8 +65,8 @@ class SaveCfgIF(object):
             reset_topic = '~reset_config'   
 
         
-        rospy.Subscriber(save_topic, Empty, self.saveConfig)
-        rospy.Subscriber(reset_topic, Reset, self.resetConfig)
+        rospy.Subscriber(save_topic, Empty, self.saveConfigCb)
+        rospy.Subscriber(reset_topic, Reset, self.resetConfigCb)
         
-        rospy.Subscriber('save_config', Empty, self.saveConfig)
-        rospy.Subscriber('reset_config', Reset, self.resetConfig)
+        rospy.Subscriber('save_config', Empty, self.saveConfigCb)
+        rospy.Subscriber('reset_config', Reset, self.resetConfigCb)
