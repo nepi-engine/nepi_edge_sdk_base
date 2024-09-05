@@ -218,7 +218,7 @@ def get_contours(cv2_image):
       contrours3 : OpenCV contours list
       hierarchy3 : 
   """
-  cv2_image.setflags(write=1)
+  #cv2_image.setflags(write=1)
   cv2_mat_gray = cv2.cvtColor(cv2_image, cv2.COLOR_BGR2GRAY)
   ret, thresh2 = cv2.threshold(cv2_mat_gray, 150, 255, cv2.THRESH_BINARY)
   contours3, hierarchy3 = cv2.findContours(thresh2, cv2.RETR_LIST, 
@@ -229,7 +229,7 @@ def get_contours(cv2_image):
 ### Image overlay functions
 
 def overlay_contours(cv2_image,contours3, color_rgb = (0, 255, 0)):
-  cv2.drawContours(cv2_image, contours3, -1, colors_rgb, 2, cv2.LINE_AA)
+  #cv2.drawContours(cv2_image, contours3, -1, color_rgb, 2, cv2.LINE_AA)
   return cv2_image
   
 def overlay_text(cv2_image, text, x_px = 10 , y_px = 10, color_rgb = (0, 255, 0), scale = 0.5,thickness = 1):
