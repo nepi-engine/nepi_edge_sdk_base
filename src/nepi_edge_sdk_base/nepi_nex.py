@@ -97,9 +97,9 @@ def getDriversDict(search_path):
                         'discovery_method': module.DISCOVERY_METHOD, 
                         'discovery_ids': module.DISCOVERY_IDS,
                         'discovery_ignore_ids': module.DISCOVERY_IGNORE_IDS,
-                        'device_path': ""
+                        'device_path': "",
                         'order': -1,
-                        'active': False
+                        'active': False,
                         'msg': ""
                         }
                       file_list.append(f)
@@ -688,13 +688,13 @@ def LaunchNode(file_name, file_path, ros_node_name, device_path = None):
   success = False
   device_node_run_cmd = ['rosrun', file_path, file_name, '__name:=' + ros_node_name, '_device_path:=' + device_path]
   try:
-    subprocess = p = subprocess.Popen(device_node_run_cmd)
+    subprocess = subprocess.Popen(device_node_run_cmd)
     success = True
   except Exception as e:
     msg = "Failed to launch node %s with exception: $s", ros_node_name, str(e)
     rospy.logwarn("NEPI_NEX: " + msg)
   if success: 
-    if p.poll() not None:
+    if subprocess.poll() is not None:
       msg = ("Failed to start " + device_node_name + " via " + " ".join(x for x in device_node_run_cmd) + " (rc =" + str(p.returncode) + ")")
       rospy.logerr(msg)
       subprocess = None
@@ -719,7 +719,7 @@ def importDriverClass(file_name,file_path,module_name,class_name):
             rospy.logwarn("NEPI_NEX: Failed to import module %s with exception: %s", module_name, str(e))
       else:
         rospy.logwarn("NEPI_NEX: Failed to find file %s in path %s for module %s", file_name, file_path, module_name)
-    return success, msg, module_class
+      return success, msg, module_class
 
 
 def unimportDriverClass(module_name):

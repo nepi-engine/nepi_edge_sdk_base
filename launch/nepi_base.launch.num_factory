@@ -19,7 +19,7 @@
   <arg name="run_idx_sensor_mgr" default="true" />
   <arg name="run_automation_mgr" default="true" />
   <arg name="run_app_image_sequencer" default="true" />
-  <arg name="run_onvif_mgr" default="true" />
+  <arg name="run_onvif_mgr" default="false" />
   <arg name="run_image_sequencer_app" default="true" />
   <arg name="run_pointcloud_app" default="true" />
         
