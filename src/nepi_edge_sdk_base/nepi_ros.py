@@ -36,66 +36,8 @@ from nepi_ros_interfaces.msg import  Setting
 
 
 #######################
-### Driver Utility Functions
-
-def getDriverDict(driver_type, driver_search_key, search_paths): # Type example "idx","ptx"...
-    driver_dict = dict()
-    # Find driver files
-    ind = 0
-    file_list = []
-    for search_path in search_paths:
-        if os.path.exists(search_path):
-            if search_path[-1] != "/":
-                searc_path = search_path + "/"
-            sys.path.append(search_path)
-            rospy.loginfo("NEPI_ROS: Searching for drivers in path: " + search_path)
-            for f in os.listdir(search_path):
-                if f.find(driver_type) != -1:
-                    if f.find(driver_search_key) != -1:
-                      rospy.loginfo("NEPI_ROS: found driver: " + f)
-                      ind = ind + 1
-                      file_list.append(f)
-            # Build Dictionary from driver files
-            for f in file_list:
-                driver_name = f.split(".")[0]
-                rospy.loginfo("NEPI_ROS: Will try to improt driver: " + driver_name)
-                try:
-                    driver = __import__(driver_name)
-                    try:
-                    	driver_dict[driver.DRIVER_ID] = driver_name
-                    	sys.modules.pop(driver_name)
-                    except:
-                    	rospy.loginfo("NEPI_ROS: No DRIVER_ID found in driver file: " + f)
-                except Exception as e:
-                    rospy.loginfo("NEPI_ROS: Driver %s failed to import found in driver file with exception %s", f, str(e))
-                
-        else:
-            rospy.loginfo("NEPI_ROS: Driver path %s does not exist",  search_path)
-    for id in driver_dict.keys():
-      rospy.loginfo("NEPI_ROS: Returning driver dict with Driver %s and ID %s",  driver_name, id)
-    return driver_dict
-
-def importDriver(driver_name):
-    try:
-        driver = __import__(driver_name)
-        return driver
-    except:
-        rospy.loginfo("NEPI_ROS: Failed to import driver: " + driver_name)
-        return None
-      
-
-def delDriver(driver_name):
-    if driver is not None:
-        try:
-           sys.modules.pop(driver_name)
-        except:
-            rospy.loginfo("NEPI_ROS: Failed to delete driver: " + driver)
-
-
-
-
-#######################
 ### Node Utility Functions
+
 
 # Function to get list of active topics
 def get_node_list():
@@ -702,6 +644,34 @@ def sort_settings_alphabetically(settings):
 
 #########################
 ### Misc Helper Functions
+
+def printMsg(node_name, msg_pub, msg, level = None, line_num = None):
+  line_str = ''
+  if line_num is not None:
+    line_str = 'line: ' + str(line_num) + ': ' 
+  node_str = node_name
+  if node_name.find('/') != -1:
+    node_str = node_name.split('/')[-1]
+  msg_str = (node_str + ": " + line_str + str(msg))
+  if level == 'Debug':
+    rospy.logdebug(msg_str)
+  elif level == 'Warn':
+    rospy.logwarn(msg_str)
+  elif level == 'Error':
+    rospy.logerr(msg_str)
+  elif level == 'Fatal':
+    rospy.logfatal(msg_str)
+  else:
+    rospy.loginfo(msg_str)
+  return msg_str
+
+# ln = sys._getframe().f_lineno     
+def publishMsg(node_name, msg_pub, msg, level_in = None, line_num_in = None):
+  msg_str = printMsg(node_name, msg_pub, msg, level = level_in, line_num = line_num_in)
+  if msg_pub != None:
+    if msg_pub.get_num_connections() > 0 and not rospy.is_shutdown():
+      msg_pub.publish(msg_str)
+
 
 def parse_string_list_msg_data(msg_data):
   str_list = []
