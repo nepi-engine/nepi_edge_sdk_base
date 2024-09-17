@@ -57,11 +57,11 @@ class SystemMgrNode():
                             "nepi_full_img", 
                             "nepi_full_img_archive", 
                             "nepi_src",
-                            "nepi_src/drivers" 
+                            "nepi_src/nepi_drivers", 
                             "user_cfg",
                             "sample_data"]
     
-    DRIVERS_PATH = '/opt/nepi/ros/lib/drivers'
+    DRIVERS_PATH = '/opt/nepi/ros/lib/nepi_drivers'
 
     # disk_usage_deque = deque(maxlen=10)
     # Shorter period for more responsive updates
@@ -213,14 +213,15 @@ class SystemMgrNode():
         return resp
     
     def provide_system_data_folder(self, req):
+        response = SystemStorageFolderQueryResponse()
         if req.type not in self.storage_subdirs:
-            return None
-        return SystemStorageFolderQueryResponse(self.storage_subdirs[req.type])
+            response.folder_path = None
+        else:
+            response.folder_path = self.storage_subdirs[req.type]
+        return response
 
     def provide_driver_folder(self, req):
-        if req.type not in self.storage_subdirs:
-            return None
-        return SystemStorageFolderQueryResponse(self.storage_subdirs[req.type])
+        return self.DRIVERS_PATH
 
     def publish_periodic_status(self, event):
         self.status_msg.sys_time = event.current_real
@@ -282,15 +283,6 @@ class SystemMgrNode():
         os.system('chown -R ' + str(self.storage_uid) + ':' + str(self.storage_gid) + ' ' + self.DRIVERS_PATH) # Use os.system instead of os.chown to have a recursive option
         os.system('chmod -R 0775 ' + self.DRIVERS_PATH)
         self.storage_subdirs['drivers'] = self.DRIVERS_PATH
-        # Do the same for the Drivers Active Folder
-        self.DRIVERS_PATH_ACTIVE = self.DRIVERS_PATH + '/active_drivers'
-        if not os.path.isdir(self.DRIVERS_PATH_ACTIVE):
-                rospy.logwarn("Driver folder " + self.DRIVERS_PATH_ACTIVE + " not present... will create")
-                os.makedirs(self.DRIVERS_PATH_ACTIVE)
-        os.system('chown -R ' + str(self.storage_uid) + ':' + str(self.storage_gid) + ' ' + self.DRIVERS_PATH_ACTIVE) # Use os.system instead of os.chown to have a recursive option
-        os.system('chmod -R 0775 ' + self.DRIVERS_PATH)
-        self.storage_subdirs['active_drivers'] = self.DRIVERS_PATH_ACTIVE
-
         return True
 
     def clear_data_folder(self, msg):

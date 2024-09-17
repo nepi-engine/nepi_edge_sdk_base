@@ -55,7 +55,7 @@ SYS_CFGS_TO_PRESERVE = {
 def symlink_force(target, link_name):
     link_dirname = os.path.dirname(link_name)
     if not os.path.exists(link_dirname):
-        rospy.logwarn("Skipping symlink for " + link_name + " because path does not exist... missing factory config?")
+        rospy.logwarn("CFG_MGR: Skipping symlink for " + link_name + " because path does not exist... missing factory config?")
         return False
     try:
         os.symlink(target, link_name)
@@ -95,9 +95,9 @@ def get_cfg_pathname(qualified_node_name):
     	subfolder_name = "/drivers/"
     elif nepi_ros.find_topic(qualified_node_name + "/npx").find("npx") != -1:
     	subfolder_name = "/drivers/"
-    rospy.loginfo(node_name)
+    #rospy.loginfo(node_name)
     cfg_pathname = CFG_PATH + subfolder_name + node_name  + '/' + node_name + CFG_SUFFIX
-    rospy.loginfo(cfg_pathname)
+    #rospy.loginfo(cfg_pathname)
     return cfg_pathname
 
 def get_user_cfg_pathname(qualified_node_name):
@@ -160,7 +160,7 @@ def restore_user_cfgs(msg):
                 user_cfg_name = os.path.join(USER_CFG_PATH, 'ros', name + USER_SUFFIX)
                 if os.path.exists(user_cfg_name): # Restrict to those with present user configs
                     link_name = os.path.join(root, name.replace(FACTORY_SUFFIX, ''))
-                    rospy.loginfo("Updating " + link_name + " to user config")
+                    rospy.loginfo("CFG_MGR: Updating " + link_name + " to user config")
                     symlink_force(user_cfg_name, link_name)
 
     # Now handle non-ROS user system configs.        
@@ -170,7 +170,7 @@ def restore_user_cfgs(msg):
             if os.path.isdir(full_name):
                 full_name = os.path.join(full_name,'*') # Wildcard avoids copying source folder into target folder as a subdirectory
             target = SYS_CFGS_TO_PRESERVE[name]
-            rospy.loginfo("Updating " + target + " from user config")
+            rospy.loginfo("CFG_MGR: Updating " + target + " from user config")
             os.system('cp -rf ' + full_name + ' ' + target)
             os.system('chown -R nepi:nepi ' + target)
 

@@ -18,6 +18,8 @@ import getpass
 import importlib
 import subprocess
 import rospy
+import rosnode
+import warnings
 import numpy as np
 import time
 import usb
@@ -42,7 +44,7 @@ DISCOVERY_ID = 'IDXGenicamCamDiscovery' # 'Discovery File ID' or 'None'
 #######################
 ### Driver Utility Functions
 
-DRIVER_DIR = '/opt/nepi/ros/lib/drivers'
+DRIVER_DIR = '/opt/nepi/ros/lib/nepi_drivers'
 DRIVER_FILE_TYPES = ['Node','Driver', 'Discovery']
 DRIVER_KEYS = ['node','driver','discovery']
 
@@ -51,20 +53,21 @@ def getDriversDict(search_path):
     node_dict = dict()
     discovery_dict = dict()
     driver_dict = dict()
-    file_list = []
+
     # Find driver files
     ind = 0
     if os.path.exists(search_path):
         if search_path[-1] == "/":
             search_path = search_path[:-1]
         sys.path.append(search_path)
-        rospy.loginfo("NEPI_NEX: Searching for drivers in path: " + search_path)
+        #rospy.loginfo("NEPI_NEX: Searching for drivers in path: " + search_path)
         for f in os.listdir(search_path):
           if f.endswith(".py"): 
             module_name = f.split(".")[0]
             #rospy.loginfo("NEPI_NEX: Will try to import module: " + module_name)
             open_success = True
             read_success = True
+            warnings.filterwarnings('ignore', '.*unclosed.*', )
             try:
               module = __import__(module_name)
             except Exception as e:
@@ -82,27 +85,31 @@ def getDriversDict(search_path):
                     try:
                       node_name = module.PKG_NAME
                       node_dict[node_name] = {
+                        'description': module.DESCRIPTION,
                         'group': module.GROUP,
                         'group_id': module.GROUP_ID,
                         'node_file_name': f,
                         'node_file_path': search_path,
                         'node_module_name': module_name,
                         'node_class_name': module.CLASS_NAME,
-                        'driver_name': module.DRIVER_NAME,
+                        'driver_name': module.DRIVER_PKG_NAME,
                         'driver_interfaces': module.DRIVER_INTERFACES,
-                        'driver_options': module.DRIVER_OPTIONS,
-                        'driver_default_option': module.DRIVER_DEFAULT_OPTION,
-                        'driver_set_option': module.DRIVER_DEFAULT_OPTION,
-                        'discovery_name': module.DISCOVERY_NAME, 
+                        'driver_options_1_name': module.DRIVER_OPTIONS_1_NAME,
+                        'driver_options_1': module.DRIVER_OPTIONS_1,
+                        'driver_default_option_1': module.DRIVER_DEFAULT_OPTION_1,
+                        'driver_set_option_1': module.DRIVER_DEFAULT_OPTION_1,
+                        'driver_options_2_name': module.DRIVER_OPTIONS_2_NAME,
+                        'driver_options_2': module.DRIVER_OPTIONS_2,
+                        'driver_default_option_2': module.DRIVER_DEFAULT_OPTION_2,
+                        'driver_set_option_2': module.DRIVER_DEFAULT_OPTION_2,
+                        'discovery_name': module.DISCOVERY_PKG_NAME, 
                         'discovery_method': module.DISCOVERY_METHOD, 
                         'discovery_ids': module.DISCOVERY_IDS,
                         'discovery_ignore_ids': module.DISCOVERY_IGNORE_IDS,
-                        'device_path': "",
                         'order': -1,
                         'active': False,
                         'msg': ""
                         }
-                      file_list.append(f)
                     except Exception as e:
                       rospy.logwarn("NEPI_NEX: Failed to get Node info from module: " + f +" with exception: " + str(e))
 
@@ -115,7 +122,6 @@ def getDriversDict(search_path):
                         'module_name': module_name,
                         'class_name': module.CLASS_NAME,
                       }
-                      file_list.append(f)
                     except Exception as e:
                       rospy.logwarn("NEPI_NEX: Failed to get Discovery info from module: " + f +" with exception: " + str(e))
                   elif module_type == "DISCOVERY":
@@ -128,14 +134,16 @@ def getDriversDict(search_path):
                         'class_name': module.CLASS_NAME,
                         'process': module.PROCESS
                       }
-                      file_list.append(f)
                     except Exception as e:
                       rospy.logwarn("NEPI_NEX: Failed to get Discovery info from module: " + f + " with exception: " + str(e))
                 else:
                     rospy.logwarn("NEPI_NEX: Failed to get valid FILE_TYPE from: " + f )
                 if open_success:
                   try:
-                    sys.modules.pop(module_name)
+                    #sys.modules.pop(module)
+                    if module_name in sys.modules:
+                      del sys.modules[module_name]
+                    del module
                   except:
                     rospy.loginfo("NEPI_NEX: Failed to remove module: " + f)
     else:
@@ -144,55 +152,59 @@ def getDriversDict(search_path):
     node_names = list(node_dict.keys())
     driver_names = list(driver_dict.keys())
     discovery_names = list(discovery_dict.keys())
+    #rospy.logwarn("NEPI_NEX: node_names: " + str(node_names))
+    #rospy.logwarn("NEPI_NEX: driver_names: " + str(driver_names))
+    #rospy.logwarn("NEPI_NEX: discovery_names: " + str(discovery_names))
     users_dict = dict()
     for node_name in node_names:
       users_dict[node_name] = []
     for node_name in node_names:
-      #rospy.logwarn("NNNNNNOOOOODDDDEEE")
-      #rospy.logwarn("NEPI_NEX:node name " + node_name)
       driver_name = node_dict[node_name]['driver_name']
       discovery_name = node_dict[node_name]['discovery_name']
       valid_driver = (driver_name == 'None' or driver_name in driver_names)
-      valid_discovery = (discovery_name == 'None' or discovery_name in discovery_names)
+      valid_discovery = (discovery_name == 'None' or discovery_name in discovery_names)      
+      #rospy.logwarn("***********************")
+      #rospy.logwarn("NEPI_NEX:node name " + node_name)
       #rospy.logwarn("NEPI_NEX: driver name: " +driver_name)
       #rospy.logwarn("NEPI_NEX: valid driver: " + str(valid_driver))
       #rospy.logwarn("NEPI_NEX: discovery name " + discovery_name)
       #rospy.logwarn("NEPI_NEX: valid discovery " + str(valid_discovery))
-      if valid_driver and valid_discovery: 
-        nex_database[node_name] = node_dict[node_name]
-        # Update driver and discovery info
-        if (driver_name != 'None'):
-          nex_database[node_name]['driver_file_name'] = driver_dict[driver_name]['file_name']
-          nex_database[node_name]['driver_file_path'] = driver_dict[driver_name]['file_path']
-          nex_database[node_name]['driver_module_name'] = driver_dict[driver_name]['module_name']
-          nex_database[node_name]['driver_class_name'] = driver_dict[driver_name]['class_name']
+      if valid_driver:
+        if valid_discovery: 
+          nex_database[node_name] = node_dict[node_name]
+          # Update driver and discovery info
+          if (driver_name != 'None'):
+            nex_database[node_name]['driver_file_name'] = driver_dict[driver_name]['file_name']
+            nex_database[node_name]['driver_file_path'] = driver_dict[driver_name]['file_path']
+            nex_database[node_name]['driver_module_name'] = driver_dict[driver_name]['module_name']
+            nex_database[node_name]['driver_class_name'] = driver_dict[driver_name]['class_name']
+          else:
+            nex_database[node_name]['driver_file_name'] = "None"
+            nex_database[node_name]['driver_file_path'] = "None"
+            nex_database[node_name]['driver_module_name'] = "None"
+            nex_database[node_name]['driver_class_name'] = "None"
+          # Update discovery info
+          if (discovery_name != 'None'):
+            nex_database[node_name]['discovery_file_name'] = discovery_dict[discovery_name]['file_name']
+            nex_database[node_name]['discovery_file_path'] = discovery_dict[discovery_name]['file_path']
+            nex_database[node_name]['discovery_module_name'] = discovery_dict[discovery_name]['module_name']
+            nex_database[node_name]['discovery_class_name'] = discovery_dict[discovery_name]['class_name']
+            nex_database[node_name]['discovery_process'] = discovery_dict[discovery_name]['process']
+          else:
+            nex_database[node_name]['discovery_file_name'] = "None"
+            nex_database[node_name]['discovery_file_path'] = "None"
+            nex_database[node_name]['discovery_module_name'] = "None"
+            nex_database[node_name]['discovery_class_name'] = "None"
+            nex_database[node_name]['discovery_process'] = "None"
+          # Add dependancy on other drivers to users dict
+          if driver_name != 'None' and driver_name != node_name:
+            users_dict[driver_name].append(node_name)
+          if discovery_name != "None" and discovery_name != driver_name and discovery_name != node_name:
+            users_dict[discovery_name].append(node_name)
         else:
-          nex_database[node_name]['driver_file_name'] = "None"
-          nex_database[node_name]['driver_file_path'] = "None"
-          nex_database[node_name]['driver_module_name'] = "None"
-          nex_database[node_name]['driver_class_name'] = "None"
-        # Update discovery info
-        if (discovery_name != 'None'):
-          nex_database[node_name]['discovery_file_name'] = discovery_dict[discovery_name]['file_name']
-          nex_database[node_name]['discovery_file_path'] = discovery_dict[discovery_name]['file_path']
-          nex_database[node_name]['discovery_module_name'] = discovery_dict[discovery_name]['module_name']
-          nex_database[node_name]['discovery_class_name'] = discovery_dict[discovery_name]['class_name']
-          nex_database[node_name]['discovery_process'] = discovery_dict[discovery_name]['process']
-        else:
-          nex_database[node_name]['discovery_file_name'] = "None"
-          nex_database[node_name]['discovery_file_path'] = "None"
-          nex_database[node_name]['discovery_module_name'] = "None"
-          nex_database[node_name]['discovery_class_name'] = "None"
-          nex_database[node_name]['discovery_process'] = "None"
-        # Add dependancy on other drivers to users dict
-        if driver_name != 'None' and driver_name != node_name:
-          users_dict[driver_name].append(node_name)
-        if discovery_name != "None" and discovery_name != driver_name and discovery_name != node_name:
-          users_dict[discovery_name].append(node_name)
+          rospy.logwarn("NEPI_NEX: Driver Node %s has invalid discovery info in header",  node_name)
       else:
-        rospy.logwarn("NEPI_NEX: Driver %s has invalid info in header. Purging from nex_database",  node_name)
-    # Update Active State Status
-    nex_database = updateDriverActiveValues(nex_database)
+        rospy.logwarn("NEPI_NEX: Driver Node %s has invalid driver info in header",  node_name)
     # Now update from users dict
     for nex_name in nex_database.keys():
       for key in users_dict.keys():
@@ -204,9 +216,9 @@ def getDriversDict(search_path):
 
 
 # ln = sys._getframe().f_lineno ; self.printND(nex_database,ln)
-def printDict(nex_database, line_num = None):
+def printDict(nex_database):
   rospy.logwarn('NEPI_NEX: ')
-  rospy.logwarn('NEPI_NEX:*******************',level,line_num)
+  rospy.logwarn('NEPI_NEX:*******************')
   if line_num is not None:
     rospy.logwarn('NEPI_NEX: ' + str(line_num))
   rospy.logwarn('NEPI_NEX: Printing Nex Driver Dictionary')
@@ -223,38 +235,28 @@ def updateDriversDict(drivers_path,nex_database):
   if drivers_path[-1] == "/":
       search_path = drivers_path[:-1]
   get_nex_database = getDriversDict(drivers_path)
-  active_drivers_list = getActiveDriversList(drivers_path)
   purge_list = []
   for nex_name in nex_database.keys():
     if nex_name not in get_nex_database.keys():
       purge_list.append(nex_name)
-    else:
-      nex_dict = nex_database[nex_name]
-      get_nex_dict = get_nex_database[nex_name]
+  for nex_name in purge_list:
+    del nex_database[nex_name]
 
-      # Update active drivers
-      desired_active_state = nex_dict['active']
-      current_active_state = get_nex_dict['active']
-      if desired_active_state != current_active_state:
-        if desired_active_state == True:
-          [success,nex_database] = activateDriver(nex_name,nex_database)
-        else:
-          [success,nex_database] = disableDriver(nex_name,nex_database)
   for nex_name in get_nex_database.keys():
     if nex_name not in nex_database.keys():
       nex_database[nex_name] = get_nex_database[nex_name]
-      # set nex order to last
+      nex_database[nex_name]['active'] = True
       nex_database = moveDriverBottom(nex_name,nex_database)
   return nex_database
 
 
 def getDriversByActive(nex_database):
-  group_dict = dict()
+  active_dict = dict()
   for nex_name in nex_database.keys():
     nex_dict = nex_database[nex_name]
     driver_active = nex_dict['active']
     if driver_active == True:
-      group_dict.append(nex_dict)
+      active_dict[nex_name] = nex_dict
   return active_dict
 
 
@@ -264,7 +266,7 @@ def getDriversByGroup(group,nex_database):
     nex_dict = nex_database[nex_name]
     driver_group = nex_dict['group']
     if driver_group == group:
-      group_dict.append(nex_dict)
+      group_dict[nex_name] = nex_dict
   return group_dict
 
 def getDriversByGroupId(group_id,nex_database):
@@ -273,7 +275,7 @@ def getDriversByGroupId(group_id,nex_database):
     nex_dict = nex_database[nex_name]
     driver_group_id = nex_dict['group_id']
     if driver_group_id == group_id:
-      group_id_dict.append(nex_dict)
+      group_id_dict[nex_name] = nex_dict
   return group_id_dict
 
 
@@ -410,15 +412,6 @@ def getDriverFilesList(drivers_path):
     drivers_list.append(f.split(".")[0])
   return drivers_list
   
-def getDriverActiveFilesList(active_path):
-  active_list = []
-  if active_path != '':
-    if os.path.exists(active_path):
-      [file_list, num_files] = nepi_ros.get_file_list(active_path,"py")
-  for f in file_list:
-    active_list.append(f.split(".")[0])
-  return active_list
-
 def getDriverPackagesList(install_path):
   pkg_list = []
   if install_path != '':
@@ -430,172 +423,41 @@ def getDriverPackagesList(install_path):
 
 
  
-def updateDriverActiveValues(nex_database):
-  active = True
-  for nex_name in nex_database.keys():
-    nex_dict = nex_database[nex_name]
-
-    node_name = nex_name
-    driver_name = nex_dict['driver_name']
-    discovery_name = nex_dict['discovery_name']
-    driver_names = [node_name,driver_name,discovery_name]
-
-    node_file = nex_dict['node_file_name']
-    driv_file = nex_dict['driver_file_name']
-    disc_file = nex_dict['discovery_file_name']
-
-    node_path = nex_dict['node_file_path']
-    driv_path = nex_dict['driver_file_path']
-    disc_path = nex_dict['discovery_file_path']
-
-    driver_files = [node_path + "/" + node_path,driv_path + "/" + driv_path,disc_path + "/" + disc_path]
-    active_files = [node_path + "/active_drivers/" + node_path,driv_path + "/active_drivers/" + driv_path,disc_path + "/active_drivers/" + disc_path]
-    for i,driver_file in enumerate(driver_files):
-      if driver_file != "None":
-          active_file = active_files[i]
-          if os.path.exists(active_file) != True:
-            active = False
-  nex_database[nex_name]['active'] = active
-  return nex_database
-
-
 def activateAllDrivers(nex_database):
   success = True
   for nex_name in nex_database.keys():
-    [ret,nex_database] = activateDriver(nex_name,nex_database)
-    if ret == False:
-      success = False
-  return success, nex_database
+    nex_database = activateDriver(nex_name,nex_database)
+  return nex_database
 
 def activateDriver(nex_name,nex_database):
-    success = True
     if nex_name not in nex_database.keys():
       rospy.logwarn("NEPI_NEX: Driver %s for removal request does not exist", nex_name)
-      return False, nex_database
-    nex_dict = nex_database[nex_name]
-
-    node_name = nex_name
-    driver_name = nex_dict['driver_name']
-    discovery_name = nex_dict['discovery_name']
-    driver_names = [node_name,driver_name,discovery_name]
-
-    node_file = nex_dict['node_file_name']
-    driv_file = nex_dict['driver_file_name']
-    disc_file = nex_dict['discovery_file_name']
-
-    node_path = nex_dict['node_file_path']
-    driv_path = nex_dict['driver_file_path']
-    disc_path = nex_dict['discovery_file_path']
-
-    driver_files = [node_file, driv_file, disc_file]
-    driver_paths = [node_path, driv_path, disc_path]
-   
-    os_user = getpass.getuser()
-    for i,driver_file in enumerate(driver_files):
-      path = driver_paths[i]
-      file = driver_files[i]
-      filepath = path + "/" + file
-      active_file = file
-      active_path = path + "/active_drivers"
-      active_filepath = active_path + "/" + file
-      if file != 'None':
-        if os.path.exists(filepath) == False:
-          success = False
-        if success:
-          os.system('chown -R ' + os_user + ':' + os_user + ' ' + path)
-          if os.path.exists(active_path) == False:
-              try:
-                os.makedir(active_path)
-              except Exception as e:
-                rospy.loginfo(str(e))
-                success = False  
-          if success:
-            os.system('chown -R ' + os_user + ':' + os_user + ' ' + active_path)
-            if os.path.exists(active_filepath):
-              try:
-                os.remove(active_filepath)
-              except Exception as e:
-                success = False
-                rospy.logwarn(str(e))
-            if success:
-              try:
-                os.symlink(filepath,active_filepath)
-              except Exception as e:
-                rospy.logwarn(str(e))
-              if os.path.exists(active_filepath) == False:
-                success = False
-          if success:
-            os.system('chown -R ' + os_user + ':' + os_user + ' ' + active_filepath)
-    nex_database[nex_name]['active'] = success
-    return success, nex_database
+      return nex_database
+    nex_database[nex_name]['active'] = True
+    return nex_database
 
 def disableDriver(nex_name,nex_database):
-    success = True
     if nex_name not in nex_database.keys():
       rospy.logwarn("NEPI_NEX: Driver %s for removal request does not exist", nex_name)
-      return False, nex_database
-    nex_dict = nex_database[nex_name]
-
-    node_name = nex_name
-    driver_name = nex_dict['driver_name']
-    discovery_name = nex_dict['discovery_name']
-    driver_names = [node_name,driver_name,discovery_name]
-
-    node_file = nex_dict['node_file_name']
-    driv_file = nex_dict['driver_file_name']
-    disc_file = nex_dict['discovery_file_name']
-
-    node_path = nex_dict['node_file_path']
-    driv_path = nex_dict['driver_file_path']
-    disc_path = nex_dict['discovery_file_path']
-
-    driver_files = [node_file, driv_file, disc_file]
-    driver_paths = [node_path, driv_path, disc_path]
-   
-    os_user = getpass.getuser()
-    for i,driver_file in enumerate(driver_files):
-      path = driver_paths[i]
-      file = driver_files[i]
-      filepath = path + "/" + file
-      active_file = active_files[i]
-      active_path = path + "/active_drivers"
-      active_filepath = active_path + "/" + file
-
-      os.system('chown -R ' + os_user + ':' + os_user + ' ' + actuve_path)
-
-      if file != 'None' and driver_names[i] == nex_name:
-        if os.path.exists(filepath):
-          # Try and remove active path active_file
-          if os.path.exists(active_filepath):
-              try:
-                os.remove(active_filepath)
-              except Exception as e:
-                rospy.logwarn(str(e))
-                success = False
-        nex_database = nex_database[nex_name]['active'] = (success == False)
-    return success, nex_database
+      return nex_database
+    nex_database[nex_name]['active'] = False
+    return nex_database
 
 def installDriverPkg(pkg_name,nex_database,install_from_path,install_to_path):
     success = True
     if os.path.exists(install_from_path) == False:
       rospy.logwarn("NEPI_NEX: Install package source folder does not exist %s", install_from_folder)
       return False, nex_database
-
-
     if os.path.exists(install_to_path) == False:
       rospy.logwarn("NEPI_NEX: Install package destination folder does not exist %s", install_to_folder)
       return False, nex_database
-
     pkg_list = getDriverPackagesList(install_from_path)
     if pkg_name not in pkg_list:
       rospy.logwarn("NEPI_NEX: Install package for %s not found in install folder %s", pkg_name, install_folder)
       return False, nex_database
-    
     os_user = getpass.getuser()
     os.system('chown -R ' + os_user + ':' + os_user + ' ' + install_from_folder)
     os.system('chown -R ' + os_user + ':' + os_user + ' ' + install_to_folder)
-
-   
     pkg_path = install_from_path + "/" + pkg_name + ".zip"
     driver_path = install_to_path
     pkg = zipfile.ZipFile(pkg_path)
@@ -625,7 +487,7 @@ def installDriverPkg(pkg_name,nex_database,install_from_path,install_to_path):
 
 
 
-def removeDriver(nex_name,nex_database):
+def removeDriver(nex_name,nex_database,backup_path = None):
     success = True
     if nex_name not in nex_database.keys():
       rospy.logwarn("NEPI_NEX: Driver %s for removal request does not exist", nex_name)
@@ -649,70 +511,121 @@ def removeDriver(nex_name,nex_database):
     driver_paths = [node_path, driv_path, disc_path]
 
     os_user = getpass.getuser()
+    driver_file_list = []
     for i,driver_file in enumerate(driver_files):
       if driver_file != 'None' and driver_names[i] == nex_name:
         path = driver_paths[i]
         file = driver_files[i]
         filepath = path + '/' + file
-        active_filepath = path + '/active_divers/' + file
+        driver_file_list.append(filepath)
         if os.path.exists(path) == False:
           success = False
         if success:
           os.system('chown -R ' + os_user + ':' + os_user + ' ' + path)
-          if os.path.exists(active_filepath):
-                try:
-                  os.remove(active_filepath)
-                except Exception as e:
-                  rospy.logwarn(str(e))
-                  success = False
-          if success:
-            # Then remove the driver_file file
-            try:
-              os.remove(filepath)
-            except Exception as e:
-              driver_file_success = False
-              rospy.logwarn(str(e))
+          # Create an install package from driver files
+    if backup_path != None:
+      if os.path.exists(backup_path):
+        os.system('chown -R ' + os_user + ':' + os_user + ' ' + backup_path)
+      else:
+        backup_path = None
+
+    if backup_path != None:
+      zip_file = backup_path + "/" + nex_name + "zip"
+      rospy.loginfo("NEPI_NEX: Backing up removed file to: " + zip_file)
+      try:
+        zip = zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED)
+        for file in driver_file_list:
+          zip.write(file)
+        zip.close()
+      except Exception as e:
+        rospy.logwarn("NEPI_NEX: Failed to backup removed driver: " + str(e))
+    
+
+    for file in driver_file_list:
+      try:
+        os.remove(filepath)
+      except Exception as e:
+        success = False
+        rospy.logwarn("NEPI_NEX: Failed to remove driver file: " + file + " " + str(e))
+
     if success:
       del nex_database[nex_name]
     return nex_database
 
 
-def getActiveDriversList(drivers_path):
-  active_list = nepi_ros.get_file_list(drivers_path)
-  return active_list
 
-
-def LaunchNode(file_name, file_path, ros_node_name, device_path = None):
-  subprocess = None
+def launchDriverNode(file_name, ros_node_name, device_path = None):
+  sub_process = None
   msg = 'Success'
   success = False
-  device_node_run_cmd = ['rosrun', file_path, file_name, '__name:=' + ros_node_name, '_device_path:=' + device_path]
+  if device_path is None:
+    device_node_run_cmd = ['rosrun', 'nepi_drivers', file_name, '__name:=' + ros_node_name]
+  else:
+    device_node_run_cmd = ['rosrun', 'nepi_drivers', file_name, '__name:=' + ros_node_name, '_device_path:=' + device_path]
   try:
-    subprocess = subprocess.Popen(device_node_run_cmd)
+    sub_process = subprocess.Popen(device_node_run_cmd)
     success = True
   except Exception as e:
-    msg = "Failed to launch node %s with exception: $s", ros_node_name, str(e)
+    msg = str("Failed to launch node %s with exception: %s", ros_node_name, str(e))
     rospy.logwarn("NEPI_NEX: " + msg)
   if success: 
-    if subprocess.poll() is not None:
+    if sub_process.poll() is not None:
       msg = ("Failed to start " + device_node_name + " via " + " ".join(x for x in device_node_run_cmd) + " (rc =" + str(p.returncode) + ")")
       rospy.logerr(msg)
-      subprocess = None
+      sub_process = None
       success = False
-  return success, msg, subprocess
+  return success, msg, sub_process
+  
 
-
+def killDriverNode(node_namespace,sub_process):
+    success = True
+    node_name = node_namespace.split("/")[-1]
+    node_namespace_list = nepi_ros.get_node_list()
+    node_list = []
+    for i in range(len(node_namespace_list)):
+      node_list.append(node_namespace_list[i].split("/")[-1])
+    #rospy.logwarn("NEPI_NEX: " + str(node_list))
+    #rospy.logwarn("NEPI_NEX: " + node_name)
+    if node_name in node_list:
+      #rospy.logwarn("NEPI_NEX: " + node_name)
+      [kill_list,fail_list] = rosnode.kill_nodes([node_name])
+      time.sleep(2)    
+      # Next check running processes
+      if sub_process.poll() is None: 
+        sub_process.terminate()
+        terminate_timeout = 3
+        while (terminate_timeout > 0):
+          time.sleep(1)
+          if sub_process.poll() is None:
+            terminate_timeout -= 1
+            success = False
+          else:
+            success = True
+            break
+        if success == False:
+          # Escalate it
+          sub_process.kill()
+          time.sleep(1)
+        if sub_process.poll() is None:
+          success = False
+        else:
+          success = True
+    return success
+        
 
 def importDriverClass(file_name,file_path,module_name,class_name):
+      module_class = None
       success = False
+      msg = "failed"
       file_list = os.listdir(file_path)
       if file_name in file_list:
         sys.path.append(file_path)
         try:
-          module_class = importlib.import_module(module_name)
-          success = True
+          module = importlib.import_module(module_name)
           try:
-            my_class = getattr(module, class_name)
+            module_class = getattr(module, class_name)
+            success = True
+            msg = 'success'
           except Exception as e:
             rospy.logwarn("NEPI_NEX: Failed to import class %s from module %s with exception: %s", class_name, module_name, str(e))
         except Exception as e:
@@ -733,6 +646,7 @@ def unimportDriverClass(module_name):
           success = False
     return success
 
+
 #######################
 ### Serial Port Utility Functions
 
@@ -749,7 +663,7 @@ def getSerialPortDict():
   port_dict = dict()
 
   devs = usb.core.find(find_all=True)
-  port = list_ports.comport()
+  port = list_ports.comports()
   product_id = 0
   for port in sorted(port):
     entry = copy.deepcopy(SERIAL_PORT_DICT_ENTRY)
@@ -766,7 +680,7 @@ def getSerialPortDict():
 ### Function for checking if port is available
 def checkSerialPorts(port_str):
     success = False
-    port = list_ports.comport()
+    port = list_ports.comports()
     for loc, desc, hwid in sorted(port):
       if loc == port_str:
         success = True

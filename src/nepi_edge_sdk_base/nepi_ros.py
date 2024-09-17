@@ -645,14 +645,11 @@ def sort_settings_alphabetically(settings):
 #########################
 ### Misc Helper Functions
 
-def printMsg(node_name, msg_pub, msg, level = None, line_num = None):
-  line_str = ''
-  if line_num is not None:
-    line_str = 'line: ' + str(line_num) + ': ' 
+def printMsg(node_name, msg, level = None):
   node_str = node_name
   if node_name.find('/') != -1:
     node_str = node_name.split('/')[-1]
-  msg_str = (node_str + ": " + line_str + str(msg))
+  msg_str = (node_str + ": " + str(msg))
   if level == 'Debug':
     rospy.logdebug(msg_str)
   elif level == 'Warn':
@@ -664,13 +661,6 @@ def printMsg(node_name, msg_pub, msg, level = None, line_num = None):
   else:
     rospy.loginfo(msg_str)
   return msg_str
-
-# ln = sys._getframe().f_lineno     
-def publishMsg(node_name, msg_pub, msg, level_in = None, line_num_in = None):
-  msg_str = printMsg(node_name, msg_pub, msg, level = level_in, line_num = line_num_in)
-  if msg_pub != None:
-    if msg_pub.get_num_connections() > 0 and not rospy.is_shutdown():
-      msg_pub.publish(msg_str)
 
 
 def parse_string_list_msg_data(msg_data):

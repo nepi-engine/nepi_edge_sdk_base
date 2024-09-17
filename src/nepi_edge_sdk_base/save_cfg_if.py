@@ -19,13 +19,11 @@ class SaveCfgIF(object):
     def saveConfigCb(self, msg):
     	self.saveConfig()
     
-    def saveConfig(self):
-        if (self.updateParams):
+    def saveConfig(self,do_param_updates = True):
+        if (self.updateParams) and do_param_updates:
             self.updateParams() # Callback provided by the container class to set values to param server, etc.
-        if self.namespace != None:
-            self.store_params_publisher.publish(self.namespace)
-        else:
-            self.store_params_publisher.publish(rospy.get_name()) # Need the fully-qualified namespace name here
+        self.store_params_publisher.publish(self.namespace)
+
 
     def resetConfigCb(self, msg):
         reset_proxy = None
@@ -55,12 +53,14 @@ class SaveCfgIF(object):
         self.updateParams = updateParamsCallback
         self.paramsModified = paramsModifiedCallback
         self.store_params_publisher = rospy.Publisher('store_params', String, queue_size=1)
-        self.namespace = namespace
+        
         
         if namespace != None:
+            self.namespace = namespace
             save_topic = namespace + '/save_config'
             reset_topic = namespace + '/reset_config'
         else:
+            self.namespace = rospy.get_name()
             save_topic = '~save_config'
             reset_topic = '~reset_config'   
 
