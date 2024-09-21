@@ -250,6 +250,20 @@ def updateDriversDict(drivers_path,nex_database):
   return nex_database
 
 
+def refreshDriversDict(drivers_path,nex_database):
+  success = True
+  if drivers_path[-1] == "/":
+      search_path = drivers_path[:-1]
+  get_nex_database = getDriversDict(drivers_path)
+  for nex_name in get_nex_database.keys():
+    if nex_name not in nex_database.keys():
+      get_nex_database[nex_name]['driver_set_option_1'] = nex_database[nex_name]['driver_set_option_1']
+      get_nex_database[nex_name]['driver_set_option_2'] = nex_database[nex_name]['driver_set_option_2']
+      get_nex_database[nex_name]['order'] = nex_database[nex_name]['order']
+      get_nex_database[nex_name]['active'] = nex_database[nex_name]['active']
+  return nex_database
+
+
 def getDriversByActive(nex_database):
   active_dict = dict()
   for nex_name in nex_database.keys():

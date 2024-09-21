@@ -50,7 +50,7 @@ def rosimg_to_cv2img(ros_img_msg, encoding = 'passthrough'):
   return cv2_image
     
     
-def cv2img_to_rosimg(cv2_image, encoding='passthrough'):
+def cv2img_to_rosimg(cv2_image, encoding="bgr8"): # "bgr8", "rgb8", or "mono8"
   """ Convert image from OpenCV to ROS
 
   Args: 

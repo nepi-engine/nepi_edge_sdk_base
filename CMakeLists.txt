@@ -24,9 +24,7 @@ set(OpenCV_DIR /usr/share/OpenCV)
 ## are combined into the generic corresponding catkin_<ENV_VARIABLE> stuff, so, for example
 ## we don't need to explicitly link OpenCV_LIBRARIES, instead just link to catkin_LIBRARIES and
 ## get OpenCV for free (same holds for catkin_INCLUDE_DIRS, etc.)
-find_package(
-    catkin
-    REQUIRED
+find_package(catkin REQUIRED
     COMPONENTS
     message_generation
     nepi_ros_interfaces
@@ -92,13 +90,6 @@ add_service_files(
    ProcessCfgUpdates.srv
 )
 
-## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
-
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
      DEPENDENCIES
@@ -138,22 +129,18 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include 
-    #include/drivers/generic_ahrs
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS image_transport nepi_ros_interfaces
-
-#  DEPENDS system_lib
 )
 
 ###########
-## Build ##
+## Build 
 ###########
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
    include
-   #include/drivers/generic_ahrs
    ${catkin_INCLUDE_DIRS}
 )
 
@@ -162,76 +149,18 @@ add_library(${PROJECT_NAME}
    src/sdk_node.cpp
    src/sdk_interface.cpp
    src/sdk_utils.cpp
-   #src/node_3dx.cpp
-   src/trigger_interface.cpp
-   src/net_trigger_interface.cpp
    src/save_data_interface.cpp
-   src/trigger_mgr_base.cpp
    src/drivers/i2c.cpp
    src/drivers/ltc1669_dac.cpp
    src/drivers/vca8617.cpp
    src/drivers/ad9249_adc.cpp
-   #src/drivers/generic_ahrs/ahrs_driver.cpp
-   #src/drivers/generic_ahrs/lord_ahrs_driver.cpp
-   #src/drivers/generic_ahrs/ros_ahrs_driver.cpp
    src/algorithms/approx_moving_avg.cpp
-   src/algorithms/underwater_img_enhancer.cpp
 )
 
-## Lord AHRS ROS Wrapper Node
-#add_executable(lord_ahrs_ros_wrapper
-#  src/lord_ahrs_ros_wrapper)
 
-#add_dependencies(lord_ahrs_ros_wrapper
-#  ${catkin_EXPORTED_TARGETS}
-#  ${PROJECT_NAME})
-
-#target_link_libraries(lord_ahrs_ros_wrapper
-#  ${PROJECT_NAME}
-#  ${catkin_LIBRARIES})
-
-## Trigger Manager (No hardware support) Node
-add_executable(trigger_mgr_no_hardware
-  src/trigger_mgr_no_hardware)
-
-add_dependencies(trigger_mgr_no_hardware
-  ${catkin_EXPORTED_TARGETS}
-  ${PROJECT_NAME})
-
-target_link_libraries(trigger_mgr_no_hardware
-  ${PROJECT_NAME}
-  ${catkin_LIBRARIES})
-
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Declare a C++ executable
-## With catkin_make all packages are built within a single CMake context
-## The recommended prefix ensures that target names across packages don't collide
-#add_executable(<node_name>
-#	<src/<node_name>.cpp
-#)
-
-## Rename C++ executable without prefix
-## The above recommended prefix causes long target names, the following renames the
-## target back to the shorter version for ease of user use
-## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
-
-## Add cmake target dependencies of the executable
-## same as for the library above
-#add_dependencies(<node_name> ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
-
-## Specify libraries to link a library or executable target against
-#target_link_libraries(<node_name>
-#	${catkin_LIBRARIES}
-#	${PROJECT_NAME}
-#)
-
+ 
 #############
-## Install ##
+## Install 
 #############
 
 # all install targets should use catkin DESTINATION variables
@@ -245,15 +174,10 @@ target_link_libraries(trigger_mgr_no_hardware
 # )
 
 catkin_install_python(PROGRAMS
-  scripts/system_mgr.py
-  scripts/config_mgr.py
-  scripts/time_sync_mgr.py
-  scripts/network_mgr.py
   scripts/image_color_converter.py
-  scripts/rui_config_mgr.py
-  scripts/nepi_autolauncher.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
 
 ## Mark executables and/or libraries for installation
 install(TARGETS ${PROJECT_NAME}
@@ -262,30 +186,31 @@ install(TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
-#install(TARGETS lord_ahrs_ros_wrapper
-#  lord_ahrs_ros_wrapper
-#  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+
+## Mark other files for installation (e.g. launch and bag files, etc.)
+#install(FILES
+#  DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #)
 
-install(TARGETS trigger_mgr_no_hardware
-  trigger_mgr_no_hardware
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+
+# Install etc files (startup scripts, factory configs, etc.) to the global (not project) etc destination
+install(DIRECTORY etc/
+  DESTINATION ${CATKIN_GLOBAL_ETC_DESTINATION}
+  USE_SOURCE_PERMISSIONS
 )
 
-## Mark cpp header files for installation - Msgs and Services are under the project name subdir
+## Mark cpp header files for installation - Msgs and Services (generated headers) are under the project name subdir
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
 )
 
 ## Non-generated headers are located directly in include and get copied to the root of include in the install directory
 install(DIRECTORY include/
   DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
 )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
@@ -334,7 +259,7 @@ install(DIRECTORY utilities/
 
 
 #############
-## Testing ##
+## Testing General ##
 #############
 
 ## Add gtest based cpp test target and link libraries
@@ -345,3 +270,6 @@ install(DIRECTORY utilities/
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+
+

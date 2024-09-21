@@ -1,3 +1,0 @@
-
-mux_sequences: {} # Empty by default. Easiest to build new ones via RUI or ROS interface
-    
