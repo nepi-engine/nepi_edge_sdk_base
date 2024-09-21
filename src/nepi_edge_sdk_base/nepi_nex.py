@@ -598,19 +598,19 @@ def killDriverNode(node_namespace,sub_process):
     node_list = []
     for i in range(len(node_namespace_list)):
       node_list.append(node_namespace_list[i].split("/")[-1])
-    #rospy.logwarn("NEPI_NEX: " + str(node_list))
-    #rospy.logwarn("NEPI_NEX: " + node_name)
+    rospy.logwarn("NEPI_NEX: " + str(node_list))
+    rospy.logwarn("NEPI_NEX: " + node_name)
     if node_name in node_list:
-      #rospy.logwarn("NEPI_NEX: " + node_name)
+      rospy.logwarn("NEPI_NEX: Killing node: " + node_name)
       [kill_list,fail_list] = rosnode.kill_nodes([node_name])
       time.sleep(2)    
       # Next check running processes
-      if sub_process.poll() is None: 
+      if sub_process.poll() is not None: 
         sub_process.terminate()
         terminate_timeout = 3
         while (terminate_timeout > 0):
           time.sleep(1)
-          if sub_process.poll() is None:
+          if sub_process.poll() is not None:
             terminate_timeout -= 1
             success = False
           else:
@@ -620,10 +620,14 @@ def killDriverNode(node_namespace,sub_process):
           # Escalate it
           sub_process.kill()
           time.sleep(1)
-        if sub_process.poll() is None:
+        if sub_process.poll() is not None:
           success = False
         else:
           success = True
+    if success:
+      rospy.logwarn("NEPI_NEX: Killed node: " + node_name)
+    else:
+       rospy.logwarn("NEPI_NEX: Failed to kill node: " + node_name)
     return success
         
 
