@@ -431,8 +431,8 @@ def getDriverPackagesList(install_path):
   if install_path != '':
     if os.path.exists(install_path):
       [file_list, num_files] = nepi_ros.get_file_list(install_path,"zip")
-  for f in file_list:
-    pkg_list.append(f.split(".")[0])
+  for pkg in file_list:
+    pkg_list.append(os.path.basename(pkg))
   return pkg_list
 
 
