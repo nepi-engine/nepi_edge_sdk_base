@@ -460,42 +460,49 @@ def disableDriver(nex_name,nex_database):
 def installDriverPkg(pkg_name,nex_database,install_from_path,install_to_path):
     success = True
     if os.path.exists(install_from_path) == False:
-      rospy.logwarn("NEPI_NEX: Install package source folder does not exist %s", install_from_folder)
+      rospy.logwarn("NEPI_NEX: Install package source folder does not exist %s", install_from_path)
       return False, nex_database
     if os.path.exists(install_to_path) == False:
-      rospy.logwarn("NEPI_NEX: Install package destination folder does not exist %s", install_to_folder)
+      rospy.logwarn("NEPI_NEX: Install package destination folder does not exist %s", install_to_path)
       return False, nex_database
     pkg_list = getDriverPackagesList(install_from_path)
     if pkg_name not in pkg_list:
-      rospy.logwarn("NEPI_NEX: Install package for %s not found in install folder %s", pkg_name, install_folder)
+      rospy.logwarn("NEPI_NEX: Install package for %s not found in install folder %s", pkg_name, install_from_path)
       return False, nex_database
     os_user = getpass.getuser()
-    os.system('chown -R ' + os_user + ':' + os_user + ' ' + install_from_folder)
-    os.system('chown -R ' + os_user + ':' + os_user + ' ' + install_to_folder)
-    pkg_path = install_from_path + "/" + pkg_name + ".zip"
+    os.system('chown -R ' + 'nepi:nepi' + ' ' + install_from_path)
+    os.system('chown -R ' + 'nepi:nepi' + ' ' + install_to_path)
+    pkg_path = install_from_path + "/" + pkg_name
     driver_path = install_to_path
-    pkg = zipfile.ZipFile(pkg_path)
-    pkg_files = pkg.namelist()
-    # Create a list of files
-    driver_files = []
-    for pkg_file in pkg_files:
-      driver_file = driver_path + "/" + pkg_file
-      driver_files.append(driver_file)
-    for file in driver_files:
-      if os.path.exsits(file):
-        try:
-          os.remove(file)
-        except Exception as e:
-          success = False
-          rospy.logwarn(str(e))
+    try:
+      pkg = zipfile.ZipFile(pkg_path)
+      pkg_files = pkg.namelist()
+
+    except Exception as e:
+      rospy.logwarn("NEPI_NEX: " + str(e))
+      success = False
     if success:
-      # Unzip the package to the Driver path
-      with zipfile.ZipFile(pkg,"r") as zip_ref:
-        zip_ref.extractall(driver_path)
-      # Check for success
-      for f in drivers_files:
-        if os.path.exists() == False:
-          success = False
+      # Create a list of files
+      driver_files = []
+      for pkg_file in pkg_files:
+        driver_file = driver_path + "/" + pkg_file
+        driver_files.append(driver_file)
+      for file in driver_files:
+        if os.path.exists(file):
+          try:
+            os.remove(file)
+          except Exception as e:
+            success = False
+            rospy.logwarn(str(e))
+      if success:
+        # Unzip the package to the Driver path
+        with zipfile.ZipFile(pkg_path,"r") as zip_ref:
+          zip_ref.extractall(driver_path)
+        # Check for success
+        for f in driver_files:
+          if os.path.exists(f) == False:
+            os.system('chown -R ' + 'nepi:nepi' + ' ' + f)
+            success = False
     nex_database = updateDriversDict(driver_path,nex_database)
     return success, nex_database 
 
@@ -516,12 +523,11 @@ def removeDriver(nex_name,nex_database,backup_path = None):
     node_file = nex_dict['node_file_name']
     driv_file = nex_dict['driver_file_name']
     disc_file = nex_dict['discovery_file_name']
+    driver_files = [node_file, driv_file, disc_file]
 
     node_path = nex_dict['node_file_path']
     driv_path = nex_dict['driver_file_path']
     disc_path = nex_dict['discovery_file_path']
-
-    driver_files = [node_file, driv_file, disc_file]
     driver_paths = [node_path, driv_path, disc_path]
 
     os_user = getpass.getuser()
@@ -531,40 +537,48 @@ def removeDriver(nex_name,nex_database,backup_path = None):
         path = driver_paths[i]
         file = driver_files[i]
         filepath = path + '/' + file
-        driver_file_list.append(filepath)
-        if os.path.exists(path) == False:
+        if os.path.exists(filepath) == False:
           success = False
         if success:
-          os.system('chown -R ' + os_user + ':' + os_user + ' ' + path)
+          os.system('chown -R ' + 'nepi:nepi' + ' ' + path)
+          driver_file_list.append(filepath)
           # Create an install package from driver files
+    rospy.loginfo("NEPI_NEX: Removing driver files: " + str(driver_file_list))      
     if backup_path != None:
-      if os.path.exists(backup_path):
-        os.system('chown -R ' + os_user + ':' + os_user + ' ' + backup_path)
-      else:
+      if os.path.exists(backup_path) == False:
         backup_path = None
-
-    if backup_path != None:
-      zip_file = backup_path + "/" + nex_name + "zip"
-      rospy.loginfo("NEPI_NEX: Backing up removed file to: " + zip_file)
-      try:
-        zip = zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED)
-        for file in driver_file_list:
-          zip.write(file)
-        zip.close()
-      except Exception as e:
-        rospy.logwarn("NEPI_NEX: Failed to backup removed driver: " + str(e))
-    
-
-    for file in driver_file_list:
-      try:
-        os.remove(filepath)
-      except Exception as e:
-        success = False
-        rospy.logwarn("NEPI_NEX: Failed to remove driver file: " + file + " " + str(e))
+      else:
+        os.system('chown -R ' + 'nepi:nepi' + ' ' + backup_path)
+        zip_file = backup_path + "/" + nex_name + ".zip"
+        rospy.loginfo("NEPI_NEX: Backing up removed file to: " + zip_file)
+        try:
+          zip = zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED)
+          for file_path in driver_file_list:
+            zip.write(file_path, os.path.basename(file_path), compress_type=zipfile.ZIP_DEFLATED)
+          zip.close()
+          zip = None
+        except Exception as e:
+          rospy.logwarn("NEPI_NEX: Failed to backup driver: " + str(e))
+          if os.path.exists(zip_file) == True:
+            try:
+              zip.close()
+            except Exception as e:
+              rospy.logwarn(str(e))
+            try:
+              os.remove(file_path)
+            except Exception as e:
+              rospy.logwarn(str(e))
+        for file_path in driver_file_list:
+          if os.path.exists(file_path) == True:
+            try:
+              os.remove(file_path)
+            except Exception as e:
+              success = False
+              rospy.logwarn("NEPI_NEX: Failed to remove driver file: " + file_path + " " + str(e))
 
     if success:
       del nex_database[nex_name]
-    return nex_database
+    return success, nex_database
 
 
 

@@ -497,6 +497,16 @@ class ROSIDXSensorIF:
         self.status_msg.frame_3d_transform = transform_msg
         self.publishStatus(do_updates=False) # Updated inline here 
 
+    def clearFrame3dTransformCb(self, msg):
+        new_transform_msg = msg
+        self.clearFrame3dTransform()
+
+    def clearFrame3dTransform(self, transform_msg):
+        transform = self.ZERO_TRANSFORM
+        self.init_frame_3d_transform = rospy.set_param('~idx/frame_3d_transform',  transform)
+        self.status_msg.frame_3d_transform = transform_msg
+        self.publishStatus(do_updates=False) # Updated inline here 
+
     def setFrame3dCb(self, msg):
         new_frame_3d = msg.data
         self.setFrame3d(new_frame_3d)
@@ -610,6 +620,7 @@ class ROSIDXSensorIF:
         else:
             self.capabilities_report.adjustable_range = False
 
+        rospy.Subscriber('~idx/clear_frame_3d_transform', Bool, self.clearFrame3dTransformCb, queue_size=1)
         rospy.Subscriber('~idx/set_frame_3d_transform', Frame3DTransform, self.setFrame3dTransformCb, queue_size=1)
         rospy.Subscriber('~idx/set_frame_3d', String, self.setFrame3dCb, queue_size=1)
 
