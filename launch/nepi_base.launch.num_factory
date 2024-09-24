@@ -104,7 +104,7 @@
 
     <!-- APP: Nav Pose Publisher-->
     <group if="$(arg run_app_nav_pose_publisher)" >
-      <rosparam command="load" file="$(arg config_file_root)/nav_pose_publisher/nav_pose_publisher.yaml" ns="nav_pose_publisher" />
+      <rosparam command="load" file="$(arg config_file_root)/app_nav_pose_publisher/nav_pose_publisher.yaml" ns="nav_pose_publisher" />
       <node name="nav_pose_publisher" pkg="nepi_app_navpose_publisher" type="nav_pose_publisher.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
