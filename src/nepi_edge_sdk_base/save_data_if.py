@@ -283,8 +283,6 @@ class SaveDataIF(object):
         self.save_data_root_directory = None # Flag it as non-existent
         get_folder_name_service = NEPI_BASE_NAMESPACE + 'system_storage_folder_query'
         rospy.loginfo("SAVE_DATA_IF: Waiting for system storage folder query service " + get_folder_name_service)
-        rospy.wait_for_service(get_folder_name_service)
-        rospy.loginfo("SAVE_DATA_IF: Calling system storage folder query service " + get_folder_name_service)
         try:
             rospy.loginfo("SAVE_DATA_IF: Getting storage folder query service " + get_folder_name_service)
             folder_query_service = rospy.ServiceProxy(get_folder_name_service, SystemStorageFolderQuery)

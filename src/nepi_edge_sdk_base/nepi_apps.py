@@ -1,0 +1,535 @@
+#!/usr/bin/env python
+#
+# Copyright (c) 2024 Numurus, LLC <https://www.numurus.com>.
+#
+# This file is part of nepi-engine
+# (see https://github.com/nepi-engine).
+#
+# License: 3-clause BSD, see https://opensource.org/licenses/BSD-3-Clause
+#
+
+
+# NEPI ros utility functions include
+# 1) NEPI IDX App utility functions
+import os
+import sys
+import zipfile
+import getpass
+import importlib
+import subprocess
+import rospy
+import rosnode
+import warnings
+import numpy as np
+import time
+import usb
+import copy
+from serial.tools import list_ports
+
+from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_img
+  
+#***************************
+# NEPI Apps utility functionsstatus_apps_msg
+LAUNCH_DIR = '/opt/nepi/ros/share/nepi_apps'
+
+NEPI_PKG_FOLDER = '/opt/nepi/ros/lib/'
+
+def getAppsDict(search_path):
+    apps_dict = dict()
+    # Find App files
+    ind = 0
+    if os.path.exists(search_path):
+        if search_path[-1] == "/":
+            search_path = search_path[:-1]
+        sys.path.append(search_path)
+        rospy.loginfo("NEPI_APPS: Searching for Apps in path: " + search_path)
+        for f in os.listdir(search_path):
+          if f.endswith(".py"): 
+            module_name = f.split(".")[0]
+            #rospy.loginfo("NEPI_APPS: Will try to import module: " + module_name)
+            open_success = True
+            read_success = True
+            warnings.filterwarnings('ignore', '.*unclosed.*', )
+            try:
+              module = __import__(module_name)
+            except Exception as e:
+              #rospy.logwarn("NEPI_APPS: failed to import module %s with exception %s", f, str(e))
+              open_success = False
+            if open_success:
+                try:
+                  app_name = module.APP_NAME                
+                except:
+                  #rospy.logwarn("NEPI_APPS: No APP_NAME in module: " + f)
+                  read_success = False
+                if read_success:
+                  #rospy.logwarn("NEPI_APPS: " + app_name)
+                  try:
+                    apps_dict[app_name] = {
+                      'description': module.DESCRIPTION,
+                      'pkg_name': module.PKG_NAME,
+                      'node_name': module.NODE_NAME, 
+                      'app_file': module.APP_FILE,
+                      'app_path': NEPI_PKG_FOLDER + "/" + module.PKG_NAME,     
+                      'rui_files_list': module.RUI_FILES,
+                      'rui_main_file': module.RUI_MAIN_FILE,
+                      'rui_main_class': module.RUI_MAIN_CLASS,    
+                      'rui_menu_name': module.RUI_MENU_NAME,
+                      'order': -1,
+                      'subprocess': "",
+                      'active': False,
+                      'msg': ""
+                      }
+                  except Exception as e:
+                    try:
+                      del apps_dict[app_name]
+                    except:
+                      pass
+                    rospy.logwarn("NEPI_APPS: Failed to get info from module: " + f +" with exception: " + str(e))
+                else:
+                    rospy.logwarn("NEPI_APPS: Failed to get valid APP_NAME from: " + f )
+                if open_success:
+                  try:
+                    #sys.modules.pop(module)
+                    if module_name in sys.modules:
+                      del sys.modules[module_name]
+                    del module
+                  except:
+                    rospy.loginfo("NEPI_APPS: Failed to remove module: " + f)
+    else:
+        rospy.logwarn("NEPI_APPS: App path %s does not exist",  search_path)
+    # Check for launch file
+    purge_list = []
+    for app_name in apps_dict.keys():
+      app_file = apps_dict[app_name]['app_file']
+      pkg_name = apps_dict[app_name]['pkg_name']
+      app_file_path = NEPI_PKG_FOLDER + pkg_name + "/" + app_file
+      if os.path.exists(app_file_path) == False:
+        rospy.logwarn("NEPI_APPS: Could not find app file: " + app_file_path)
+        purge_list.append(app_name)
+    for app_name in purge_list:
+      del apps_dict[app_name]
+    apps_dict = setFactoryAppOrder(apps_dict)
+    return apps_dict
+
+
+# ln = sys._getframe().f_lineno ; self.printND(apps_dict,ln)
+def printDict(apps_dict):
+  rospy.logwarn('NEPI_APPS: ')
+  rospy.logwarn('NEPI_APPS:*******************')
+  if line_num is not None:
+    rospy.logwarn('NEPI_APPS: ' + str(line_num))
+  rospy.logwarn('NEPI_APPS: Printing Nex App Dictionary')
+
+  for app_name in apps_dict.keys():
+    apps_dict = apps_dict[app_name]
+    rospy.logwarn('NEPI_APPS: ')
+    rospy.logwarn('NEPI_APPS: ' + app_name)
+    rospy.logwarn(str(apps_dict))
+
+
+def updateAppsDict(apps_path,apps_dict):
+  success = True
+  if apps_path[-1] == "/":
+      search_path = apps_path[:-1]
+  get_apps_dict = getAppsDict(apps_path)
+  purge_list = []
+  for app_name in apps_dict.keys():
+    if app_name not in get_apps_dict.keys():
+      purge_list.append(app_name)
+  for app_name in purge_list:
+    del apps_dict[app_name]
+
+  for app_name in get_apps_dict.keys():
+    if app_name not in apps_dict.keys():
+      apps_dict[app_name] = get_apps_dict[app_name]
+      apps_dict[app_name]['active'] = True
+      apps_dict = moveAppBottom(app_name,apps_dict)
+  return apps_dict
+
+
+def refreshAppsDict(apps_path,apps_dict):
+  success = True
+  if apps_path[-1] == "/":
+      search_path = apps_path[:-1]
+  get_apps_dict = getAppsDict(apps_path)
+  for app_name in get_apps_dict.keys():
+    if app_name not in apps_dict.keys():
+      get_apps_dict[app_name]['order'] = apps_dict[app_name]['order']
+      get_apps_dict[app_name]['active'] = apps_dict[app_name]['active']
+  return apps_dict
+
+
+def getAppsByActive(apps_dict):
+  active_dict = dict()
+  for app_name in apps_dict.keys():
+    apps_dict = apps_dict[app_name]
+    App_active = apps_dict['active']
+    if App_active == True:
+      active_dict[app_name] = apps_dict
+  return active_dict
+
+def setFactoryAppOrder(apps_dict):
+  app_names = list(apps_dict.keys())
+  app_names_sorted = sorted(app_names)
+  for app_name in apps_dict.keys():
+    apps_dict[app_name]['order']=app_names_sorted.index(app_name)
+  return apps_dict
+
+
+def moveAppTop(app_name,apps_dict):
+  if app_name in apps_dict.keys():
+    current_ordered_list = getAppsOrderedList(apps_dict)
+    current_order = current_ordered_list.index(app_name)
+    if current_order > 0:
+      new_order = 0
+      apps_dict = setAppOrder(app_name,new_order,apps_dict)
+  return apps_dict
+
+def moveAppBottom(app_name,apps_dict):
+  if app_name in apps_dict.keys():
+    current_ordered_list = getAppsOrderedList(apps_dict)
+    current_order = current_ordered_list.index(app_name)
+    if current_order < (len(current_ordered_list)-1):
+      new_order = len(current_ordered_list) - 1
+      apps_dict = setAppOrder(app_name,new_order,apps_dict)
+  return apps_dict
+
+def moveAppUp(app_name,apps_dict):
+  if app_name in apps_dict.keys():
+    current_ordered_list = getAppsOrderedList(apps_dict)
+    current_order = current_ordered_list.index(app_name)
+    if current_order > 0:
+      new_order = current_order -1
+      apps_dict = setAppOrder(app_name,new_order,apps_dict)
+  return apps_dict
+
+def moveAppDown(app_name,apps_dict):
+  if app_name in apps_dict.keys():
+    current_ordered_list = getAppsOrderedList(apps_dict)
+    current_order = current_ordered_list.index(app_name)
+    if current_order < (len(current_ordered_list)-1):
+      new_order = current_order + 1
+      apps_dict = setAppOrder(app_name,new_order,apps_dict)
+  return apps_dict
+
+def setAppOrder(app_name,new_order,apps_dict):
+  if app_name in apps_dict.keys():
+    ordered_list = getAppsOrderedList(apps_dict)
+    current_order = ordered_list.index(app_name)
+    App_entry = ordered_list.pop(current_order)
+    ordered_list.insert(new_order,App_entry)
+    for app_name in apps_dict.keys():
+      apps_dict[app_name]['order'] = ordered_list.index(app_name)
+  return apps_dict
+
+def setAppMsg(app_name,msg,apps_dict):
+  if app_name in apps_dict.keys():
+    apps_dict[app_name]['msg'] = str(msg)
+  return apps_dict
+
+    
+
+def getAppsOrderedList(apps_dict):
+  name_list = []
+  order_list = []
+  ordered_name_list = []
+  indexes = []
+  for app_name in apps_dict.keys():
+    name_list.append(app_name)
+    app_dict = apps_dict[app_name]
+    order = app_dict['order']
+    if order == -1:
+      order = 100000
+    while(order in order_list):
+      order += 0.1
+    order_list.append(order)
+    s = list(sorted(order_list))
+    indexes = [s.index(x) for x in order_list]
+  for val in order_list:
+    ordered_name_list.append(0)
+  for i,index in enumerate(indexes):
+    ordered_name_list[index] = name_list[i]
+  return ordered_name_list
+
+def getAppsActiveOrderedList(apps_dict):
+  ordered_name_list = getAppsOrderedList(apps_dict)
+  #rospy.logwarn("APPS_MGR: ordered list: " + str(ordered_name_list))
+  ordered_active_list =[]
+  for app_name in ordered_name_list:
+    active = apps_dict[app_name]['active']
+    if active:
+      ordered_active_list.append(app_name)
+  return ordered_active_list
+
+def getAppsRuiActiveLists(apps_dict):
+  ordered_name_list = getAppsOrderedList(apps_dict)
+  rui_active_lists =[]
+  for app_name in ordered_name_list:
+    active = apps_dict[app_name]['active']
+    if active:
+      app_dict = apps_dict[app_name]
+      rui_active_lists.append([app_dict['rui_main_file'],app_dict['rui_main_class'],app_dict['rui_menu_name']])
+  return rui_active_lists
+
+
+
+def getAppLaunchFilesList(apps_path):
+  apps_list = []
+  if apps_path != '':
+    if os.path.exists(apps_path):
+      [file_list, num_files] = nepi_ros.get_file_list(apps_path,"py")
+      for f in file_list:
+        apps_list.append(f.split(".")[0])
+  return apps_list
+
+  
+def getAppPackagesList(install_path):
+  pkg_list = []
+  if install_path != '':
+    if os.path.exists(install_path):
+      [file_list, num_files] = nepi_ros.get_file_list(install_path,"zip")
+      for pkg in file_list:
+        pkg_list.append(os.path.basename(pkg))
+  return pkg_list
+
+
+ 
+def activateAllApps(apps_dict):
+  success = True
+  for app_name in apps_dict.keys():
+    apps_dict = activateApp(app_name,apps_dict)
+  return apps_dict
+
+def activateApp(app_name,apps_dict):
+    if app_name not in apps_dict.keys():
+      rospy.logwarn("NEPI_APPS: App %s for activate request does not exist", app_name)
+      return apps_dict
+    apps_dict[app_name]['active'] = True
+    return apps_dict
+
+def disableApp(app_name,apps_dict):
+    if app_name not in apps_dict.keys():
+      rospy.logwarn("NEPI_APPS: App %s for removal request does not exist", app_name)
+      return apps_dict
+    apps_dict[app_name]['active'] = False
+    return apps_dict
+
+'''
+def installAppPkg(pkg_name,apps_dict,install_from_path,install_to_path):
+    success = True
+    if os.path.exists(install_from_path) == False:
+      rospy.logwarn("NEPI_APPS: Install package source folder does not exist %s", install_from_path)
+      return False, apps_dict
+    if os.path.exists(install_to_path) == False:
+      rospy.logwarn("NEPI_APPS: Install package destination folder does not exist %s", install_to_path)
+      return False, apps_dict
+    pkg_list = getAppPackagesList(install_from_path)
+    if pkg_name not in pkg_list:
+      rospy.logwarn("NEPI_APPS: Install package for %s not found in install folder %s", pkg_name, install_from_path)
+      return False, apps_dict
+    os_user = getpass.getuser()
+    os.system('chown -R ' + 'nepi:nepi' + ' ' + install_from_path)
+    os.system('chown -R ' + 'nepi:nepi' + ' ' + install_to_path)
+    pkg_path = install_from_path + "/" + pkg_name
+    app_path = install_to_path
+    try:
+      pkg = zipfile.ZipFile(pAPP_NAME = 'AI_TARGETING' # Use in display menus
+DESCRIPTION = 'Application for advanced targeting of AI detected objects'
+LAUNCH_FILE = 'nepi_app_ai_targeting.launch'
+PKG_NAME = 'nepi_app_ai_targeting'
+NODE_NAME = 'app_ai_targeting'
+RUI_FILES = ['NepiAppAiTargeting.js','NepiAppAiTargetingControls.js']
+RUI_MAIN_FILE = "NepiAppAiTargeting.js"
+RUI_MAIN_CLASS = "NepiAppAiTargeting"
+RUI_MENU_NAME = "AI Targeting"
+      app_files = []
+      for pkg_file in pkg_files:
+        app_file = app_path + "/" + pkg_file
+        app_files.append(app_file)
+      for file in app_files:
+        if os.path.exists(file):
+          try:
+            os.remove(file)
+          except Exception as e:
+            success = False
+            rospy.logwarn(str(e))
+      if success:
+        # Unzip the package to the App path
+        with zipfile.ZipFile(pkg_path,"r") as zip_ref:
+          zip_ref.extractall(app_path)
+        # Check for success
+        for f in app_files:
+          if os.path.exists(f) == False:
+            os.system('chown -R ' + 'nepi:nepi' + ' ' + f)
+            success = False
+    apps_dict = updateAppsDict(app_path,apps_dict)
+    return success, apps_dict 
+
+
+
+def removeApp(app_name,apps_dict,backup_path = None):
+    success = True
+    if app_name not in apps_dict.keys():
+      rospy.logwarn("NEPI_APPS: App %s for removal request does not exist", app_name)
+      return False, apps_dict
+    apps_dict = apps_dict[app_name]
+
+    launch_file = apps_dict['launch_file_name']
+    info_file = launch_file.replace(".launch",".py")
+    app_files[launch_file,info_file]
+
+    launch_path = apps_dict['launch_path']
+
+    App_file_list = []
+    for i,app_file in enumerate(app_files):
+      if app_file != 'None' and App_names[i] == app_name:
+        path = launch_path
+        file = app_files[i]
+        filepath = path + '/' + file
+        if os.path.exists(filepath) == False:
+          success = False
+        if success:
+          os.system('chown -R ' + 'nepi:nepi' + ' ' + path)
+          App_file_list.append(filepath)
+          # Create an install package from App files
+    rospy.loginfo("NEPI_APPS: Removing App files: " + str(App_file_list))      
+    if backup_path != None:
+      if os.path.exists(backup_path) == False:
+        backup_path = None
+      else:
+        os.system('chown -R ' + 'nepi:nepi' + ' ' + backup_path)
+        zip_file = backup_path + "/" + app_name + ".zip"
+        rospy.loginfo("NEPI_APPS: Backing up removed file to: " + zip_file)
+        try:
+          zip = zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED)
+          for file_path in App_file_list:
+            zip.write(file_path, os.path.basename(file_path), compress_type=zipfile.ZIP_DEFLATED)
+          zip.close()
+          zip = None
+        except Exception as e:
+          rospy.logwarn("NEPI_APPS: Failed to backup App: " + str(e))
+          if os.path.exists(zip_file) == True:
+            try:
+              zip.close()
+            except Exception as e:
+              rospy.logwarn(str(e))
+            try:
+              os.remove(file_path)
+            except Exception as e:
+              rospy.logwarn(str(e))
+        for file_path in App_file_list:
+          if os.path.exists(file_path) == True:
+            try:
+              os.remove(file_path)
+            except Exception as e:
+              success = False
+              rospy.logwarn("NEPI_APPS: Failed to remove App file: " + file_path + " " + str(e))
+
+    if success:
+      del apps_dict[app_name]
+    return success, apps_dict
+'''
+
+
+def launchAppNode(pkg_name, file_name, ros_node_name, device_path = None):
+  sub_process = None
+  msg = 'Success'
+  success = False
+  if device_path is None:
+    device_node_run_cmd = ['rosrun', pkg_name, file_name, '__name:=' + ros_node_name]
+  else:
+    device_node_run_cmd = ['rosrun', pkg_name, file_name, '__name:=' + ros_node_name, '_device_path:=' + device_path]
+  try:
+    sub_process = subprocess.Popen(device_node_run_cmd)
+    success = True
+  except Exception as e:
+    msg = str("Failed to launch node %s with exception: %s", ros_node_name, str(e))
+    rospy.logwarn("NEPI_NEX: " + msg)
+  if success: 
+    if sub_process.poll() is not None:
+      msg = ("Failed to start " + device_node_name + " via " + " ".join(x for x in device_node_run_cmd) + " (rc =" + str(p.returncode) + ")")
+      rospy.logerr(msg)
+      sub_process = None
+      success = False
+  return success, msg, sub_process
+  
+
+def killAppNode(node_namespace,sub_process):
+    success = True
+    node_name = node_namespace.split("/")[-1]
+    node_namespace_list = nepi_ros.get_node_list()
+    node_list = []
+    for i in range(len(node_namespace_list)):
+      node_list.append(node_namespace_list[i].split("/")[-1])
+    rospy.logwarn("NEPI_APPS: " + str(node_list))
+    rospy.logwarn("NEPI_APPS: " + node_name)
+    if node_name in node_list:
+      rospy.logwarn("NEPI_APPS: Killing node: " + node_name)
+      [kill_list,fail_list] = rosnode.kill_nodes([node_name])
+      time.sleep(2)    
+      # Next check running processes
+      if sub_process.poll() is not None: 
+        sub_process.terminate()
+        terminate_timeout = 3
+        while (terminate_timeout > 0):
+          time.sleep(1)
+          if sub_process.poll() is not None:
+            terminate_timeout -= 1
+            success = False
+          else:
+            success = True
+            break
+        if success == False:
+          # Escalate it
+          sub_process.kill()
+          time.sleep(1)
+        if sub_process.poll() is not None:
+          success = False
+        else:
+          success = True
+    if success:
+      cleanup_proc = subprocess.Popen(['rosnode', 'cleanup'], stdin=subprocess.PIPE)
+      try:
+        cleanup_proc.communicate(input=bytes("y\r\n", 'utf-8'), timeout=10)
+        cleanup_proc.wait(timeout=10) 
+      except Exception as e:
+        rospy.logwarn(self.log_name + ": " + "rosnode cleanup failed (%s)", str(e))
+      rospy.logwarn("NEPI_APPS: Killed node: " + node_name)
+    else:
+       rospy.logwarn("NEPI_APPS: Failed to kill node: " + node_name)
+    return success
+        
+
+def importAppClass(file_name,file_path,module_name,class_name):
+      module_class = None
+      success = False
+      msg = "failed"
+      file_list = os.listdir(file_path)
+      if file_name in file_list:
+        sys.path.append(file_path)
+        try:
+          module = importlib.import_module(module_name)
+          try:
+            module_class = getattr(module, class_name)
+            success = True
+            msg = 'success'
+          except Exception as e:
+            rospy.logwarn("NEPI_APPS: Failed to import class %s from module %s with exception: %s", class_name, module_name, str(e))
+        except Exception as e:
+            rospy.logwarn("NEPI_APPS: Failed to import module %s with exception: %s", module_name, str(e))
+      else:
+        rospy.logwarn("NEPI_APPS: Failed to find file %s in path %s for module %s", file_name, file_path, module_name)
+      return success, msg, module_class
+
+
+def unimportAppClass(module_name):
+    success = True
+    if module_name in sys.modules:
+        try:
+           sys.modules.pop(module_name)
+        except:
+            rospy.loginfo("NEPI_APPS: Failed to clordered_unimport module: " + module_name)
+        if module_name in sys.modules:
+          success = False
+    return success

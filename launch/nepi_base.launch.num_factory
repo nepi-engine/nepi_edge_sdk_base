@@ -12,13 +12,8 @@
   <arg name="run_mgr_ai_detector" default="true" />
   <arg name="run_mgr_nav_pose" default="true" />
   <arg name="run_mgr_drivers" default="true" />
-  <arg name="run_mgr_onvif" default="true" />
+  <arg name="run_mgr_apps" default="true" />
   <arg name="run_mgr_automation" default="true" />
-
-  <arg name="run_app_ai_targeting" default="true" />
-  <arg name="run_app_pointcloud_viewer" default="true" />
-  <arg name="run_app_nav_pose_publisher" default="true" />
-  <arg name="run_app_image_sequencer" default="true" />
 
         
   <!-- Everything lives in the device namespace -->
@@ -66,15 +61,15 @@
       <rosparam command="load" file="$(arg config_file_root)/drivers_mgr/drivers_mgr.yaml" ns="drivers_mgr" />
       <node name="drivers_mgr" pkg="nepi_managers" type="drivers_mgr.py" respawn="true" output="$(arg output_destination)" />
     </group>
-
-
-    <!-- MGR: OVIF (IDX and PTX) -->
-    <group if="$(arg run_mgr_onvif)" >
-      <rosparam command="load" file="$(arg config_file_root)/onvif_mgr/onvif_mgr.yaml" ns="onvif_mgr" />
-      <node name="onvif_mgr" pkg="nepi_managers" type="onvif_mgr.py" respawn="true" output="$(arg output_destination)" />
+    
+   <!-- MGR: Apps -->
+    <group if="$(arg run_mgr_apps)" >
+      <rosparam command="load" file="$(arg config_file_root)/apps_mgr/apps_mgr.yaml" ns="apps_mgr" />
+      <node name="apps_mgr" pkg="nepi_managers" type="apps_mgr.py" respawn="true" output="$(arg output_destination)" />
     </group>
 
-    <!-- MGR: AI Detector Mgr -->
+
+ <!-- MGR: AI Detector Mgr -->
     <group if="$(arg run_mgr_ai_detector)" >
       <rosparam command="load" file="$(arg config_file_root)/ai_detector_mgr/ai_detector_mgr.yaml" ns="ai_detector_mgr" />
       <node name="ai_detector_mgr" pkg="nepi_managers" type="ai_detector_mgr.py" respawn="true" output="$(arg output_destination)" />
@@ -87,33 +82,6 @@
     </group>
 
 
-
-
-    <!-- APP: AI Targeting-->
-    <group if="$(arg run_app_ai_targeting)" >
-      <rosparam command="load" file="$(arg config_file_root)/app_ai_targeting/app_ai_targeting.yaml" ns="app_ai_targeting" />
-      <node name="app_ai_targeting" pkg="nepi_app_ai_targeting" type="ai_targeting_app_node.py" respawn="true" output="$(arg output_destination)" />
-    </group>
-
-
-    <!-- APP: Pointcloud Viewer -->
-    <group if="$(arg run_app_pointcloud_viewer)" >
-      <rosparam command="load" file="$(arg config_file_root)/app_pointcloud/app_pointcloud.yaml" ns="app_pointcloud" />
-      <node name="app_pointcloud" pkg="nepi_app_pointcloud" type="pointcloud_app_node.py" respawn="true" output="$(arg output_destination)" />
-    </group>
-
-    <!-- APP: Nav Pose Publisher-->
-    <group if="$(arg run_app_nav_pose_publisher)" >
-      <rosparam command="load" file="$(arg config_file_root)/app_nav_pose_publisher/nav_pose_publisher.yaml" ns="nav_pose_publisher" />
-      <node name="nav_pose_publisher" pkg="nepi_app_navpose_publisher" type="nav_pose_publisher.py" respawn="true" output="$(arg output_destination)" />
-    </group>
-
-
-    <!-- APP: Image Sequencer -->
-    <group if="$(arg run_app_image_sequencer)" >
-      <rosparam command="load" file="$(arg config_file_root)/app_image_sequencer/app_image_sequencer.yaml" ns="sequential_image_mux" />
-      <node name="sequential_image_mux" pkg="nepi_app_image_sequencer" type="sequential_image_mux.py" respawn="true" output="$(arg output_destination)" />
-    </group>
 
   </group>
 
