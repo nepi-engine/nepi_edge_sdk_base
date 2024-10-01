@@ -175,6 +175,7 @@ add_library(${PROJECT_NAME}
 
 catkin_install_python(PROGRAMS
   scripts/image_color_converter.py
+  scripts/fake_gps.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
