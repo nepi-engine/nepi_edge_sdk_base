@@ -41,8 +41,9 @@ from nepi_ros_interfaces.msg import  Setting
 #######################
 ### Node Utility Functions
 
-def init_node(name):
-  rospy.init_node(name)
+def init_node(name,disable_signals=False):
+  rospy.init_node(name,disable_signals=disable_signals)
+
   
 def get_base_namespace():
   nepi_node=find_node('nepi')
@@ -105,6 +106,9 @@ def get_topic_list():
   pubs, subs =rostopic.get_topic_list()
   topic_list = pubs + subs
   return topic_list
+
+def get_published_topics():
+  return rospy.get_published_topics()
 
 # Function to find a topic
 def find_topic(topic_name):
@@ -189,8 +193,8 @@ def wait_for_service(service_name):
 def has_param(self,param_namespace):
   return rospy.has_param(param_namespace)
 
-def get_param(self,param_namespace,fallback_param = "None"):
-  if fallback_param == "None":
+def get_param(self,param_namespace,fallback_param = None):
+  if fallback_param is None:
     param = rospy.get_param(param_namespace)
   else:
     param = rospy.get_param(param_namespace,fallback_param)
@@ -221,6 +225,9 @@ def load_params_from_file(file_path, params_namespace = None):
 def start_timer_process(duration, callback_function, oneshot = False):
   rospy.Timer(duration, callback_function, oneshot)
 
+def timer(duration, callback_function, oneshot = False):
+  rospy.Timer(duration, callback_function, oneshot)
+
 '''
 def getPublisher(namespace, msg_type, queue_size=1):
   return rospy.Publisher(namespace, msg_type, queue_size)
@@ -238,8 +245,19 @@ def duration(time_s):
 def time_from_timestamp(timestamp):
   return rospy.Time.from_sec(timestamp)
   
+def time_from_sec(time_sec):
+  return rospy.time_from_sec(time_sec)
+
+
 def time_now():
   return rospy.Time.now()
+
+def rate(time_s):
+  return rospy.Rate(time_s)
+
+def get_rostime():
+  return rospy.get_rostime()
+ 
 
 
 # Sleep process that breaks sleep into smaller times for better shutdown
