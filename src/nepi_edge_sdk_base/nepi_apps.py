@@ -66,15 +66,8 @@ def getAppsDict(search_path):
                   #rospy.logwarn("NEPI_APPS: " + app_name)
                   try:
                     apps_dict[app_name] = {
-                      'description': module.DESCRIPTION,
-                      'pkg_name': module.PKG_NAME,
-                      'node_name': module.NODE_NAME, 
-                      'app_file': module.APP_FILE,
-                      'app_path': NEPI_PKG_FOLDER + "/" + module.PKG_NAME,     
-                      'rui_files_list': module.RUI_FILES,
-                      'rui_main_file': module.RUI_MAIN_FILE,
-                      'rui_main_class': module.RUI_MAIN_CLASS,    
-                      'rui_menu_name': module.RUI_MENU_NAME,
+                      'APP_DICT': module.APP_DICT,
+                      'RUI_DICT': module.RUI_DICT,
                       'order': -1,
                       'subprocess': "",
                       'active': False,
@@ -101,12 +94,14 @@ def getAppsDict(search_path):
     # Check for launch file
     purge_list = []
     for app_name in apps_dict.keys():
-      app_file = apps_dict[app_name]['app_file']
-      pkg_name = apps_dict[app_name]['pkg_name']
+      pkg_name = apps_dict[app_name]['APP_DICT']['pkg_name']
+      app_file = apps_dict[app_name]['APP_DICT']['app_file']
       app_file_path = NEPI_PKG_FOLDER + pkg_name + "/" + app_file
       if os.path.exists(app_file_path) == False:
         rospy.logwarn("NEPI_APPS: Could not find app file: " + app_file_path)
         purge_list.append(app_name)
+      else:
+        apps_dict[app_name]['APP_DICT']['app_path'] = NEPI_PKG_FOLDER + pkg_name
     for app_name in purge_list:
       del apps_dict[app_name]
     apps_dict = setFactoryAppOrder(apps_dict)
@@ -262,15 +257,14 @@ def getAppsActiveOrderedList(apps_dict):
       ordered_active_list.append(app_name)
   return ordered_active_list
 
-def getAppsRuiActiveLists(apps_dict):
+def getAppsRuiActiveList(apps_dict):
   ordered_name_list = getAppsOrderedList(apps_dict)
-  rui_active_lists =[]
+  rui_active_list =[]
   for app_name in ordered_name_list:
     active = apps_dict[app_name]['active']
-    if active:
-      app_dict = apps_dict[app_name]
-      rui_active_lists.append([app_dict['rui_main_file'],app_dict['rui_main_class'],app_dict['rui_menu_name']])
-  return rui_active_lists
+    if active and apps_dict[app_name]['RUI_DICT']['rui_menu_name'] != "None":
+      rui_active_list.append(app_name)
+  return rui_active_list
 
 
 
@@ -299,6 +293,12 @@ def activateAllApps(apps_dict):
   success = True
   for app_name in apps_dict.keys():
     apps_dict = activateApp(app_name,apps_dict)
+  return apps_dict
+
+def disableAllApps(apps_dict):
+  success = True
+  for app_name in apps_dict.keys():
+    apps_dict = disableApp(app_name,apps_dict)
   return apps_dict
 
 def activateApp(app_name,apps_dict):

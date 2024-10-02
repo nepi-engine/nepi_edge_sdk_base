@@ -27,6 +27,7 @@ import rospy
 import rosnode
 import rostopic
 import rosservice
+import rosparam
 import time
 
 
@@ -198,16 +199,16 @@ def get_param(self,param_namespace,fallback_param = "None"):
 def set_param(self,param_namespace,param):
   rospy.set_param(param_namespace,param)
 
-def load_params_from_file(file_path, namespace = None):
-    if namespace is not None:
-      if namespace[-1] != "/":
-        namespace += "/"
+def load_params_from_file(file_path, params_namespace = None):
+    if params_namespace is not None:
+      if params_namespace[-1] != "/":
+        params_namespace += "/"
     else:
-      namesapce = ""
+      params_namespace = ""
     try:
         params = rosparam.load_file(file_path)
         for param, value in params[0].items():
-            param_namesapce = namespace + param
+            param_namesapce = params_namespace + param
             rospy.set_param(param_namesapce, value)
         rospy.loginfo("Parameters loaded successfully from {}".format(file_path))
     except rosparam.RosParamException as e:
