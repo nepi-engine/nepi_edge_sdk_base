@@ -30,8 +30,8 @@ from nepi_edge_sdk_base import nepi_ros
 from nepi_edge_sdk_base import nepi_img
   
 #***************************
-# NEPI Apps utility functionsstatus_apps_msg
-LAUNCH_DIR = '/opt/nepi/ros/share/nepi_apps'
+# NEPI Apps utility functions
+APPS_INFO_PATH = '/opt/nepi/ros/share/nepi_apps'
 
 NEPI_PKG_FOLDER = '/opt/nepi/ros/lib/'
 
@@ -91,7 +91,7 @@ def getAppsDict(search_path):
                     rospy.loginfo("NEPI_APPS: Failed to remove module: " + f)
     else:
         rospy.logwarn("NEPI_APPS: App path %s does not exist",  search_path)
-    # Check for launch file
+    # Check for node file
     purge_list = []
     for app_name in apps_dict.keys():
       pkg_name = apps_dict[app_name]['APP_DICT']['pkg_name']
@@ -126,7 +126,7 @@ def printDict(apps_dict):
 def updateAppsDict(apps_path,apps_dict):
   success = True
   if apps_path[-1] == "/":
-      search_path = apps_path[:-1]
+      apps_path = apps_path[:-1]
   get_apps_dict = getAppsDict(apps_path)
   purge_list = []
   for app_name in apps_dict.keys():
@@ -146,13 +146,13 @@ def updateAppsDict(apps_path,apps_dict):
 def refreshAppsDict(apps_path,apps_dict):
   success = True
   if apps_path[-1] == "/":
-      search_path = apps_path[:-1]
+      apps_path = apps_path[:-1]
   get_apps_dict = getAppsDict(apps_path)
   for app_name in get_apps_dict.keys():
-    if app_name not in apps_dict.keys():
+    if app_name in apps_dict.keys():
       get_apps_dict[app_name]['order'] = apps_dict[app_name]['order']
       get_apps_dict[app_name]['active'] = apps_dict[app_name]['active']
-  return apps_dict
+  return get_apps_dict
 
 
 def getAppsByActive(apps_dict):
@@ -268,7 +268,7 @@ def getAppsRuiActiveList(apps_dict):
 
 
 
-def getAppLaunchFilesList(apps_path):
+def getAppInfoFilesList(apps_path):
   apps_list = []
   if apps_path != '':
     if os.path.exists(apps_path):
