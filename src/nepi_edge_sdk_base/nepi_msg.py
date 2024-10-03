@@ -80,16 +80,13 @@ def createMsgPublishers(self):
   
 def publishMsg(self,msg_str,level = "None"):
   msg_str = (self.node_str + ": " + msg_str)
-  printMsg(msg_str)
+  printMsg(msg_str, level)
   self.msg_pub.publish(msg_str)
   self.msg_pub_sys.publish(msg_str)
   
 def publishMsgInfo(self,msg_str): 
   publishMsg(self,msg_str,level = 'Info')
-  
-def publishMsgInfo(self,msg_str): 
-  publishMsg(self,msg_str,level = 'Info')
-  
+   
 def publishMsgWarn(self,msg_str): 
   publishMsg(self,msg_str,level = 'Warn')
   
