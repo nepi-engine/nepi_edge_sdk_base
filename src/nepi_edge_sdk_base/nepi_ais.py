@@ -63,7 +63,7 @@ def getAIsDict(search_path):
                   rospy.logwarn("NEPI_AIS: No AI_NAME in module: " + f)
                   read_success = False
                 if read_success:
-                  rospy.logwarn("NEPI_AIS: " + ai_name)
+                  #rospy.logwarn("NEPI_AIS: " + ai_name)
                   try:
                     ais_dict[ai_name] = module.AI_DICT
                     ais_dict[ai_name]['if_file'] = f
