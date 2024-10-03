@@ -52,7 +52,10 @@ def get_base_namespace():
   return base_namespace
 
 def get_node_namespace():
-  return rospy.get_name()
+  namespace = rospy.get_name()
+  if namespace[-1] == "/":
+    namespace = namespace[:-1] 
+  return namespace
   
 def get_node_name():
   return get_node_namespace().split('/')[-1]
