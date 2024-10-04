@@ -213,13 +213,18 @@ def load_params_from_file(file_path, params_namespace = None):
     else:
       params_namespace = ""
     try:
-        params = rosparam.load_file(file_path)
-        for param, value in params[0].items():
-            param_namesapce = params_namespace + param
-            rospy.set_param(param_namesapce, value)
-        rospy.loginfo("Parameters loaded successfully from {}".format(file_path))
+        params_input = rosparam.load_file(file_path)
+        if params_input != []:
+          #rospy.logwarn("NEPI_ROS: loaded params" + str(params_input) + " for " + params_namespace)
+          params = params_input[0][0]
+          for key in params.keys():
+              value = params[key]
+              param_namesapce = params_namespace + '/' + key
+              #rospy.logwarn("NEPI_ROS: setting param " + key + " value: " + str(value)  + " for " + params_namespace)
+              rospy.set_param(param_namesapce, value)
+          rospy.loginfo("Parameters loaded successfully for " + params_namespace)
     except rosparam.RosParamException as e:
-        rospy.logerr("Error loading parameters: {}".format(e))
+        rospy.logerr("Error loading parameters from file: " + file_path + " " + str(e))
 
 
 #########################
