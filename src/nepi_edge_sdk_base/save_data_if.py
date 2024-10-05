@@ -31,6 +31,88 @@ class SaveDataIF(object):
     save_data_subfolder = ""    
     snapshot_dict = dict()
     init_data_rate_dict = dict()
+
+    def __init__(self, data_product_names=None,factory_data_rate_dict = None):
+        NEPI_BASE_NAMESPACE = nepi_ros.get_base_namespace()
+        if data_product_names != None:
+            data_products_str = str(data_product_names)
+        else:
+            data_products_str = "None"
+        rospy.loginfo("SAVE_DATA_IF: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+        rospy.loginfo("SAVE_DATA_IF: Starting Save_Data_IF with data products: " + data_products_str)
+        # First thing, need to get the data folder
+        self.save_data_root_directory = None # Flag it as non-existent
+        get_folder_name_service = NEPI_BASE_NAMESPACE + 'system_storage_folder_query'
+        rospy.loginfo("SAVE_DATA_IF: Waiting for system storage folder query service " + get_folder_name_service)
+        try:
+            rospy.loginfo("SAVE_DATA_IF: Getting storage folder query service " + get_folder_name_service)
+            folder_query_service = rospy.ServiceProxy(get_folder_name_service, SystemStorageFolderQuery)
+            response = folder_query_service('data')
+            rospy.loginfo("SAVE_DATA_IF: Got storage folder path" + str(response))
+            time.sleep(1)
+            self.save_data_root_directory = response.folder_path
+        except Exception as e:
+            self.save_data_root_directory = DATA_FOLDER_FALLBACK
+            rospy.logwarn("SAVE_DATA_IF: Failed to obtain system data folder, falling back to: " + DATA_FOLDER_FALLBACK + " " + str(e))
+            
+        if self.save_data_root_directory is not None:
+            # Ensure the data folder exists with proper ownership
+            if not os.path.exists(self.save_data_root_directory):
+                rospy.logwarn("SAVE_DATA_IF: Reported data folder does not exist... data saving is disabled")
+                self.save_data_root_directory = None # Flag it as non-existent
+                return # Don't enable any of the ROS interface stuff
+
+            # And figure out user/group so that we know what ownership to create subfolders with
+            stat_info = os.stat(self.save_data_root_directory)
+            self.DATA_UID = stat_info.st_uid
+            self.DATA_GID = stat_info.st_gid
+
+
+            if factory_data_rate_dict is None:
+                self.factory_data_rate_dict= {}
+                for d in data_product_names:
+                    self.factory_data_rate_dict[d] = [0.0, 0.0, 100.0] # Default to 0Hz save rate, set last save = 0.0, max rate = 100.0Hz
+            else:
+                self.factory_data_rate_dict = factory_data_rate_dict
+            for d in data_product_names:
+                self.snapshot_dict[d] = False
+            self.init_data_rate_dict = rospy.get_param('~data_rate_dict',self.factory_data_rate_dict)
+            rospy.set_param('~data_rate_dict',self.init_data_rate_dict)
+
+
+            self.save_continuous = rospy.get_param('~save_data_continuous', False)
+            self.save_raw = rospy.get_param('~save_data_raw', False)
+            # And force them onto the server in case they weren't already there
+            rospy.set_param('~save_data_continuous', self.save_continuous)
+            rospy.set_param('~save_data_raw', self.save_raw)
+
+            self.save_data_prefix = ""
+            self.save_data_subfolder = ""
+            self.save_path = self.save_data_root_directory
+            
+            self.needs_save_calibration = self.save_continuous
+
+            # Setup subscribers -- global and local versions
+            rospy.Subscriber('save_data', SaveData, self.save_data_callback)
+            rospy.Subscriber('snapshot_trigger', Empty, self.snapshot_callback)
+            rospy.Subscriber('save_data_prefix', String, self.save_data_prefix_pub_ns_callback)
+            rospy.Subscriber('save_data_rate', SaveDataRate, self.save_data_rate_callback)
+
+            rospy.Subscriber('~save_data', SaveData, self.save_data_callback)
+            rospy.Subscriber('~snapshot_trigger', Empty, self.snapshot_callback)
+            rospy.Subscriber('~save_data_prefix', String, self.save_data_prefix_pub_ns_callback)
+            rospy.Subscriber('~save_data_rate', SaveDataRate, self.save_data_rate_callback)
+            rospy.Subscriber('~save_data_reset', Empty, self.save_data_reset_callback)
+            rospy.Subscriber('~save_data_reset_factory', Empty, self.save_data_reset_factory_callback)
+
+            rospy.Service('~query_data_products', DataProductQuery, self.query_data_products_callback)
+
+            self.save_data_status_pub = rospy.Publisher('~save_data_status', SaveDataStatus, queue_size=1, latch=True)
+            time.sleep(1)
+            self.publish_save_status()
+        else:
+            rospy.logwarn("SAVE_DATA_IF: Save Data IF not configured")
+
     
     def save_data_callback(self, msg):
         # Policy is to save calibration whenever data saving is enabled
@@ -150,23 +232,27 @@ class SaveDataIF(object):
         return DataProductQueryResponse(return_list)
 
     def publish_save_status(self):
+        save_rates_msg = []
         data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
-        data_rate_dict_str = "["
-        ind = 0
-        for data_name in data_rate_dict:
-            if ind != 0:
-                sep = ","
-            else:
-                sep = ""
-            data_rate_str = str(data_rate_dict[data_name][0])
-            data_rate_dict_str = data_rate_dict_str + sep + "[" + data_name + "," + data_rate_str + "]"
-            ind = ind + 1
-        data_rate_dict_str = data_rate_dict_str + "]"
-        current_save_data = SaveData(save_continuous = self.save_continuous, save_raw = self.save_raw)
-        if self.save_data_root_directory is None:
-            self.save_data_status_pub.publish(current_data_dir = "", current_folder_prefix = self.save_data_subfolder, current_filename_prefix = self.save_data_prefix, save_data_rates = data_rate_dict_str, save_data = current_save_data)
-        else:
-            self.save_data_status_pub.publish(current_data_dir = self.save_data_root_directory, current_folder_prefix = self.save_data_subfolder, current_filename_prefix = self.save_data_prefix, save_data_rates = data_rate_dict_str, save_data = current_save_data)
+        #rospy.logwarn("SAVE_DATA_IF: data_rate_dict " + str(data_rate_dict))
+        for name in data_rate_dict.keys():
+            save_rate_msg = SaveDataRate()
+            rate = round(data_rate_dict[name][0])
+            save_rate_msg.data_product = name
+            save_rate_msg.save_rate_hz = rate
+            save_rates_msg.append(save_rate_msg)
+            #rospy.logwarn("SAVE_DATA_IF: data_rates_msg " + str(save_rates_msg))
+        current_save_data = SaveData(save_continuous = self.save_continuous, save_raw = self.save_raw)  
+        status_msg = SaveDataStatus()
+        status_msg.current_data_dir = ""
+        status_msg.current_filename_prefix = self.save_data_prefix
+        status_msg.current_filename_prefix = self.save_data_prefix
+        status_msg.save_data_rates = save_rates_msg
+        status_msg.save_data = current_save_data
+
+        if self.save_data_root_directory is not None:
+            status_msg.current_data_dir = self.save_data_root_directory
+        self.save_data_status_pub.publish(status_msg)
 
     def data_product_should_save(self, data_product_name):
         # If saving is disabled for this node, then it is not time to save this data product!
@@ -271,83 +357,3 @@ class SaveDataIF(object):
 
 
 
-    def __init__(self, data_product_names=None,factory_data_rate_dict = None):
-        NEPI_BASE_NAMESPACE = nepi_ros.get_base_namespace()
-        if data_product_names != None:
-            data_products_str = str(data_product_names)
-        else:
-            data_products_str = "None"
-        rospy.loginfo("SAVE_DATA_IF: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        rospy.loginfo("SAVE_DATA_IF: Starting Save_Data_IF with data products: " + data_products_str)
-        # First thing, need to get the data folder
-        self.save_data_root_directory = None # Flag it as non-existent
-        get_folder_name_service = NEPI_BASE_NAMESPACE + 'system_storage_folder_query'
-        rospy.loginfo("SAVE_DATA_IF: Waiting for system storage folder query service " + get_folder_name_service)
-        try:
-            rospy.loginfo("SAVE_DATA_IF: Getting storage folder query service " + get_folder_name_service)
-            folder_query_service = rospy.ServiceProxy(get_folder_name_service, SystemStorageFolderQuery)
-            response = folder_query_service('data')
-            rospy.loginfo("SAVE_DATA_IF: Got storage folder path" + str(response))
-            time.sleep(1)
-            self.save_data_root_directory = response.folder_path
-        except Exception as e:
-            self.save_data_root_directory = DATA_FOLDER_FALLBACK
-            rospy.logwarn("SAVE_DATA_IF: Failed to obtain system data folder, falling back to: " + DATA_FOLDER_FALLBACK + " " + str(e))
-            
-        if self.save_data_root_directory is not None:
-            # Ensure the data folder exists with proper ownership
-            if not os.path.exists(self.save_data_root_directory):
-                rospy.logwarn("SAVE_DATA_IF: Reported data folder does not exist... data saving is disabled")
-                self.save_data_root_directory = None # Flag it as non-existent
-                return # Don't enable any of the ROS interface stuff
-
-            # And figure out user/group so that we know what ownership to create subfolders with
-            stat_info = os.stat(self.save_data_root_directory)
-            self.DATA_UID = stat_info.st_uid
-            self.DATA_GID = stat_info.st_gid
-
-
-            if factory_data_rate_dict is None:
-                self.factory_data_rate_dict= {}
-                for d in data_product_names:
-                    self.factory_data_rate_dict[d] = [0.0, 0.0, 100.0] # Default to 0Hz save rate, set last save = 0.0, max rate = 100.0Hz
-            else:
-                self.factory_data_rate_dict = factory_data_rate_dict
-            for d in data_product_names:
-                self.snapshot_dict[d] = False
-            self.init_data_rate_dict = rospy.get_param('~data_rate_dict',self.factory_data_rate_dict)
-            rospy.set_param('~data_rate_dict',self.init_data_rate_dict)
-
-
-            self.save_continuous = rospy.get_param('~save_data_continuous', False)
-            self.save_raw = rospy.get_param('~save_data_raw', False)
-            # And force them onto the server in case they weren't already there
-            rospy.set_param('~save_data_continuous', self.save_continuous)
-            rospy.set_param('~save_data_raw', self.save_raw)
-
-            self.save_data_prefix = ""
-            self.save_data_subfolder = ""
-            self.save_path = self.save_data_root_directory
-            
-            self.needs_save_calibration = self.save_continuous
-
-            # Setup subscribers -- global and local versions
-            rospy.Subscriber('save_data', SaveData, self.save_data_callback)
-            rospy.Subscriber('snapshot_trigger', Empty, self.snapshot_callback)
-            rospy.Subscriber('save_data_prefix', String, self.save_data_prefix_pub_ns_callback)
-            rospy.Subscriber('save_data_rate', SaveDataRate, self.save_data_rate_callback)
-
-            rospy.Subscriber('~save_data', SaveData, self.save_data_callback)
-            rospy.Subscriber('~snapshot_trigger', Empty, self.snapshot_callback)
-            rospy.Subscriber('~save_data_prefix', String, self.save_data_prefix_pub_ns_callback)
-            rospy.Subscriber('~save_data_rate', SaveDataRate, self.save_data_rate_callback)
-            rospy.Subscriber('~save_data_reset', Empty, self.save_data_reset_callback)
-            rospy.Subscriber('~save_data_reset_factory', Empty, self.save_data_reset_factory_callback)
-
-            rospy.Service('~query_data_products', DataProductQuery, self.query_data_products_callback)
-
-            self.save_data_status_pub = rospy.Publisher('~save_data_status', SaveDataStatus, queue_size=1, latch=True)
-            time.sleep(1)
-            self.publish_save_status()
-        else:
-            rospy.logwarn("SAVE_DATA_IF: Save Data IF not configured")

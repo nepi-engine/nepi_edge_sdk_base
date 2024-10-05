@@ -14,6 +14,7 @@
 #include "sdk_utils.h"
 
 #include "nepi_ros_interfaces/SaveDataStatus.h"
+#include "nepi_ros_interfaces/SaveDataStatus.h"
 #include "nepi_ros_interfaces/SystemStorageFolderQuery.h"
 #include "std_msgs/Empty.h"
 
@@ -483,24 +484,24 @@ void SaveDataInterface::publishSaveStatus()
 	 std::string key_str = "";
 	 double val = 0.0;
 	 std::string rate_entry = "";
-	 std::string saveRates = "[";
+	 nepi_ros_interfaces::SaveDataRate saveRate;
+	 nepi_ros_interfaces::SaveDataRate saveRates[data_product_registry.size()];
+	int ind = 0;
 	for (std::pair<std::string, data_product_registry_entry_t> entry : data_product_registry)
 		{   
 			key_str = entry.first;
 			val = entry.second[0];
-			float val_float = (float) val;
-			std::string val_str = std::to_string(val_float);
-			rate_entry = "[" + key_str + "," + val_str + "],";
-			saveRates = saveRates + rate_entry;
+			saveRate.data_product = key_str;
+			saveRate.save_rate_hz = val;
+			saveRates[ind] = saveRate;
+			ind++;
+
 		}
-
-	saveRates = saveRates + "]";
-
 	nepi_ros_interfaces::SaveDataStatus stat_msg;
 	stat_msg.current_data_dir = _save_data_dir; 
 	stat_msg.current_folder_prefix = prefixDirName;
 	stat_msg.current_filename_prefix = prefixFileName;
-	stat_msg.save_data_rates = saveRates;
+	//stat_msg.save_data_rates = saveRates;
 	stat_msg.save_data.save_continuous = _save_continuous;
 	stat_msg.save_data.save_raw = _save_raw;
 

@@ -219,7 +219,7 @@ def load_params_from_file(file_path, params_namespace = None):
           params = params_input[0][0]
           for key in params.keys():
               value = params[key]
-              param_namesapce = params_namespace + '/' + key
+              param_namesapce = params_namespace + key
               #rospy.logwarn("NEPI_ROS: setting param " + key + " value: " + str(value)  + " for " + params_namespace)
               rospy.set_param(param_namesapce, value)
           rospy.loginfo("Parameters loaded successfully for " + params_namespace)
