@@ -183,26 +183,26 @@ def getAIPackagesList(install_path):
 
 
  
-def activateAllAIs(ais_dict):
+def activateAllFws(ais_dict):
   success = True
   for ai_name in ais_dict.keys():
     ais_dict = activateAI(ai_name,ais_dict)
   return ais_dict
 
-def disableAllAIs(ais_dict):
+def disableAllFws(ais_dict):
   success = True
   for ai_name in ais_dict.keys():
     ais_dict = disableAI(ai_name,ais_dict)
   return ais_dict
 
-def activateAI(ai_name,ais_dict):
+def activateFw(ai_name,ais_dict):
     if ai_name not in ais_dict.keys():
       rospy.logwarn("NEPI_AIS: AI %s for activate request does not exist", ai_name)
       return ais_dict
     ais_dict[ai_name]['active'] = True
     return ais_dict
 
-def disableAI(ai_name,ais_dict):
+def disableFw(ai_name,ais_dict):
     if ai_name not in ais_dict.keys():
       rospy.logwarn("NEPI_AIS: AI %s for removal request does not exist", ai_name)
       return ais_dict
