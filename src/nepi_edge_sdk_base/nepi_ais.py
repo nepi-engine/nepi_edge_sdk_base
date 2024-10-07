@@ -126,28 +126,30 @@ def updateAIsDict(ais_path,ais_dict):
       purge_list.append(ai_name)
   for ai_name in purge_list:
     del ais_dict[ai_name]
-
   for ai_name in get_ais_dict.keys():
     if ai_name not in ais_dict.keys():
       ais_dict[ai_name] = get_ais_dict[ai_name]
       ais_dict[ai_name]['active'] = True
-      ais_dict = moveAIBottom(ai_name,ais_dict)
-  ais_dict = updateModelsDict(ais_dict)
   return ais_dict
+
+  
 
 def getAIsByActive(ais_dict):
   active_dict = dict()
   for ai_name in ais_dict.keys():
-    ais_dict = ais_dict[ai_name]
-    AI_active = ais_dict['active']
-    if AI_active == True:
-      active_dict[ai_name] = ais_dict
+    ai_dict = ais_dict[ai_name]
+    ai_active = ai_dict['active']
+    if ai_active == True:
+      active_dict[ai_name] = ai_dict
   return active_dict
 
 def getAIsSortedList(ais_dict):
   ais_names = list(ais_dict.keys())
-  sorted_names = ais_names.sorted()
-  return sorted_names
+  sorted_names = sorted(ais_names)
+  sorted_list = []
+  for name in sorted_names:
+    sorted_list.append(str(name))
+  return sorted_list
 
 
 def getAIsActiveSortedList(ais_dict):
@@ -208,6 +210,37 @@ def disableFw(ai_name,ais_dict):
       return ais_dict
     ais_dict[ai_name]['active'] = False
     return ais_dict
+
+
+def getModelsByActive(models_dict):
+  active_dict = dict()
+  for model_name in models_dict.keys():
+    model_dict = models_dict[model_name]
+    model_active = models_dict['active']
+    if model_active == True:
+      active_dict[model_name] = model_dict
+  return active_dict
+
+def getModelsSortedList(models_dict):
+  models_names = list(models_dict.keys())
+  sorted_names = sorted(models_names)
+  sorted_list = []
+  for name in sorted_names:
+    sorted_list.append(str(name))
+  return sorted_list
+
+
+def getModelsActiveSortedList(models_dict):
+  sorted_name_list = getModelsSortedList(models_dict)
+  #rospy.logwarn("AIS_MGR: sorted list: " + str(sorted_name_list))
+  sorted_active_list =[]
+  for model_name in sorted_name_list:
+    active = models_dict[model_name]['active']
+    if active:
+      sorted_active_list.append(model_name)
+  return sorted_active_list
+
+
 
 
 def activateAllModels(models_dict):
