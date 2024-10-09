@@ -142,6 +142,18 @@ def updateAppsDict(apps_path,apps_dict):
       apps_dict = moveAppBottom(app_name,apps_dict)
   return apps_dict
 
+def initAppsActiveOrder(active_list,apps_dict):
+  rvs_list = list(reversed(active_list))
+  #rospy.logwarn("NEPI_APPS: got rvs_list: " + str(rvs_list))
+  # First set all to inactive and no order (-1)
+  for name in apps_dict.keys():
+    apps_dict[name]['active'] = False
+    apps_dict[name]['order'] = -1
+  for name in rvs_list:
+    apps_dict = activateApp(name,apps_dict)
+    apps_dict = moveAppTop(name,apps_dict)
+  return apps_dict
+
 
 def refreshAppsDict(apps_path,apps_dict):
   success = True
@@ -454,50 +466,31 @@ def launchAppNode(pkg_name, file_name, ros_node_name, device_path = None):
       success = False
   return success, msg, sub_process
   
+def checkAppNode(node_namespace,sub_process):
+    running = True
+    if sub_process.poll() is None:
+      running = False
+    return running
 
 def killAppNode(node_namespace,sub_process):
-    success = True
-    node_name = node_namespace.split("/")[-1]
-    node_namespace_list = nepi_ros.get_node_list()
-    node_list = []
-    for i in range(len(node_namespace_list)):
-      node_list.append(node_namespace_list[i].split("/")[-1])
-    #rospy.logwarn("NEPI_APPS: " + str(node_list))
-    #rospy.logwarn("NEPI_APPS: " + node_name)
-    if node_name in node_list:
-      #rospy.logwarn("NEPI_APPS: Killing node: " + node_name)
-      [kill_list,fail_list] = rosnode.kill_nodes([node_name])
-      time.sleep(2)    
-      # Next check running processes
-      if sub_process.poll() is not None: 
-        sub_process.terminate()
-        terminate_timeout = 3
-        while (terminate_timeout > 0):
-          time.sleep(1)
-          if sub_process.poll() is not None:
-            terminate_timeout -= 1
-            success = False
-          else:
-            success = True
-            break
-        if success == False:
-          # Escalate it
-          sub_process.kill()
-          time.sleep(1)
-        if sub_process.poll() is not None:
-          success = False
+    success = False
+    if sub_process.poll() is None:
+      sub_process.terminate()
+      terminate_timeout = 3
+      node_dead = False
+      while (terminate_timeout > 0):
+        time.sleep(1)
+        if sub_process.poll() is None:
+          terminate_timeout -= 1
         else:
-          success = True
-    if success:
-      cleanup_proc = subprocess.Popen(['rosnode', 'cleanup'], stdin=subprocess.PIPE)
-      try:
-        cleanup_proc.communicate(input=bytes("y\r\n", 'utf-8'), timeout=10)
-        cleanup_proc.wait(timeout=10) 
-      except Exception as e:
-        rospy.logwarn(self.log_name + ": " + "rosnode cleanup failed (%s)", str(e))
-      #rospy.logwarn("NEPI_APPS: Killed node: " + node_name)
-    else:
-       rospy.logwarn("NEPI_APPS: Failed to kill node: " + node_name)
+          node_dead = True
+          break
+      if not node_dead:
+        # Escalate it
+        sub_process.kill()
+        time.sleep(1)
+    if sub_process.poll() is not None:
+      success = True
     return success
         
 

@@ -276,7 +276,7 @@ def updateDriversDict(drivers_path,drvs_dict):
   for drv_name in get_drvs_dict.keys():
     if drv_name not in drvs_dict.keys():
       drvs_dict[drv_name] = get_drvs_dict[drv_name]
-      drvs_dict[drv_name]['active'] = True
+      drvs_dict[drv_name]['active'] = False
       drvs_dict = moveDriverBottom(drv_name,drvs_dict)
   return drvs_dict
 
@@ -297,6 +297,15 @@ def refreshDriversDict(drivers_path,drvs_dict):
       get_drvs_dict[drv_name]['active'] = drvs_dict[drv_name]['active']
   return drvs_dict
 
+def initDriversActive(active_list,drvs_dict):
+  rvs_list = list(reversed(active_list))  
+  # First set all to inactive
+  for name in drvs_dict.keys():
+    drvs_dict[name]['active'] = False
+  for name in active_list:
+    if name in drvs_dict.keys():
+      drvs_dict[name]['active'] = True
+  return drvs_dict
 
 def getDriversByActive(drvs_dict):
   active_dict = dict()
@@ -651,6 +660,12 @@ def launchDriverNode(file_name, ros_node_name, device_path = None):
       success = False
   return success, msg, sub_process
   
+def checkDriverNode(node_namespace,sub_process):
+    running = True
+    if sub_process.poll() is None:
+      running = False
+    return running
+
 
 def killDriverNode(node_namespace,sub_process):
     success = False
