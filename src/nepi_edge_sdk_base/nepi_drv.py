@@ -246,14 +246,10 @@ def getDriversDict(search_path):
     return drvs_dict
 
 
-# ln = sys._getframe().f_lineno ; self.printND(drvs_dict,ln)
 def printDict(drvs_dict):
   rospy.logwarn('NEPI_DRV: ')
   rospy.logwarn('NEPI_DRV:*******************')
-  if line_num is not None:
-    rospy.logwarn('NEPI_DRV: ' + str(line_num))
   rospy.logwarn('NEPI_DRV: Printing Drv Driver Dictionary')
-
   for drv_name in drvs_dict.keys():
     drv_dict = drvs_dict[drv_name]
     rospy.logwarn('NEPI_DRV: ')
