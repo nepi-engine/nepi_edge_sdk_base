@@ -97,6 +97,17 @@ def wait_for_node(node_name):
   rospy.loginfo("NEPI_ROS: Found node: " + node)
   return node
 
+def kill_node(node_name):
+  kill_node = ""
+  if check_for_node(node_name):
+    nodes = os.popen("rosnode list").readlines()
+    for i in range(len(nodes)):
+      if nodes[i].find(node_name) != -1:
+        kill_node = nodes[i].replace("\n","")
+        break
+  if kill_node != "":
+    os.system("rosnode kill "+ kill_node)
+
 def spin():
   rospy.spin()
   

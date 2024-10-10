@@ -67,7 +67,142 @@ class ROSLSXDeviceIF:
     
     rbx_status_pub_interval = float(1)/float(STATUS_UPDATE_RATE_HZ)
 
-    ## Initialize Class Variables
+       
+    def __init__(self, device_info, getStatusFunction, capSettings, 
+                 factorySettings, settingUpdateFunction, getSettingsFunction,
+                 factoryControls = None, 
+                 standbyEnableFunction = None, turnOnOffFunction = None,
+                 setIntensityRatioFunction = None, 
+                 color_options_list =  None, setColorFunction = None,
+                 kelvin_limits_list = None, setKelvinFunction = None,
+                 blinkOnOffFunction = None,
+                 enableStrobeFunction = None,
+                 reports_temp = False, reports_power = False
+                 ):
+        
+        node_name = rospy.get_name().split('/')[-1]
+        rospy.loginfo(node_name + ": Starting IF setup")
+        # Create a node msg publisher
+        self.msg_pub = rospy.Publisher("~messages", String, queue_size=1)
+        time.sleep(1)
+        
+        self.node_name = device_info["node_name"]
+        self.device_name = device_info["device_name"]
+        self.identifier = device_info["identifier"]
+        self.serial_num = device_info["serial_number"]
+        self.hw_version = device_info["hw_version"]
+        self.sw_version = device_info["sw_version"]
+
+        self.factory_device_name = device_info["device_name"] + "_" + device_info["identifier"]
+
+        # Create and update factory controls dictionary
+        self.factory_controls_dict = self.FACTORY_CONTROLS_DICT
+        if factoryControls is not None:
+            controls = list(factoryControls.keys())
+            for control in controls:
+                if self.factory_controls_dict.get(control) != None and factoryControls.get(control) != None:
+                    self.factory_controls_dict[control] = factoryControls[control]
+
+        self.initializeParamServer(do_updates = False)
+
+        # Start LSX node control subscribers
+        self.standbyEnableFunction = standbyEnableFunction
+        if self.standbyEnableFunction is not None:
+            self.has_standby_mode = True
+            set_standby_enable_sub = rospy.Subscriber("~lsx/set_standby", Bool, self.setStandbyCb, queue_size = 1)
+
+        self.turnOnOffFunction = turnOnOffFunction
+        if self.turnOnOffFunction is not None:
+            self.has_on_off_control = True
+            turn_on_off_sub = rospy.Subscriber("~lsx/turn_on_off", Bool, self.turnOnOffCb, queue_size = 1)
+
+
+        self.setIntensityRatioFunction = setIntensityRatioFunction
+        if self.setIntensityRatioFunction is not None:
+            self.has_intensity_control = True
+            set_intensity_ratio_sub = rospy.Subscriber("~lsx/set_intensity_ratio", Float32, self.setIntensityRatioCb, queue_size = 1)
+
+        self.setColorFunction = setColorFunction
+        if self.setColorFunction is not None:
+            self.has_color_control = True
+            if color_options_list != None:
+              self.color_options_list = color_options_list
+            set_color_sel_sub = rospy.Subscriber("~lsx/set_color", String, self.setColorCb, queue_size = 1)
+
+
+        self.setKelvinFunction = setKelvinFunction
+        if self.setKelvinFunction is not None:
+            self.has_kelvin_control = True
+            if kelvin_limits_list != None:
+              self.kelvin_limits_list = kelvin_limits_list
+            set_kelvin_sub = rospy.Subscriber("~lsx/set_kelvin", Int32, self.setKelvinCb, queue_size = 1)
+
+
+        self.blinkOnOffFunction = blinkOnOffFunction
+        if self.blinkOnOffFunction is not None:
+            self.has_blink_control = True
+            blink_on_off_sub = rospy.Subscriber("~lsx/blink_on_off", Bool, self.blinkOnOffCb, queue_size = 1)
+            set_blink_int_sub = rospy.Subscriber("~lsx/set_blink_interval", Float32, self.setBlinkIntervalCb, queue_size = 1)
+
+        self.enableStrobeFunction = enableStrobeFunction
+        if self.enableStrobeFunction is not None:
+            self.has_hw_strobe = True
+            set_strobe_enable_sub = rospy.Subscriber("~lsx/set_strobe_enable", Bool, self.setStrobeEnableCb, queue_size = 1)
+
+        if reports_temp:
+          self.reports_temp = True
+    
+        if reports_power:
+          self.reports_power = True
+
+
+
+        # Populate and advertise LSX node capabilities report
+        self.capabilities_report = LSXCapabilitiesQueryResponse()
+        self.capabilities_report.has_standby_mode = self.has_standby_mode
+        self.capabilities_report.has_on_off_control = self.has_on_off_control
+        self.capabilities_report.has_intensity_control = self.has_intensity_control
+        self.capabilities_report.has_color_control = self.has_color_control
+        self.capabilities_report.color_options_list = str(self.color_options_list)
+        self.capabilities_report.has_kelvin_control = self.has_kelvin_control
+        self.capabilities_report.kelvin_min = self.kelvin_limits_list[0]
+        self.capabilities_report.kelvin_max = self.kelvin_limits_list[1]
+        self.capabilities_report.has_blink_control = self.has_blink_control
+        self.capabilities_report.has_hw_strobe = self.has_hw_strobe
+        self.capabilities_report.reports_temperature = self.reports_temp
+        self.capabilities_report.reports_power = self.reports_power
+        rospy.Service("~lsx/capabilities_query", LSXCapabilitiesQuery, self.capabilities_query_callback)
+ 
+ 
+        # Setup interface classes and update
+        self.settings_if = SettingsIF(capSettings, factorySettings, settingUpdateFunction, getSettingsFunction)
+        self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.setCurrentAsDefault, paramsModifiedCallback=self.updateFromParamServer)
+
+        time.sleep(1)
+
+
+        # Start additional subscribers
+        self.factory_device_name = device_info["device_name"] + "_" + device_info["identifier"]
+        self.init_device_name = rospy.get_param('~lsx/device_name', self.factory_device_name)
+        rospy.set_param('~lsx/device_name', self.init_device_name)
+        rospy.Subscriber('~lsx/update_device_name', String, self.updateDeviceNameCb, queue_size=1) # start local callbac
+        rospy.Subscriber('~lsx/reset_device_name', Empty, self.resetDeviceNameCb, queue_size=1) # start local callback
+
+        rospy.Subscriber('~reset_factory', Empty, self.resetFactoryCb, queue_size=1) # start local callback
+        rospy.Subscriber('~reset_controls', Empty, self.resetControlsCb, queue_size=1) # start local callback
+
+
+        # Setup LSX status publishers
+        self.getStatusFunction = getStatusFunction
+        self.status_pub = rospy.Publisher("~lsx/status", LSXStatus, queue_size=1, latch=True)
+        time.sleep(1)
+        rospy.Timer(rospy.Duration(1), self.statusTimerCb)
+
+        self.updateFromParamServer()
+        self.publish_status()
+        ## Initiation Complete
+        self.publishMsg("Initialization Complete")
+        
 
     def resetFactoryCb(self, msg):
         rospy.loginfo("LSX_IF: Received RBX Driver Factory Reset")
@@ -304,142 +439,7 @@ class ROSLSXDeviceIF:
         self.blinkOnOffFunction(new_state)
 
 
-           
-    def __init__(self, device_info, getStatusFunction, capSettings, 
-                 factorySettings, settingUpdateFunction, getSettingsFunction,
-                 factoryControls = None, 
-                 standbyEnableFunction = None, turnOnOffFunction = None,
-                 setIntensityRatioFunction = None, 
-                 color_options_list =  None, setColorFunction = None,
-                 kelvin_limits_list = None, setKelvinFunction = None,
-                 blinkOnOffFunction = None,
-                 enableStrobeFunction = None,
-                 reports_temp = False, reports_power = False
-                 ):
-        
-        node_name = rospy.get_name().split('/')[-1]
-        rospy.loginfo(node_name + ": Starting IF setup")
-        # Create a node msg publisher
-        self.msg_pub = rospy.Publisher("~messages", String, queue_size=1)
-        time.sleep(1)
-        
-        self.node_name = device_info["node_name"]
-        self.device_name = device_info["device_name"]
-        self.identifier = device_info["identifier"]
-        self.serial_num = device_info["serial_number"]
-        self.hw_version = device_info["hw_version"]
-        self.sw_version = device_info["sw_version"]
-
-        self.factory_device_name = device_info["device_name"] + "_" + device_info["identifier"]
-
-        # Create and update factory controls dictionary
-        self.factory_controls_dict = self.FACTORY_CONTROLS_DICT
-        if factoryControls is not None:
-            controls = list(factoryControls.keys())
-            for control in controls:
-                if self.factory_controls_dict.get(control) != None and factoryControls.get(control) != None:
-                    self.factory_controls_dict[control] = factoryControls[control]
-
-        self.initializeParamServer(do_updates = False)
-
-        # Start LSX node control subscribers
-        self.standbyEnableFunction = standbyEnableFunction
-        if self.standbyEnableFunction is not None:
-            self.has_standby_mode = True
-            set_standby_enable_sub = rospy.Subscriber("~lsx/set_standby", Bool, self.setStandbyCb, queue_size = 1)
-
-        self.turnOnOffFunction = turnOnOffFunction
-        if self.turnOnOffFunction is not None:
-            self.has_on_off_control = True
-            turn_on_off_sub = rospy.Subscriber("~lsx/turn_on_off", Bool, self.turnOnOffCb, queue_size = 1)
-
-
-        self.setIntensityRatioFunction = setIntensityRatioFunction
-        if self.setIntensityRatioFunction is not None:
-            self.has_intensity_control = True
-            set_intensity_ratio_sub = rospy.Subscriber("~lsx/set_intensity_ratio", Float32, self.setIntensityRatioCb, queue_size = 1)
-
-        self.setColorFunction = setColorFunction
-        if self.setColorFunction is not None:
-            self.has_color_control = True
-            if color_options_list != None:
-              self.color_options_list = color_options_list
-            set_color_sel_sub = rospy.Subscriber("~lsx/set_color", String, self.setColorCb, queue_size = 1)
-
-
-        self.setKelvinFunction = setKelvinFunction
-        if self.setKelvinFunction is not None:
-            self.has_kelvin_control = True
-            if kelvin_limits_list != None:
-              self.kelvin_limits_list = kelvin_limits_list
-            set_kelvin_sub = rospy.Subscriber("~lsx/set_kelvin", Int32, self.setKelvinCb, queue_size = 1)
-
-
-        self.blinkOnOffFunction = blinkOnOffFunction
-        if self.blinkOnOffFunction is not None:
-            self.has_blink_control = True
-            blink_on_off_sub = rospy.Subscriber("~lsx/blink_on_off", Bool, self.blinkOnOffCb, queue_size = 1)
-            set_blink_int_sub = rospy.Subscriber("~lsx/set_blink_interval", Float32, self.setBlinkIntervalCb, queue_size = 1)
-
-        self.enableStrobeFunction = enableStrobeFunction
-        if self.enableStrobeFunction is not None:
-            self.has_hw_strobe = True
-            set_strobe_enable_sub = rospy.Subscriber("~lsx/set_strobe_enable", Bool, self.setStrobeEnableCb, queue_size = 1)
-
-        if reports_temp:
-          self.reports_temp = True
     
-        if reports_power:
-          self.reports_power = True
-
-
-
-        # Populate and advertise LSX node capabilities report
-        self.capabilities_report = LSXCapabilitiesQueryResponse()
-        self.capabilities_report.has_standby_mode = self.has_standby_mode
-        self.capabilities_report.has_on_off_control = self.has_on_off_control
-        self.capabilities_report.has_intensity_control = self.has_intensity_control
-        self.capabilities_report.has_color_control = self.has_color_control
-        self.capabilities_report.color_options_list = str(self.color_options_list)
-        self.capabilities_report.has_kelvin_control = self.has_kelvin_control
-        self.capabilities_report.kelvin_min = self.kelvin_limits_list[0]
-        self.capabilities_report.kelvin_max = self.kelvin_limits_list[1]
-        self.capabilities_report.has_blink_control = self.has_blink_control
-        self.capabilities_report.has_hw_strobe = self.has_hw_strobe
-        self.capabilities_report.reports_temperature = self.reports_temp
-        self.capabilities_report.reports_power = self.reports_power
-        rospy.Service("~lsx/capabilities_query", LSXCapabilitiesQuery, self.capabilities_query_callback)
- 
- 
-        # Setup interface classes and update
-        self.settings_if = SettingsIF(capSettings, factorySettings, settingUpdateFunction, getSettingsFunction)
-        self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.setCurrentAsDefault, paramsModifiedCallback=self.updateFromParamServer)
-
-        time.sleep(1)
-
-
-        # Start additional subscribers
-        self.factory_device_name = device_info["device_name"] + "_" + device_info["identifier"]
-        self.init_device_name = rospy.get_param('~lsx/device_name', self.factory_device_name)
-        rospy.set_param('~lsx/device_name', self.init_device_name)
-        rospy.Subscriber('~lsx/update_device_name', String, self.updateDeviceNameCb, queue_size=1) # start local callbac
-        rospy.Subscriber('~lsx/reset_device_name', Empty, self.resetDeviceNameCb, queue_size=1) # start local callback
-
-        rospy.Subscriber('~reset_factory', Empty, self.resetFactoryCb, queue_size=1) # start local callback
-        rospy.Subscriber('~reset_controls', Empty, self.resetControlsCb, queue_size=1) # start local callback
-
-
-        # Setup LSX status publishers
-        self.getStatusFunction = getStatusFunction
-        self.status_pub = rospy.Publisher("~lsx/status", LSXStatus, queue_size=1, latch=True)
-        time.sleep(1)
-        rospy.Timer(rospy.Duration(1), self.statusTimerCb)
-
-        self.updateFromParamServer()
-        self.publish_status()
-        ## Initiation Complete
-        self.publishMsg("Initialization Complete")
-        
         
     def publishMsg(self,msg):
       msg_str = (self.node_name + ": " + str(msg))
