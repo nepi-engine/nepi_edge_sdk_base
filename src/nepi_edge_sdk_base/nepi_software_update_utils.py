@@ -132,7 +132,7 @@ def checkForNewImageAvailable(new_img_staging_device, staging_device_is_removabl
     status, err_msg, new_img_version = getFWVersionStringForPartition(
         new_img_pathname)
 
-    if os.path.exists(new_img_pathname):
+    if os.path.exists(new_img_pathname) == False:
         new_img_filesize = os.path.getsize(new_img_pathname)
         status = False
 
