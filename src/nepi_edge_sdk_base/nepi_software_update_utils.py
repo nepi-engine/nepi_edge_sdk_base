@@ -22,6 +22,8 @@ import os
 import subprocess
 import shlex
 
+import rospy
+
 # Local rootfs definitions - These can be freely changed
 ###################################################################################################
 FLASH_ROOTFS_MOUNTPOINT = "/mnt/flash"
@@ -131,14 +133,16 @@ def checkForNewImageAvailable(new_img_staging_device, staging_device_is_removabl
     new_img_pathname = img_files[0]
     status, err_msg, new_img_version = getFWVersionStringForPartition(
         new_img_pathname)
-
-    if os.path.exists(new_img_pathname) == False:
+    
+    if os.path.exists(new_img_pathname):
         new_img_filesize = os.path.getsize(new_img_pathname)
+    else:
         status = False
+        new_img_filesize = 0
 
     unmountPartition(STAGING_MOUNTPOINT)
 
-    if status is False:
+    if status == False:
         return False, err_msg, None, None, 0
 
     return True, "New image file identified", os.path.basename(new_img_pathname), new_img_version, new_img_filesize
