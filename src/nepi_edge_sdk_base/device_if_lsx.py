@@ -13,6 +13,7 @@ import time
 
 
 from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_msg
 
 from std_msgs.msg import Empty, Int8, UInt8, UInt32, Int32, Bool, String, Float32, Float64
 from std_msgs.msg import UInt8, Empty, String, Bool, Float32
@@ -80,13 +81,13 @@ class ROSLSXDeviceIF:
                  reports_temp = False, reports_power = False
                  ):
         
-        node_name = rospy.get_name().split('/')[-1]
-        rospy.loginfo(node_name + ": Starting IF setup")
-        # Create a node msg publisher
-        self.msg_pub = rospy.Publisher("~messages", String, queue_size=1)
-        time.sleep(1)
-        
-        self.node_name = device_info["node_name"]
+        ####  IF INIT SETUP ####
+        self.node_name = nepi_ros.get_node_name()
+        self.base_namespace = nepi_ros.get_base_namespace()
+        nepi_msg.createMsgPublishers(self)
+        nepi_msg.publishMsgInfo(self,"Starting IF Initialization Processes")
+        ############################## 
+
         self.device_name = device_info["device_name"]
         self.identifier = device_info["identifier"]
         self.serial_num = device_info["serial_number"]
@@ -201,12 +202,12 @@ class ROSLSXDeviceIF:
         self.updateFromParamServer()
         self.publish_status()
         ## Initiation Complete
-        self.publishMsg("Initialization Complete")
+        nepi_msg.publishMsgInfo(self,"Initialization Complete")
         
 
     def resetFactoryCb(self, msg):
-        rospy.loginfo("LSX_IF: Received RBX Driver Factory Reset")
-        rospy.loginfo(msg)
+        nepi_msg.publishMsgInfo(self,"Received RBX Driver Factory Reset")
+        nepi_msg.publishMsgInfo(self,msg)
         self.resetFactory()
 
     def resetFactory(self):
@@ -224,8 +225,8 @@ class ROSLSXDeviceIF:
         self.publish_status()
 
     def resetControlsCb(self, msg):
-        rospy.loginfo("LSX_IF: Resetting LSX Device Controls")
-        self.publishMsg(msg)
+        nepi_msg.publishMsgInfo(self,"Resetting LSX Device Controls")
+        nepi_msg.publishMsgInfo(self,msg)
         self.resetControls()
 
     def resetControls(self):
@@ -318,8 +319,8 @@ class ROSLSXDeviceIF:
 
     ### Device Name callbacks
     def updateDeviceNameCb(self, msg):
-        self.publishMsg("LSX_IF: Received Device Name update msg")
-        self.publishMsg(msg)
+        nepi_msg.publishMsgInfo(self,"Received Device Name update msg")
+        nepi_msg.publishMsgInfo(self,msg)
         new_device_name = msg.data
         self.updateDeviceName(new_device_name)
 
@@ -337,8 +338,8 @@ class ROSLSXDeviceIF:
 
 
     def resetDeviceNameCb(self,msg):
-        self.publishMsg("LSX_IF: Received Device Name reset msg")
-        self.publishMsg(msg)
+        nepi_msg.publishMsgInfo(self,"Received Device Name reset msg")
+        nepi_msg.publishMsgInfo(self,msg)
         self.resetDeviceName()
 
     def resetDeviceName(self):
@@ -348,7 +349,7 @@ class ROSLSXDeviceIF:
 
     ### LSX callbacks
     def setStandbyCb(self, standby_msg):
-      self.publishMsg("Recieved standby message: (" + str(standby_msg) + ")")
+      nepi_msg.publishMsgInfo(self,"Recieved standby message: (" + str(standby_msg) + ")")
       standby=standby_msg.data
       self.standbyEnableFunction(standby)
       rospy.set_param('~lsx/standby_enabled', standby)
@@ -356,7 +357,7 @@ class ROSLSXDeviceIF:
 
 
     def turnOnOffCb(self, on_off_msg):
-      self.publishMsg("Recieved on off message: (" + str(on_off_msg) + ")")
+      nepi_msg.publishMsgInfo(self,"Recieved on off message: (" + str(on_off_msg) + ")")
       on_off=on_off_msg.data
       self.turnOnOffFunction(on_off)
       rospy.set_param('~lsx/on_off_state', on_off)
@@ -364,7 +365,7 @@ class ROSLSXDeviceIF:
 
     ### Set intensity callback
     def setIntensityRatioCb(self, intensity_msg):
-      self.publishMsg("Recieved intensity message (" + str(intensity_msg) + ")")
+      nepi_msg.publishMsgInfo(self,"Recieved intensity message (" + str(intensity_msg) + ")")
       intensity=intensity_msg.data
       self.setIntensityRatioFunction(intensity)
       rospy.set_param('~lsx/intensity_ratio', intensity)
@@ -372,7 +373,7 @@ class ROSLSXDeviceIF:
 
     ### Set color selection callback
     def setColorCb(self, color_msg):
-      self.publishMsg("Recieved color selection message (" + str(color_msg) + ")")
+      nepi_msg.publishMsgInfo(self,"Recieved color selection message (" + str(color_msg) + ")")
       color = color_msg.data
       if color in self.color_options_list:
         self.setColorFunction(color)
@@ -381,7 +382,7 @@ class ROSLSXDeviceIF:
 
     ### Set kelvin value callback
     def setKelvinCb(self, kelvin_msg):
-      self.publishMsg("Recieved set kelvin message (" + str(kelvin_msg) + ")")
+      nepi_msg.publishMsgInfo(self,"Recieved set kelvin message (" + str(kelvin_msg) + ")")
       kelvin = kelvin_msg.data
       if kelvin >= self.kelvin_limits_list[0] and kelvin <= self.kelvin_limits_list[1]:
         self.setKelvinFunction(kelvin)
@@ -389,7 +390,7 @@ class ROSLSXDeviceIF:
       self.publish_status()
 
     def setStrobeEnableCb(self, strobe_enable_msg):
-      self.publishMsg("Recieved strobe enable message (" + str(strobe_enable_msg) + ")")
+      nepi_msg.publishMsgInfo(self,"Recieved strobe enable message (" + str(strobe_enable_msg) + ")")
       strobe_enable=strobe_enable_msg.data
       self.enableStrobeFunction(strobe_enable)
       rospy.set_param('~lsx/strobe_enbled', strobe_enable)
@@ -397,7 +398,7 @@ class ROSLSXDeviceIF:
 
 
     def blinkOnOffCb(self, on_off_msg):
-      self.publishMsg("Recieved blink on off message: (" + str(on_off_msg) + ")")
+      nepi_msg.publishMsgInfo(self,"Recieved blink on off message: (" + str(on_off_msg) + ")")
       on_off=on_off_msg.data
       cur_on_off = rospy.get_param('~lsx/blink_enabled', self.init_blink_enabled)
       rospy.set_param('~lsx/blink_enabled', on_off)
@@ -407,7 +408,7 @@ class ROSLSXDeviceIF:
 
     ### Set blink interval callback
     def setBlinkIntervalCb(self, blink_int_msg):
-      self.publishMsg("Recieved blink interval message (" + str(blink_int_msg) + ")")
+      nepi_msg.publishMsgInfo(self,"Recieved blink interval message (" + str(blink_int_msg) + ")")
       blink_int = blink_int_msg.data
       cur_int = rospy.get_param('~lsx/blink_interval_sec', self.init_blink_interval_sec)
       if blink_int > 0 and blink_int < 10 and blink_int != cur_int:
@@ -421,14 +422,14 @@ class ROSLSXDeviceIF:
         #self.publishMsg("Got blink process with enabled: " + str(enabled) + " and interval_sec: " + str(interval))
         if enabled == True:
           if self.blink_timer_thread is not None:
-            self.publishMsg("Killing blink process")
+            nepi_msg.publishMsgInfo(self,"Killing blink process")
             self.blink_timer_thread.shutdown()
             self.blink_timer_thread = None
             nepi_ros.sleep(interval,100)
-          self.publishMsg("Starting blink process with enabled: " + str(enabled) + " and interval_sec: " + str(interval))
+          nepi_msg.publishMsgInfo(self,"Starting blink process with enabled: " + str(enabled) + " and interval_sec: " + str(interval))
           self.blink_timer_thread = rospy.Timer(rospy.Duration(interval), self.blinkTimerThread)
         if enabled == False and self.blink_timer_thread is not None:
-          self.publishMsg("Killing blink process")
+          nepi_msg.publishMsgInfo(self,"Killing blink process")
           self.blink_timer_thread.shutdown()
           self.blink_timer_thread = None
 
@@ -443,7 +444,7 @@ class ROSLSXDeviceIF:
         
     def publishMsg(self,msg):
       msg_str = (self.node_name + ": " + str(msg))
-      rospy.loginfo(msg_str)
+      nepi_msg.publishMsgInfo(self,msg_str)
       if self.msg_pub.get_num_connections() > 0:
         self.msg_pub.publish(msg_str)
 

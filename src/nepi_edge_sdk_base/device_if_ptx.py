@@ -17,6 +17,9 @@ from nepi_ros_interfaces.srv import PTXCapabilitiesQuery, PTXCapabilitiesQueryRe
 
 from tf.transformations import quaternion_from_euler
 
+from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_msg
+
 from nepi_edge_sdk_base.settings_if import SettingsIF
 from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
 
@@ -58,7 +61,13 @@ class ROSPTXActuatorIF:
                  setWaypointHereCb=None, # None ==> No native driver support for instant waypoints, can still use if absolute positioning is supported
                 ):
 
-        self.node_name = device_info["node_name"]
+        ####  IF INIT SETUP ####
+        self.node_name = nepi_ros.get_node_name()
+        self.base_namespace = nepi_ros.get_base_namespace()
+        nepi_msg.createMsgPublishers(self)
+        nepi_msg.publishMsgInfo(self,"Starting IF Initialization Processes")
+        ############################## 
+
         self.device_name = device_info["device_name"]
         self.identifier = device_info["identifier"]
         self.serial_num = device_info["serial_number"]
@@ -144,7 +153,7 @@ class ROSPTXActuatorIF:
                 self.setSpeedCb(speed_ratio)
                 self.capabilities_report.adjustable_speed = True
             else:
-                rospy.logwarn('Inconsistent capabilities: adjustable speed reports true, but no callback provided')
+                nepi_msg.publishMsgWarn(self,'Inconsistent capabilities: adjustable speed reports true, but no callback provided')
                 self.capabilities_report.adjustable_speed = False
         
         # Positioning and soft limits setup if available
@@ -152,7 +161,7 @@ class ROSPTXActuatorIF:
             self.gotoPositionCb = gotoPositionCb
             self.getCurrentPositionCb = getCurrentPositionCb
             if (self.gotoPositionCb is None) or (self.getCurrentPositionCb is None):
-                rospy.logwarn('Inconsistent capabilities: absolute positioning reports true, but no callback provided')
+                nepi_msg.publishMsgWarn(self,'Inconsistent capabilities: absolute positioning reports true, but no callback provided')
                 self.capabilities_report.adjustable_speed = False
                 # We require both command and feedback reporting to support absolute positioning
                 self.capabilities_report.absolute_positioning = False
@@ -214,7 +223,7 @@ class ROSPTXActuatorIF:
             self.setHomePositionHereCb = setHomePositionHereCb
         
             if self.goHomeCb is None and self.capabilities_report.absolute_positiong is False:
-                rospy.logwarn('Inconsistent capabilities: homing reports true, but no goHome callback provided and no absolute positioning')
+                nepi_msg.publishMsgWarn(self,'Inconsistent capabilities: homing reports true, but no goHome callback provided and no absolute positioning')
                 self.capabilities_report.homing = False
                 
         if self.capabilities_report.homing is True:
@@ -236,7 +245,7 @@ class ROSPTXActuatorIF:
             self.setWaypointHereCb = setWaypointHereCb
 
             if self.gotoWaypointCb is None:
-                rospy.logwarn('Inconsistent capabilities: waypoints reports true, but no gotoWaypoint callback provided')
+                nepi_msg.publishMsgWarn(self,'Inconsistent capabilities: waypoints reports true, but no gotoWaypoint callback provided')
                 self.capabilities_report.waypoints = False
                 
         if self.capabilities_report.waypoints is True:
@@ -269,7 +278,7 @@ class ROSPTXActuatorIF:
         # Update and Publish Status Message
         self.publishStatus()
         ## Initiation Complete
-        rospy.loginfo(" PTX_IF: Initialization Complete")
+        nepi_msg.publishMsgInfo(self,"Initialization Complete")
 
     def yawRatioToDeg(self, ratio):
         return  ratio * (self.max_yaw_softstop_deg - self.min_yaw_softstop_deg) + self.min_yaw_softstop_deg
@@ -336,14 +345,14 @@ class ROSPTXActuatorIF:
     def setSpeedRatioHandler(self, msg):
         speed_ratio = msg.data
         if (speed_ratio < 0.0) or (speed_ratio > 1.0):
-            rospy.logwarn(" PTX_IF: Invalid speed ratio requested (%.2f)... ignoring", speed_ratio)
+            nepi_msg.publishMsgWarn(self,"Invalid speed ratio requested " + "%.2f" % speed_ratio)
 
         self.setSpeedCb(speed_ratio)
-        rospy.loginfo(" PTX_IF: Updated speed ratio to " + str(speed_ratio))
+        nepi_msg.publishMsgInfo(self,"Updated speed ratio to " + str(speed_ratio))
 
     def setHomePositionHandler(self, msg):
         if not self.positionWithinSoftLimits(msg.yaw_deg, msg.pitch_deg):
-            rospy.logwarn(" PTX_IF: Requested home position is invalid... ignoring")
+            nepi_msg.publishMsgWarn(self,"Requested home position is invalid... ignoring")
             return
 
         if self.setHomePositionCb is not None:
@@ -352,24 +361,24 @@ class ROSPTXActuatorIF:
             self.home_pitch_deg = msg.pitch_deg
             self.setHomePositionCb(self.home_yaw_deg, self.home_pitch_deg)
         else:
-            rospy.logwarn(" PTX_IF: Absolution position home setpoints not available... ignoring")
+            nepi_msg.publishMsgWarn(self,"Absolution position home setpoints not available... ignoring")
             return
         
-        rospy.loginfo(" PTX_IF: Updated home position to (%.2f,%.2f)",  self.home_yaw_deg, self.home_pitch_deg)
+        nepi_msg.publishMsgInfo(self,"Updated home position to " + "%.2f" % self.home_yaw_deg + " " + "%.2f" %  self.home_pitch_deg)
     
     def setSoftLimitsHandler(self, msg):
         if (msg.min_yaw_softstop_deg < self.min_yaw_hardstop_deg) or \
            (msg.max_yaw_softstop_deg < self.max_yaw_hardstop_deg) or \
            (msg.min_pitch_softstop_deg < self.min_pitch_hardstop_deg) or \
            (msg.max_pitch_softstop_deg < self.max_pitch_hardstop_deg):
-            rospy.logwarn(" PTX_IF: Soft limits cannot exceed hard limits... ignoring");
+            nepi_msg.publishMsgWarn(self,"Soft limits cannot exceed hard limits... ignoring")
             return
         
         self.min_yaw_softstop_deg = msg.min_yaw_softstop_deg
         self.max_yaw_softstop_deg = msg.max_yaw_softstop_deg
         self.min_pitch_softstop_deg = msg.min_pitch_softstop_deg
         self.max_pitch_softstop_deg = msg.max_pitch_softstop_deg
-        rospy.loginfo(" PTX_IF: Updated softstop limits")
+        nepi_msg.publishMsgInfo(self,"Updated softstop limits")
 
     def goHomeHandler(self, _):
         if self.goHomeCb is not None:
@@ -377,18 +386,18 @@ class ROSPTXActuatorIF:
 
     def jogToPositionHandler(self, msg):
         if not self.positionWithinSoftLimits(msg.yaw_deg, msg.pitch_deg):
-            rospy.logwarn(" PTX_IF: Requested jog position is invalid... ignoring")
+            nepi_msg.publishMsgWarn(self,"Requested jog position is invalid... ignoring")
             return
 
         self.yaw_goal_deg = msg.yaw_deg
         self.pitch_goal_deg = msg.pitch_deg
         self.gotoPositionCb(yaw_deg = msg.yaw_deg, pitch_deg = msg.pitch_deg,)
-        rospy.loginfo(" PTX_IF: Driving to (%0.2f, %0.2f) by request", msg.yaw_deg, msg.pitch_deg)
+        nepi_msg.publishMsgInfo(self,"Driving to  " + "%.2f" % msg.yaw_deg + " " + "%.2f" % msg.pitch_deg)
             
     def jogToYawRatioHandler(self, msg):
         ratio = msg.data if self.reverse_yaw_control is False else (1.0 - msg.data)
         if (ratio < 0.0 or ratio > 1.0):
-            rospy.logwarn(" PTX_IF: Invalid yaw position ratio %0.2f... ignoring", ratio)
+            nepi_msg.publishMsgWarn(self,"Invalid yaw position ratio " + "%.2f" % ratio)
             return
         
         self.yaw_goal_deg = self.yawRatioToDeg(ratio)
@@ -398,7 +407,7 @@ class ROSPTXActuatorIF:
     def jogToPitchRatioHandler(self, msg):
         ratio = msg.data if self.reverse_pitch_control is False else (1.0 - msg.data)
         if (ratio < 0.0 or ratio > 1.0):
-            rospy.logwarn(" PTX_IF: Invalid pitch position ratio %0.2f... ignoring", ratio)
+            nepi_msg.publishMsgWarn(self,"Invalid pitch position ratio " + "%.2f" % ratio)
             return
         
         self.pitch_goal_deg = self.pitchRatioToDeg(ratio)
@@ -407,29 +416,29 @@ class ROSPTXActuatorIF:
 
     def stopMovingHandler(self, _):
         self.stopMovingCb()
-        rospy.loginfo(" PTX_IF: Stopping motion by request")
+        nepi_msg.publishMsgInfo(self,"Stopping motion by request")
 
     def jogTimedYawHandler(self, msg):
         direction = msg.direction if self.reverse_yaw_control is False else (-1 * msg.direction)
         duration = 1000000.0 if (msg.duration_s < 0.0) else msg.duration_s
 
         self.moveYawCb(direction,  duration)
-        rospy.loginfo(" PTX_IF: Jogging yaw")
+        nepi_msg.publishMsgInfo(self,"Jogging yaw")
 
     def jogTimedPitchHandler(self, msg):
         direction = msg.direction if self.reverse_pitch_control is False else (-1 * msg.direction)
         duration = 1000000.0 if (msg.duration_s < 0.0) else msg.duration_s
 
         self.movePitchCb(direction, duration)
-        rospy.loginfo(" PTX_IF: Jogging pitch")
+        nepi_msg.publishMsgInfo(self,"Jogging pitch")
 
     def setReverseYawControl(self, msg):
         self.reverse_yaw_control = msg.data
-        rospy.loginfo(" PTX_IF: Set yaw control to reverse=" + str(self.reverse_yaw_control))
+        nepi_msg.publishMsgInfo(self,"Set yaw control to reverse=" + str(self.reverse_yaw_control))
 
     def setReversePitchControl(self, msg):
         self.reverse_pitch_control = msg.data
-        rospy.loginfo(" PTX_IF: Set pitch control to reverse=" + str(self.reverse_pitch_control))
+        nepi_msg.publishMsgInfo(self,"Set pitch control to reverse=" + str(self.reverse_pitch_control))
 
     def setHomePositionHereHandler(self, _):
         if self.setHomePositionHereCb is not None:
@@ -439,10 +448,10 @@ class ROSPTXActuatorIF:
                 self.home_yaw_deg, self.home_pitch_deg = self.getCurrentPositionCb()
             self.setHomePositionHereCb()
         else:
-            rospy.logwarn(" PTX_IF: Instant home position not available for this device")
+            nepi_msg.publishMsgWarn(self,"Instant home position not available for this device")
             return
         
-        rospy.loginfo(" PTX_IF: Updated home position to current position")
+        nepi_msg.publishMsgInfo(self,"Updated home position to current position")
 
     def setWaypointHandler(self, msg):
         yaw_deg = msg.yaw_deg
@@ -450,13 +459,11 @@ class ROSPTXActuatorIF:
         waypoint_index = msg.waypoint_index
 
         if not self.positionWithinSoftLimits(msg.yaw_deg, msg.pitch_deg):
-            rospy.logwarn(" PTX_IF: Requested waypoint position is invalid... ignoring")
+            nepi_msg.publishMsgWarn(self,"Requested waypoint position is invalid... ignoring")
             return
 
         if self.setWaypointCb is not None:
             self.setWaypointCb(waypoint_index, yaw_deg, pitch_deg)
-
-        rospy.loginfo(" PTX_IF: Waypoint %u set to [%.2f, %.2f]", waypoint_index, yaw_deg, pitch_deg)
 
     def setWaypointHereHandler(self, msg):
         waypoint_index = msg.data
@@ -468,7 +475,7 @@ class ROSPTXActuatorIF:
 
         if self.gotoWaypointCb is not None:
             self.gotoWaypointCb(waypoint_index)
-            rospy.loginfo(" PTX_IF: Going to waypoint %u by command", waypoint_index)
+            nepi_msg.publishMsgInfo(self,"Going to waypoint by command " + str(waypoint_index))
     
     def provideCapabilities(self, _):
         return self.capabilities_report

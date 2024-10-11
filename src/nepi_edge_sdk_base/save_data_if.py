@@ -13,6 +13,7 @@ import time
 import rospy
 
 from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_msg
 
 from std_msgs.msg import String, Empty
 from nepi_ros_interfaces.msg import SaveData, SaveDataRate, SaveDataStatus
@@ -33,32 +34,38 @@ class SaveDataIF(object):
     init_data_rate_dict = dict()
 
     def __init__(self, data_product_names=None,factory_data_rate_dict = None):
-        NEPI_BASE_NAMESPACE = nepi_ros.get_base_namespace()
+        ####  IF INIT SETUP ####
+        self.node_name = nepi_ros.get_node_name()
+        self.base_namespace = nepi_ros.get_base_namespace()
+        nepi_msg.createMsgPublishers(self)
+        nepi_msg.publishMsgInfo(self,"Starting IF Initialization Processes")
+        ##############################
+
         if data_product_names != None:
             data_products_str = str(data_product_names)
         else:
             data_products_str = "None"
-        rospy.loginfo("SAVE_DATA_IF: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        rospy.loginfo("SAVE_DATA_IF: Starting Save_Data_IF with data products: " + data_products_str)
+        nepi_msg.publishMsgInfo(self,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+        nepi_msg.publishMsgInfo(self,"Starting Save_Data_IF with data products: " + data_products_str)
         # First thing, need to get the data folder
         self.save_data_root_directory = None # Flag it as non-existent
-        get_folder_name_service = NEPI_BASE_NAMESPACE + 'system_storage_folder_query'
-        rospy.loginfo("SAVE_DATA_IF: Waiting for system storage folder query service " + get_folder_name_service)
+        get_folder_name_service = self.base_namespace + 'system_storage_folder_query'
+        nepi_msg.publishMsgInfo(self,"Waiting for system storage folder query service " + get_folder_name_service)
         try:
-            rospy.loginfo("SAVE_DATA_IF: Getting storage folder query service " + get_folder_name_service)
+            nepi_msg.publishMsgInfo(self,"Getting storage folder query service " + get_folder_name_service)
             folder_query_service = rospy.ServiceProxy(get_folder_name_service, SystemStorageFolderQuery)
             response = folder_query_service('data')
-            rospy.loginfo("SAVE_DATA_IF: Got storage folder path" + str(response))
+            nepi_msg.publishMsgInfo(self,"Got storage folder path" + str(response))
             time.sleep(1)
             self.save_data_root_directory = response.folder_path
         except Exception as e:
             self.save_data_root_directory = DATA_FOLDER_FALLBACK
-            rospy.logwarn("SAVE_DATA_IF: Failed to obtain system data folder, falling back to: " + DATA_FOLDER_FALLBACK + " " + str(e))
+            nepi_msg.publishMsgWarn(self,"Failed to obtain system data folder, falling back to: " + DATA_FOLDER_FALLBACK + " " + str(e))
             
         if self.save_data_root_directory is not None:
             # Ensure the data folder exists with proper ownership
             if not os.path.exists(self.save_data_root_directory):
-                rospy.logwarn("SAVE_DATA_IF: Reported data folder does not exist... data saving is disabled")
+                nepi_msg.publishMsgWarn(self,"Reported data folder does not exist... data saving is disabled")
                 self.save_data_root_directory = None # Flag it as non-existent
                 return # Don't enable any of the ROS interface stuff
 
@@ -111,7 +118,7 @@ class SaveDataIF(object):
             time.sleep(1)
             self.publish_save_status()
         else:
-            rospy.logwarn("SAVE_DATA_IF: Save Data IF not configured")
+            nepi_msg.publishMsgWarn(self,"Save Data IF not configured")
 
     
     def save_data_callback(self, msg):
@@ -142,7 +149,7 @@ class SaveDataIF(object):
         self.publish_save_status()
 
     def snapshot_callback(self,msg):
-        rospy.loginfo("SAVE_DATA_IF: Recieved Snapshot Trigger")
+        nepi_msg.publishMsgInfo(self,"Recieved Snapshot Trigger")
         data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
         for data_product_name in data_rate_dict.keys():
             save_rate = data_rate_dict[data_product_name][0]
@@ -180,9 +187,9 @@ class SaveDataIF(object):
             full_path = self.save_data_root_directory
         else:
             full_path = ""
-        #rospy.logwarn("SAVE_DATA_IF: DEBUG!!!! Computed full path " + full_path + " and parent path " + parent_path)
+        #nepi_msg.publishMsgWarn(self,"DEBUG!!!! Computed full path " + full_path + " and parent path " + parent_path)
         if not os.path.exists(full_path):
-            rospy.loginfo("SAVE_DATA_IF: Creating new data subdirectory " + full_path)
+            nepi_msg.publishMsgInfo(self,"Creating new data subdirectory " + full_path)
             try:
                 os.makedirs(full_path)
                 os.chown(full_path, self.DATA_UID, self.DATA_GID)
@@ -192,7 +199,7 @@ class SaveDataIF(object):
             except Exception as e:
                 self.save_path = self.save_data_root_directory # revert to root folder
                 self.save_data_subfolder  = ""
-                rospy.loginfo("SAVE_DATA_IF: Could not create save folder " + subfolder + str(e) )
+                nepi_msg.publishMsgInfo(self,"Could not create save folder " + subfolder + str(e) )
         else:
             self.save_path = full_path
             self.save_data_subfolder  = subfolder
@@ -217,7 +224,7 @@ class SaveDataIF(object):
         elif (data_product in data_rate_dict):
             data_rate_dict[data_product][0] = save_rate_hz if save_rate_hz <= data_rate_dict[data_product][2] else data_rate_dict[data_product][2]
         else:
-            rospy.logerr("SAVE_DATA_IF: %s is not a known data product", data_product)           
+            nepi_msg.publishMsgWarn(self,"Requested unknown data product: " + data_product)           
         rospy.set_param('~data_rate_dict',data_rate_dict)
         self.publish_save_status()
         
@@ -234,14 +241,14 @@ class SaveDataIF(object):
     def publish_save_status(self):
         save_rates_msg = []
         data_rate_dict = rospy.get_param('~data_rate_dict',self.init_data_rate_dict)
-        #rospy.logwarn("SAVE_DATA_IF: data_rate_dict " + str(data_rate_dict))
+        #nepi_msg.publishMsgWarn(self,"data_rate_dict " + str(data_rate_dict))
         for name in data_rate_dict.keys():
             save_rate_msg = SaveDataRate()
             rate = round(data_rate_dict[name][0])
             save_rate_msg.data_product = name
             save_rate_msg.save_rate_hz = rate
             save_rates_msg.append(save_rate_msg)
-            #rospy.logwarn("SAVE_DATA_IF: data_rates_msg " + str(save_rates_msg))
+            #nepi_msg.publishMsgWarn(self,"data_rates_msg " + str(save_rates_msg))
         current_save_data = SaveData(save_continuous = self.save_continuous, save_raw = self.save_raw)  
         status_msg = SaveDataStatus()
         status_msg.current_data_dir = ""
@@ -261,7 +268,7 @@ class SaveDataIF(object):
             return False
 
         if data_product_name not in data_rate_dict:
-            rospy.logwarn("SAVE_DATA_IF: Unknown data product %s", data_product_name)
+            nepi_msg.publishMsgWarn(self,"Unknown data product " + data_product_name)
             return False
 
         save_rate = data_rate_dict[data_product_name][0]
@@ -293,12 +300,12 @@ class SaveDataIF(object):
    
 
     def save_data_reset_callback(self,reset_msg):
-        rospy.loginfo("SAVE_DATA_IF: Recieved save data reset msg")
+        nepi_msg.publishMsgInfo(self,"Recieved save data reset msg")
         rospy.set_param('~data_rate_dict',self.init_data_rate_dict)
         self.publish_save_status()
 
     def save_data_reset_factory_callback(self,reset_msg):
-        rospy.loginfo("SAVE_DATA_IF: Recieved save data factory reset msg")
+        nepi_msg.publishMsgInfo(self,"Recieved save data factory reset msg")
         rospy.set_param('~data_rate_dict',self.factory_data_rate_dict)
         self.publish_save_status()
 
@@ -318,7 +325,7 @@ class SaveDataIF(object):
                 return False
 
             if data_product_name not in data_rate_dict:
-                rospy.logwarn("SAVE_DATA_IF: Unknown data product %s", data_product_name)
+                nepi_msg.publishMsgWarn(self,"Unknown data product " + data_product_name)
                 return False
 
             save_rate = data_rate_dict[data_product_name][0]
@@ -352,7 +359,7 @@ class SaveDataIF(object):
             if self.save_data_prefix[-1] != "_":
                 spacer = "_"
         filename = os.path.join(self.save_path, self.save_data_prefix + spacer + timestamp_string + "_" + identifier + "." + extension)
-        #rospy.loginfo("SAVE_DATA_IF: ******* save data filename: " + filename)
+        #nepi_msg.publishMsgInfo(self,"******* save data filename: " + filename)
         return filename
 
 

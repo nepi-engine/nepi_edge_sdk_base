@@ -20,7 +20,8 @@ from rospy import get_name, Publisher
 from std_msgs.msg import String
 
 
-def printMsg(msg_str, level = "None"):
+def printMsg(msg, level = "None"):
+  msg_str = str(msg)
   level = level.lower()
   if level == 'debug':
     logdebug(msg_str)
@@ -33,39 +34,50 @@ def printMsg(msg_str, level = "None"):
   else:
     loginfo(msg_str)
 
-def printMsgInfo(msg_str):
+def printMsgInfo(msg):
+  msg_str = str(msg)
   loginfo(msg_str)
 
-def printMsgWarn(msg_str):
+def printMsgWarn(msg):
+  msg_str = str(msg)
   logwarn(msg_str)
 
-def printMsgDebug(msg_str):
+def printMsgDebug(msg):
+  msg_str = str(msg)
   logdebug(msg_str)
 
-def printMsgErr(msg_str):
+def printMsgErr(msg):
+  msg_str = str(msg)
   logerr(msg_str)
 
-def printMsgFatal(msg_str):
-   logfatal(msg_str)
+def printMsgFatal(msg):
+  msg_str = str(msg)
+  logfatal(msg_str)
 
 
-def printMsgThrottle(throttle_s,msg_str):
+def printMsgThrottle(throttle_s,msg):
+  msg_str = str(msg)
   loginfo_throttle(throttle_s,msg_str)
 
-def printMsgInfoThrottle(throttle_s,msg_str):
+def printMsgInfoThrottle(throttle_s,msg):
+  msg_str = str(msg)
   loginfo_throttle(throttle_s,msg_str)
 
-def printMsgWarnThrottle(throttle_s,msg_str):
+def printMsgWarnThrottle(throttle_s,msg):
+  msg_str = str(msg)
   logwarn_throttle(throttle_s,msg_str)
 
-def printMsgDebugThrottle(throttle_s,msg_str):
+def printMsgDebugThrottle(throttle_s,msg):
+  msg_str = str(msg)
   logdebug_throttle(throttle_s,msg_str)
 
-def printMsgErrThrottle(throttle_s,msg_str):
+def printMsgErrThrottle(throttle_s,msg):
+  msg_str = str(msg)
   logerr_throttle(throttle_s,msg_str)
 
-def printMsgFatalThrottle(throttle_s,msg_str):
-   logfatal_throttle(throttle_s,msg_str)
+def printMsgFatalThrottle(throttle_s,msg):
+  msg_str = str(msg)
+  logfatal_throttle(throttle_s,msg_str)
 
 
 
@@ -78,25 +90,30 @@ def createMsgPublishers(self):
   time.sleep(1)
     
   
-def publishMsg(self,msg_str,level = "None"):
-  msg_str = (self.node_str + ": " + msg_str)
+def publishMsg(self,msg,level = "None"):
+  msg_str = (self.node_str + ": " + str(msg))
   printMsg(msg_str, level)
   self.msg_pub.publish(msg_str)
   self.msg_pub_sys.publish(msg_str)
   
-def publishMsgInfo(self,msg_str): 
+def publishMsgInfo(self,msg):
+  msg_str = str(msg)
   publishMsg(self,msg_str,level = 'Info')
    
-def publishMsgWarn(self,msg_str): 
+def publishMsgWarn(self,msg):
+  msg_str = str(msg)
   publishMsg(self,msg_str,level = 'Warn')
   
-def publishMsgDebug(self,msg_str): 
+def publishMsgDebug(self,msg):
+  msg_str = str(msg) 
   publishMsg(self,msg_str,level = 'Debut')
   
-def publishMsgErr(self,msg_str): 
+def publishMsgErr(self,msg):
+  msg_str = str(msg)
   publishMsg(self,msg_str,level = 'Error')
   
-def publishMsgFatal(self,msg_str): 
+def publishMsgFatal(self,msg):
+  msg_str = str(msg) 
   publishMsg(self,msg_str,level = 'Fatal')
 
 

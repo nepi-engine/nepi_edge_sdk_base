@@ -31,6 +31,7 @@ from nepi_ros_interfaces.srv import NavPoseQuery, NavPoseQueryRequest
 from geometry_msgs.msg import Vector3
 
 from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_msg
 from nepi_edge_sdk_base import nepi_img
 from nepi_edge_sdk_base import nepi_pc
 
@@ -113,9 +114,14 @@ class ROSIDXSensorIF:
                  getPointcloud=None, stopPointcloudAcquisition=None, 
                  getPointcloudImg=None, stopPointcloudImgAcquisition=None, 
                  getGPSMsg=None,getOdomMsg=None,getHeadingMsg=None):
+
+        ####  IF INIT SETUP ####
+        self.node_name = nepi_ros.get_node_name()
+        self.base_namespace = nepi_ros.get_base_namespace()
+        nepi_msg.createMsgPublishers(self)
+        nepi_msg.publishMsgInfo(self,"Starting IF Initialization Processes")
+        ##############################    
         
-        
-        self.node_name = device_info["node_name"]
         self.sensor_name = device_info["sensor_name"]
         self.identifier = device_info["identifier"]
         self.serial_num = device_info["serial_number"]
@@ -356,13 +362,13 @@ class ROSIDXSensorIF:
         # Update and Publish Status Message
         self.publishStatus()
         ## Initiation Complete
-        rospy.loginfo("Initialization Complete")
+        nepi_msg.publishMsgInfo(self,"Initialization Complete")
 
     ###############################################################################################
 
     def resetFactoryCb(self, msg):
-        rospy.loginfo(msg)
-        rospy.loginfo("Factory Resetting IDX Sensor Controls")
+        nepi_msg.publishMsgInfo(self,msg)
+        nepi_msg.publishMsgInfo(self,"Factory Resetting IDX Sensor Controls")
         self.resetFactory()
 
     def resetFactory(self):
@@ -386,8 +392,8 @@ class ROSIDXSensorIF:
         self.publishStatus()
 
     def updateDeviceNameCb(self, msg):
-        #rospy.loginfo(msg)
-        rospy.loginfo("Received Device Name update msg")
+        #nepi_msg.publishMsgInfo(self,msg)
+        nepi_msg.publishMsgInfo(self,"Received Device Name update msg")
         new_device_name = msg.data
         self.updateDeviceName(new_device_name)
 
@@ -397,7 +403,7 @@ class ROSIDXSensorIF:
             if new_device_name.find(char) != -1:
                 valid_name = False
         if valid_name is False:
-            rospy.loginfo("Received invalid device name update: " + new_device_name)
+            nepi_msg.publishMsgInfo(self,"Received invalid device name update: " + new_device_name)
         else:
             rospy.set_param('~idx/device_name', new_device_name)
             self.status_msg.device_name = new_device_name
@@ -406,8 +412,8 @@ class ROSIDXSensorIF:
 
 
     def resetDeviceNameCb(self,msg):
-        #rospy.loginfo(msg)
-        rospy.loginfo("Received Device Name reset msg")
+        #nepi_msg.publishMsgInfo(self,msg)
+        nepi_msg.publishMsgInfo(self,"Received Device Name reset msg")
         self.resetDeviceName()
 
     def resetDeviceName(self):
@@ -418,8 +424,8 @@ class ROSIDXSensorIF:
 
 
     def resetControlsCb(self, msg):
-        rospy.loginfo(msg)
-        rospy.loginfo("Resetting IDX Sensor Controls")
+        nepi_msg.publishMsgInfo(self,msg)
+        nepi_msg.publishMsgInfo(self,"Resetting IDX Sensor Controls")
         self.resetParamServer(do_updates = True)
 
     def resetParamServer(self,do_updates = False):
@@ -475,7 +481,6 @@ class ROSIDXSensorIF:
         if self.settings_if is not None:
             self.settings_if.updateFromParamServer()
         param_dict = rospy.get_param('~idx', {})
-        #rospy.logwarn("IDX_IF: param_dict = " + str(param_dict))
         if (self.setControlsEnable is not None and 'controls_enable' in param_dict):
             self.setControlsEnable(param_dict['controls_enable'])
         if (self.setAutoAdjust is not None and 'auto_adjust' in param_dict):
@@ -498,7 +503,7 @@ class ROSIDXSensorIF:
     # Define local IDX Control callbacks
     def setControlsEnableCb(self, msg):
         new_controls_enable = msg.data
-        rospy.loginfo("new_controls_enable")
+        nepi_msg.publishMsgInfo(self,"new_controls_enable")
         if self.setControlsEnable is not None:
             # Call the parent's method and update ROS param as necessary
             # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
@@ -508,9 +513,9 @@ class ROSIDXSensorIF:
                 self.status_msg.controls_enable = new_controls_enable
                 self.publishStatus(do_updates=False) # Updated inline here
                 if new_controls_enable:
-                    rospy.loginfo("Enabling IDX Controls")
+                    nepi_msg.publishMsgInfo(self,"Enabling IDX Controls")
                 else:
-                    rospy.loginfo("Disabling IDX Controls")
+                    nepi_msg.publishMsgInfo(self,"Disabling IDX Controls")
                     # Reset brightness, contrast, and threshold to factory control values
                     rospy.set_param('~idx/brightness', self.factory_controls_dict["brightness_ratio"])
                     self.status_msg.brightness = self.factory_controls_dict["brightness_ratio"]
@@ -523,17 +528,17 @@ class ROSIDXSensorIF:
 
                     self.updateFromParamServer()
         else:
-            rospy.loginfo("Ignoring set controls_enable.  Driver has no setControlsEnable function")
+            nepi_msg.publishMsgInfo(self,"Ignoring set controls_enable.  Driver has no setControlsEnable function")
             self.publishStatus(do_updates=False) # Updated inline here
 
             
     def setAutoAdjustCb(self, msg):
         new_auto_adjust = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
-            rospy.loginfo("Ignoring Set Auto Adjust request. Controls disabled")
+            nepi_msg.publishMsgInfo(self,"Ignoring Set Auto Adjust request. Controls disabled")
         else:
             if self.setAutoAdjust is None:
-                rospy.loginfo("Ignoring Set Auto Adjust. Driver has no setAutoAdjust function")   
+                nepi_msg.publishMsgInfo(self,"Ignoring Set Auto Adjust. Driver has no setAutoAdjust function")   
             else:
                 # Call the parent's method and update ROS param as necessary
                 # We will only have subscribed if the parent provided a callback at instantiation, so we know it exists here
@@ -542,9 +547,9 @@ class ROSIDXSensorIF:
                     rospy.set_param('~idx/auto_adjust', new_auto_adjust)
                     self.status_msg.auto_adjust = new_auto_adjust
                     if new_auto_adjust:
-                        rospy.loginfo("Enabling Auto Adjust")
+                        nepi_msg.publishMsgInfo(self,"Enabling Auto Adjust")
                     else:
-                        rospy.loginfo("Disabling IDX Auto Adjust")
+                        nepi_msg.publishMsgInfo(self,"Disabling IDX Auto Adjust")
                 else:
                     rospy.logerr("Failed to update auto adjust: " + err_str)
         self.publishStatus(do_updates=False) # Updated inline here
@@ -554,13 +559,13 @@ class ROSIDXSensorIF:
     def setBrightnessCb(self, msg):
         new_brightness = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
-            rospy.loginfo("Ignoring Set Brightness request. Controls disabled")
+            nepi_msg.publishMsgInfo(self,"Ignoring Set Brightness request. Controls disabled")
         else:
             if rospy.get_param('~idx/auto', self.init_auto_adjust):
-                rospy.loginfo("Ignoring Set Brightness request. Auto Adjust enabled")
+                nepi_msg.publishMsgInfo(self,"Ignoring Set Brightness request. Auto Adjust enabled")
             else:
                 if self.setBrightness is None:
-                    rospy.loginfo("Ignoring Set Brightness. Driver has no setBrightness function")
+                    nepi_msg.publishMsgInfo(self,"Ignoring Set Brightness. Driver has no setBrightness function")
                 else:
                     if (new_brightness < 0.0 or new_brightness > 1.0):
                         rospy.logerr("Brightness value out of bounds")
@@ -578,13 +583,13 @@ class ROSIDXSensorIF:
     def setContrastCb(self, msg):
         new_contrast = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
-            rospy.loginfo("Ignoring Set Contrast request. Controls disabled")
+            nepi_msg.publishMsgInfo(self,"Ignoring Set Contrast request. Controls disabled")
         else:
             if rospy.get_param('~idx/auto', self.init_auto_adjust):
-                rospy.loginfo("Ignoring Set Contrast request. Auto Adjust enabled")
+                nepi_msg.publishMsgInfo(self,"Ignoring Set Contrast request. Auto Adjust enabled")
             else:
                 if self.setContrast is None:
-                    rospy.loginfo("Ignoring Set Contrast. Driver has no setContrast function")
+                    nepi_msg.publishMsgInfo(self,"Ignoring Set Contrast. Driver has no setContrast function")
                 else:
                     if (new_contrast < 0.0 and new_contrast != -1.0) or (new_contrast > 1.0):
                         rospy.logerr("Contrast value out of bounds")
@@ -605,13 +610,13 @@ class ROSIDXSensorIF:
     def setThresholdingCb(self, msg):
         new_thresholding = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
-            rospy.loginfo("Ignoring Set Thresholding request. Controls disabled")
+            nepi_msg.publishMsgInfo(self,"Ignoring Set Thresholding request. Controls disabled")
         else:
             if rospy.get_param('~idx/auto', self.init_auto_adjust):
-                rospy.loginfo("Ignoring Set Thresholding request. Auto Adjust enabled")
+                nepi_msg.publishMsgInfo(self,"Ignoring Set Thresholding request. Auto Adjust enabled")
             else:
                 if self.setThresholding is None:
-                    rospy.loginfo("Ignoring Set Thresholding. Driver has no setThresholding function")
+                    nepi_msg.publishMsgInfo(self,"Ignoring Set Thresholding. Driver has no setThresholding function")
                 else:
                     if (new_thresholding < 0.0 or new_thresholding > 1.0):
                         rospy.logerr("Thresholding value out of bounds")
@@ -631,10 +636,10 @@ class ROSIDXSensorIF:
     def setResolutionModeCb(self, msg):
         new_resolution = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
-            rospy.loginfo("Ignoring Set Resolution request. Controls disabled")
+            nepi_msg.publishMsgInfo(self,"Ignoring Set Resolution request. Controls disabled")
         else:
             if self.setResolutionMode is None:
-                    rospy.loginfo("Ignoring Set Resolution. Driver has no setResolution function")
+                    nepi_msg.publishMsgInfo(self,"Ignoring Set Resolution. Driver has no setResolution function")
             else:
                 if (new_resolution > self.RESOLUTION_MODE_MAX):
                         rospy.logerr("Resolution mode value out of bounds")
@@ -656,10 +661,10 @@ class ROSIDXSensorIF:
     def setFramerateModeCb(self, msg):
         new_framerate = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
-            rospy.loginfo("Ignoring Set Framerate request. Controls disabled")    
+            nepi_msg.publishMsgInfo(self,"Ignoring Set Framerate request. Controls disabled")    
         else: 
             if self.setFramerateMode is None:
-                rospy.loginfo("Ignoring Set Framerate. Driver has no setFramerate function")
+                nepi_msg.publishMsgInfo(self,"Ignoring Set Framerate. Driver has no setFramerate function")
             else:
                 if (new_framerate > self.FRAMERATE_MODE_MAX):
                     rospy.logerr("Framerate mode value out of bounds")
@@ -678,14 +683,14 @@ class ROSIDXSensorIF:
 
  
     def setRangeCb(self, msg):
-        rospy.loginfo(msg)
+        nepi_msg.publishMsgInfo(self,msg)
         new_start_range_ratio = msg.start_range
         new_stop_range_ratio = msg.stop_range
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
-            rospy.loginfo("Ignoring Set Range request. Controls disabled")    
+            nepi_msg.publishMsgInfo(self,"Ignoring Set Range request. Controls disabled")    
         else: 
             if self.setRange is None:
-                rospy.loginfo("Ignoring Set Range. Driver has no setRange function")
+                nepi_msg.publishMsgInfo(self,"Ignoring Set Range. Driver has no setRange function")
             else:
                 if (new_start_range_ratio < 0 or new_stop_range_ratio > 1 or new_stop_range_ratio < new_start_range_ratio):
                     rospy.logerr("Range values out of bounds")
@@ -791,7 +796,7 @@ class ROSIDXSensorIF:
         cv2_img = None
         ros_img = None
         if not rospy.is_shutdown():
-            rospy.loginfo(rospy.get_name() + ": starting " + data_product + " acquisition thread")
+            nepi_msg.publishMsgInfo(self,rospy.get_name() + ": starting " + data_product + " acquisition thread")
             acquiring = False
             while (not rospy.is_shutdown()):
                 saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
@@ -825,7 +830,7 @@ class ROSIDXSensorIF:
                         self.save_img2file(data_product,cv2_img,ros_timestamp)
                 elif acquiring is True:
                     if img_stop_function is not None:
-                        rospy.loginfo("Stopping " + data_product + " acquisition")
+                        nepi_msg.publishMsgInfo(self,"Stopping " + data_product + " acquisition")
                         img_stop_function()
                     acquiring = False
                 else: # No subscribers and already stopped
@@ -842,7 +847,7 @@ class ROSIDXSensorIF:
         o3d_pc = None
         ros_pc = None
         if not rospy.is_shutdown():
-            rospy.loginfo(rospy.get_name() + ": starting " + data_product + " acquisition thread")
+            nepi_msg.publishMsgInfo(self,rospy.get_name() + ": starting " + data_product + " acquisition thread")
             acquiring = False
             while (not rospy.is_shutdown()):
                 saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
@@ -894,7 +899,7 @@ class ROSIDXSensorIF:
                             self.save_pc2file(data_product,o3d_pc,ros_timestamp)
                 elif acquiring is True:
                     if pc_stop_function is not None:
-                        rospy.loginfo("Stopping " + data_product + " acquisition")
+                        nepi_msg.publishMsgInfo(self,"Stopping " + data_product + " acquisition")
                         pc_stop_function()
                     acquiring = False
                 else: # No subscribers and already stopped

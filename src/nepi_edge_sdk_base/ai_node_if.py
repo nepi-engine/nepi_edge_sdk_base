@@ -41,6 +41,13 @@ class AiNodeIF:
 
 
     def __init__(self,node_name, source_img_topic, pub_sub_namespace, classes_list, setThresholdFunction, processDetectionFunction):
+        ####  IF INIT SETUP ####
+        self.node_name = nepi_ros.get_node_name()
+        self.base_namespace = nepi_ros.get_base_namespace()
+        nepi_msg.createMsgPublishers(self)
+        nepi_msg.publishMsgInfo(self,"Starting IF Initialization Processes")
+        ##############################    
+
 
         self.node_name = node_name
         if pub_sub_namespace[-1] == "/":
@@ -53,7 +60,7 @@ class AiNodeIF:
         self.classes_list = classes_list
         self.classes_color_list = self.get_classes_color_list(classes_list)
                  
-        self.printMsg("Starting IF setup")
+        nepi_msg.publishMsgInfo(self,"Starting IF setup")
         
         # Create AI Node Publishers
 
@@ -78,14 +85,9 @@ class AiNodeIF:
         IMAGE_SUB_TOPIC = self.source_img_topic
         self.set_threshold_sub = rospy.Subscriber(IMAGE_SUB_TOPIC, Image, self.updateDetectionCb, queue_size=1)
         	
-        self.printMsg("IF Initialization Complete")
+        nepi_msg.publishMsgInfo(self,"IF Initialization Complete")
         
-        
-    def printMsg(self,msg, level = 'Info'):
-      msg_str = (self.node_name + ": " + str(msg))
-      nepi_msg.printMsg(msg_str, level)
-
-        
+                
     def setThresholdCb(self,msg):
         threshold = msg.data
         if (threshold < self.MIN_THRESHOLD):
@@ -163,9 +165,6 @@ class AiNodeIF:
                 if class_ind < len(self.classes_color_list):
                     class_color = tuple(self.classes_color_list[class_ind])
             img_size = cv2_img.shape
-            #self.printMsg("image shape: " + str(img_size),'Warn')
-            #self.printMsg("start_point: " + str(start_point),'Warn')
-            #self.printMsg("end_point: " + str(end_point),'Warn')
             line_thickness = 2
             if xmax < img_size[0] and ymax < img_size[1]:
                 cv2.rectangle(cv2_img, start_point, end_point, color=class_color, thickness=line_thickness)
