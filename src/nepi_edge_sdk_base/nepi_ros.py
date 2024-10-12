@@ -281,14 +281,17 @@ def get_rostime():
 
 # Sleep process that breaks sleep into smaller times for better shutdown
 def sleep(sleep_sec,sleep_steps = None):
-  if sleep_steps is not None:
-    delay_timer = 0
-    delay_sec = sleep_sec/sleep_steps
-    while delay_timer < sleep_sec and not rospy.is_shutdown():
-      rospy.sleep(delay_sec)
-      delay_timer = delay_timer + delay_sec
-  else:
-    rospy.sleep(sleep_sec)
+  if sleep_steps is None:
+    sleep_steps = int(sleep_sec * 10)
+  if sleep_sec > 0 and sleep_steps >= 0:
+    if sleep_steps != 0:
+      delay_timer = 0
+      delay_sec = sleep_sec/sleep_steps
+      while delay_timer < sleep_sec and not rospy.is_shutdown():
+        rospy.sleep(delay_sec)
+        delay_timer = delay_timer + delay_sec
+    else:
+      rospy.sleep(sleep_sec)
   return True
 
 def get_datetime_str_now():
@@ -311,6 +314,18 @@ def get_datetime_str_from_stamp(ros_stamp_msg):
   ms_str= str(ros_stamp_msg.nsecs)[0:3]
   dt_str = (date_str + "T" + time_str + "." + ms_str)
   return dt_str
+
+def get_datetime_dict_from_stamp(ros_stamp_msg):
+  tm=time.gmtime(ros_stamp_msg.secs)
+  datatime = dict()
+  datatime['year'] = (tm.tm_year)
+  datatime['mon'] = (tm.tm_mon)
+  datatime['day'] = (tm.tm_mday)
+  datatime['hr'] = (tm.tm_hour)
+  datatime['min'] = (tm.tm_min)
+  datatime['sec'] = (tm.tm_sec)
+  return datatime
+
 
 def tm_2_str(tm_val):
   tm_str = str(tm_val)

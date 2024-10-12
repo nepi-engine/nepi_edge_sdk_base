@@ -99,6 +99,10 @@ class SaveDataIF(object):
             
             self.needs_save_calibration = self.save_continuous
 
+            # Create status pub
+            self.save_data_status_pub = rospy.Publisher('~save_data_status', SaveDataStatus, queue_size=1, latch=True)
+            time.sleep(1)
+
             # Setup subscribers -- global and local versions
             rospy.Subscriber('save_data', SaveData, self.save_data_callback)
             rospy.Subscriber('snapshot_trigger', Empty, self.snapshot_callback)
@@ -114,8 +118,7 @@ class SaveDataIF(object):
 
             rospy.Service('~query_data_products', DataProductQuery, self.query_data_products_callback)
 
-            self.save_data_status_pub = rospy.Publisher('~save_data_status', SaveDataStatus, queue_size=1, latch=True)
-            time.sleep(1)
+
             self.publish_save_status()
         else:
             nepi_msg.publishMsgWarn(self,"Save Data IF not configured")
