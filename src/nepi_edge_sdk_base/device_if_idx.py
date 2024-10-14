@@ -31,6 +31,7 @@ from nepi_ros_interfaces.srv import NavPoseQuery, NavPoseQueryRequest
 from geometry_msgs.msg import Vector3
 
 from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_save
 from nepi_edge_sdk_base import nepi_msg
 from nepi_edge_sdk_base import nepi_img
 from nepi_edge_sdk_base import nepi_pc
@@ -827,7 +828,7 @@ class ROSIDXSensorIF:
                             cv2_img = image
                         elif isinstance(image,Image): # ROS Image. Convert to CV2 Image
                             cv2_img = nepi_img.rosimg_to_cv2img(image, encoding=encoding)
-                        self.save_img2file(data_product,cv2_img,ros_timestamp)
+                        nepi_save.save_img2file(self,data_product,cv2_img,ros_timestamp)
                 elif acquiring is True:
                     if img_stop_function is not None:
                         nepi_msg.publishMsgInfo(self,"Stopping " + data_product + " acquisition")
@@ -896,7 +897,7 @@ class ROSIDXSensorIF:
                                     o3d_pc = pc
                                 elif isinstance(pc,PointCloud2): # ROS Pointcloud. Convert to Open3d pointcloud
                                     o3d_pc = nepi_pc.rospc_to_o3dpc(pc, remove_nans=True)
-                            self.save_pc2file(data_product,o3d_pc,ros_timestamp)
+                            nepi_save.save_pc2file(self,data_product,o3d_pc,ros_timestamp)
                 elif acquiring is True:
                     if pc_stop_function is not None:
                         nepi_msg.publishMsgInfo(self,"Stopping " + data_product + " acquisition")
@@ -941,42 +942,6 @@ class ROSIDXSensorIF:
         self.image_thread_proccess('pointcloud_image', self.getPointcloudImg, self.stopPointcloudImgAcquisition, self.pointcloud_img_pub)
 
 
-
-# Define saving functions for saving callbacks
-
-
-
-    def save_img2file(self,data_product,cv2_img,ros_timestamp):
-        if self.save_data_if is not None:
-            saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-            snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
-            # Save data if enabled
-            if saving_is_enabled or snapshot_enabled:
-                if cv2_img is not None:
-                    device_name = rospy.get_param('~idx/device_name', self.init_device_name)
-                    if (self.save_data_if.data_product_should_save(data_product) or snapshot_enabled):
-                        full_path_filename = self.save_data_if.get_full_path_filename(nepi_ros.get_datetime_str_from_stamp(ros_timestamp), 
-                                                                                                device_name + "-" + data_product, 'png')
-                        if os.path.isfile(full_path_filename) is False:
-                            cv2.imwrite(full_path_filename, cv2_img)
-                            self.save_data_if.data_product_snapshot_reset(data_product)
-
-                
-
-    def save_pc2file(self,data_product,o3d_pc,ros_timestamp):
-        if self.save_data_if is not None:
-            saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-            snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
-            # Save data if enabled
-            if saving_is_enabled or snapshot_enabled:
-                if o3d_pc is not None:
-                    device_name = rospy.get_param('~idx/device_name', self.init_device_name)
-                    if (self.save_data_if.data_product_should_save(data_product) or snapshot_enabled):
-                        full_path_filename = self.save_data_if.get_full_path_filename(nepi_ros.get_datetime_str_from_stamp(ros_timestamp), 
-                                                                                                device_name + "-" + data_product, 'pcd')
-                        if os.path.isfile(full_path_filename) is False:
-                            nepi_pc.save_pointcloud(o3d_pc,full_path_filename)
-                            self.save_data_if.data_product_snapshot_reset(data_product)
 
                 
     def navposeCb(self, timer):

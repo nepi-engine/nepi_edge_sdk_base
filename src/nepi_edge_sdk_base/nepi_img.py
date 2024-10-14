@@ -24,6 +24,7 @@ import rospy
 import numpy as np
 import ros_numpy
 import cv2
+import math
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
@@ -252,9 +253,52 @@ def overlay_text_list(cv2_image, text, x_px = 10 , y_px = 10, line_space_px = 20
     cv2_overlay_text(cv2_image, text, x_px , y_px, color_rgb, scale, thickness)
     y_px = y_px + line_space_px
     
+def optimal_font_dims(img, font_scale = 1.2e-3, thickness_scale = 1.5e-3):
+    shape = img.shape
+    h=shape[0]
+    w=shape[1]
+    font_scale = min(w, h) * font_scale
+    thickness = math.ceil(min(w, h) * thickness_scale)
+    return font_scale, thickness
+    
+def overlay_text_autoscale(cv2_image, text, x_px = 10 , y_px = 10, color_rgb = (0, 255, 0)):
+  # Add text overlay
+  bottomLeftCornerOfText = (x_px,y_px)
+  font                   = cv2.FONT_HERSHEY_SIMPLEX
+  lineType               = 1
+  fontScale, thickness  = optimal_font_dims(cv2_img,font_scale = 1.2e-3, thickness_scale = 1.5e-3)
+  cv2.putText(cv2_image,text, 
+    bottomLeftCornerOfText, 
+    font, 
+    scale,
+    color_rgb,
+    thickness,
+    lineType)
+  return cv2_image
+    
 def overlay_box(cv2_image, color_rgb = (255,255,255), x_px = 10, y_px = 10, w_px = 20, h_px = 20):
       # Add status box overlay
       cv2.rectangle(cv2_image, (x_px, y_px), (w_px, h_px), color_rgb, -1)
+      
+def create_message_image(message, image_size = (350, 700, 3),font_color = (0, 255, 0) ):
+    # Create a blank img for when not running
+    cv2_img = np.zeros(image_size, dtype = np.uint8) # Empty Black Image
+    # Overlay text data on OpenCV image
+    font = cv2.FONT_HERSHEY_DUPLEX
+    fontScale              = 0.5
+    fontColor              = font_color
+    thickness              = 1
+    lineType               = 1
+    text2overlay=message
+    bottomLeftCornerOfText = (50,50)
+    cv2.putText(cv2_img,text2overlay, 
+        bottomLeftCornerOfText, 
+        font, 
+        fontScale,
+        fontColor,
+        thickness,
+        lineType)
+    return cv2_img
 
     
 ###########################################

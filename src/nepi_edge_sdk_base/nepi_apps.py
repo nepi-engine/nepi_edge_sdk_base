@@ -27,7 +27,6 @@ import copy
 from serial.tools import list_ports
 
 from nepi_edge_sdk_base import nepi_ros
-from nepi_edge_sdk_base import nepi_img
   
 #***************************
 # NEPI Apps utility functions
@@ -258,6 +257,15 @@ def getAppsOrderedList(apps_dict):
   for i,index in enumerate(indexes):
     ordered_name_list[index] = name_list[i]
   return ordered_name_list
+  
+def getAppsGroupList(apps_dict):
+  group_list = []
+  for app_name in apps_dict.keys():
+    try:
+      group_list.append(apps_dict[app_name]['APP_DICT']['group_name'])
+    except Exception as e:
+      nepi_msg.printMsgInfo(self,"Failed to get group name from app dict: " + app_name + " " + str(e))
+  return group_list
 
 def getAppsActiveOrderedList(apps_dict):
   ordered_name_list = getAppsOrderedList(apps_dict)

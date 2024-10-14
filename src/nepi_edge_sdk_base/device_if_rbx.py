@@ -21,6 +21,7 @@ import cv2
 import copy
 
 from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_save
 from nepi_edge_sdk_base import nepi_msg
 from nepi_edge_sdk_base import nepi_img
 from nepi_edge_sdk_base import nepi_pc
@@ -1096,7 +1097,7 @@ class ROSRBXRobotIF:
             self.rbx_image_pub.publish(img_out_msg)
             # You can view the enhanced_2D_image topic at 
             # //192.168.179.103:9091/ in a connected web browser
-        self.save_img2file('image',cv2_img,img_out_msg.header.stamp)
+        nepi_save.save_img2file(self,'image',cv2_img,img_out_msg.header.stamp)
 
         ## Update image source topic and subscriber if changed from last time.
         image_source = rospy.get_param('~rbx/image_source', self.init_image_source)
@@ -1142,26 +1143,10 @@ class ROSRBXRobotIF:
             lineType)
 
     #######################
-    # Define saving functions for saving callbacks
-    def save_img2file(self,data_product,cv2_img,ros_timestamp):
-        if self.save_data_if is not None:
-            saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-            snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
-            # Save data if enabled
-            if saving_is_enabled or snapshot_enabled:
-                if cv2_img is not None:
-                    device_name = rospy.get_param('~pc_app/device_name', self.init_device_name)
-                    if (self.save_data_if.data_product_should_save(data_product) or snapshot_enabled):
-                        full_path_filename = self.save_data_if.get_full_path_filename(nepi_ros.get_datetime_str_from_stamp(ros_timestamp), 
-                                                                                                device_name + "-" + data_product, 'png')
-                        if os.path.isfile(full_path_filename) is False:
-                            cv2.imwrite(full_path_filename, cv2_img)
-                            self.save_data_if.data_product_snapshot_reset(data_product)
-
 
     def saveImgThread(self,timer):
         data_product = 'image'
-        eval("self.save_img2file(data_product,self." + data_product + ",self." + data_product + "_timestamp)")
+        eval("nepi_save.save_img2file(self,data_product,self." + data_product + ",self." + data_product + "_timestamp)")
 
     #######################
     # RBX IF Methods

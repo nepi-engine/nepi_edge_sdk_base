@@ -12,6 +12,7 @@
   <arg name="run_mgr_ai_detector" default="true" />
   <arg name="run_mgr_nav_pose" default="true" />
   <arg name="run_mgr_drivers" default="true" />
+  <arg name="run_mgr_onvif" default="true" />
   <arg name="run_mgr_apps" default="true" />
   <arg name="run_mgr_automation" default="true" />
 
@@ -60,6 +61,12 @@
     <group if="$(arg run_mgr_drivers)" >
       <rosparam command="load" file="$(arg config_file_root)/drivers_mgr/drivers_mgr.yaml" ns="drivers_mgr" />
       <node name="drivers_mgr" pkg="nepi_managers" type="drivers_mgr.py" respawn="true" output="$(arg output_destination)" />
+    </group>
+    
+    <!-- MGR: ONVIF -->
+    <group if="$(arg run_mgr_onvif)" >
+      <rosparam command="load" file="$(arg config_file_root)/onvif_mgr/onvif_mgr.yaml" ns="onvif_mgr" />
+      <node name="onvif_mgr" pkg="nepi_managers" type="onvif_mgr.py" respawn="true" output="$(arg output_destination)" />
     </group>
     
    <!-- MGR: Apps -->
