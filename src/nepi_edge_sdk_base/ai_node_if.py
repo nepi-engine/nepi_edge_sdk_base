@@ -98,23 +98,33 @@ class AiNodeIF:
 
 
     def updateDetectionCb(self,source_img_msg):
+        detect_dict_list =None
         ros_img_header = source_img_msg.header
         cv2_source_img = nepi_img.rosimg_to_cv2img(source_img_msg)
-        detection_dict_list = self.processDetection(cv2_source_img) 
-        self.publishDetectionData(detection_dict_list,ros_img_header)
-        # Now create and publish detection image
-        if len(detection_dict_list) > 0:
-            cv2_detection_img = self.apply_detection_overlay(detection_dict_list,cv2_source_img)
-            detection_img_msg = nepi_img.cv2img_to_rosimg(cv2_detection_img, encoding="bgr8")       
+        try:
+            detect_dict_list = self.processDetection(cv2_source_img) 
+            success = True
+        except Exception as e:
+            nepi_msg.publishMsgInfo(self,"Failed to process detection img with exception: " + str(e))
+        if detect_dict_list is not None:
+            self.publishDetectionData(detect_dict_list,ros_img_header)
+            # Now create and publish detection image
+            if len(detect_dict_list) > 0:
+                cv2_detection_img = self.apply_detection_overlay(detect_dict_list,cv2_source_img)
+                detection_img_msg = nepi_img.cv2img_to_rosimg(cv2_detection_img, encoding="bgr8")       
+            else:
+                detection_img_msg = source_img_msg
+            self.publishImages(source_img_msg, detection_img_msg)
         else:
-            detection_img_msg = source_img_msg
-        self.publishImages(source_img_msg, detection_img_msg)
+            nepi_ros.signal_shutdown("Something went wrong in detection process call")
+            nepi_ros.sleep(2)
+        
 
 
-    def publishDetectionData(self,detection_dict_list,ros_img_header):
-        if len(detection_dict_list) > 0:
+    def publishDetectionData(self,detect_dict_list,ros_img_header):
+        if len(detect_dict_list) > 0:
             bounding_box_msg_list = []
-            for detection_dict in detection_dict_list:
+            for detection_dict in detect_dict_list:
                 bounding_box_msg = BoundingBox()
                 bounding_box_msg.Class = detection_dict['class_name']
                 bounding_box_msg.id = detection_dict['id']
@@ -134,7 +144,7 @@ class AiNodeIF:
                 self.bounding_boxes_pub.publish(bounding_boxes_msg)
         found_object_msg = ObjectCount()
         found_object_msg.header.stamp = ros_img_header.stamp
-        found_object_msg.count = len(detection_dict_list)
+        found_object_msg.count = len(detect_dict_list)
         if not rospy.is_shutdown():
             self.found_object_pub.publish(found_object_msg)
 
@@ -146,8 +156,8 @@ class AiNodeIF:
 
    
 
-    def apply_detection_overlay(self,detection_dict_list,cv2_img):
-        for detection_dict in detection_dict_list:
+    def apply_detection_overlay(self,detect_dict_list,cv2_img):
+        for detection_dict in detect_dict_list:
             ###### Apply Image Overlays and Publish Image ROS Message
             # Overlay adjusted detection boxes on image 
             class_name = detection_dict['class_name']
