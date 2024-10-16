@@ -253,7 +253,7 @@ def overlay_text_list(cv2_image, text, x_px = 10 , y_px = 10, line_space_px = 20
     cv2_overlay_text(cv2_image, text, x_px , y_px, color_rgb, scale, thickness)
     y_px = y_px + line_space_px
     
-def optimal_font_dims(img, font_scale = 1.2e-3, thickness_scale = 1.5e-3):
+def optimal_font_dims(img, font_scale = 2e-3, thickness_scale = 1.5e-3):
     shape = img.shape
     h=shape[0]
     w=shape[1]
@@ -266,7 +266,7 @@ def overlay_text_autoscale(cv2_image, text, x_px = 10 , y_px = 10, color_rgb = (
   bottomLeftCornerOfText = (x_px,y_px)
   font                   = cv2.FONT_HERSHEY_SIMPLEX
   lineType               = 1
-  fontScale, thickness  = optimal_font_dims(cv2_img,font_scale = 1.2e-3, thickness_scale = 1.5e-3)
+  fontScale, thickness  = optimal_font_dims(cv2_img,font_scale = 2e-3, thickness_scale = 1.5e-3)
   cv2.putText(cv2_image,text, 
     bottomLeftCornerOfText, 
     font, 

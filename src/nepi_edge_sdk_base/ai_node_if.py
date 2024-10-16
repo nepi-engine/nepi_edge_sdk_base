@@ -8,6 +8,7 @@
 # License: 3-clause BSD, see https://opensource.org/licenses/BSD-3-Clause
 #
 import rospy
+import copy
 import time
 import numpy as np
 import math
@@ -27,14 +28,14 @@ from nepi_edge_sdk_base import nepi_img
 
 
 EXAMPLE_DETECTION_DICT_ENTRY = {
-    'class_name': 'chair', # Class String Name
+    'name': 'chair', # Class String Name
     'id': 1, # Class Index from Classes List
     'uid': '', # Reserved for unique tracking by downstream applications
-    'probability': .3, # Probability of detection
-    'box_xmin': 10,
-    'box_ymin': 10,
-    'box_xmax': 100,
-    'box_ymax': 100
+    'prob': .3, # Probability of detection
+    'xmin': 10,
+    'ymin': 10,
+    'xmax': 100,
+    'ymax': 100
 }
 
 class AiNodeIF:
@@ -98,42 +99,114 @@ class AiNodeIF:
 
 
     def updateDetectionCb(self,source_img_msg):
-        detect_dict_list =None
+        detect_dict_list = None
         ros_img_header = source_img_msg.header
-        cv2_source_img = nepi_img.rosimg_to_cv2img(source_img_msg)
+        detect_img_msg = source_img_msg
+        cv2_img = nepi_img.rosimg_to_cv2img(source_img_msg)
         try:
-            detect_dict_list = self.processDetection(cv2_source_img) 
+            detect_dict_list = self.processDetection(cv2_img) 
+            #nepi_msg.publishMsgInfo(self,"AIF got back detect_dict: " + str(detect_dict_list))
             success = True
         except Exception as e:
-            nepi_msg.publishMsgInfo(self,"Failed to process detection img with exception: " + str(e))
+            nepi_msg.publishMsgWarn(self,"Failed to process detection img with exception: " + str(e))
+
         if detect_dict_list is not None:
             self.publishDetectionData(detect_dict_list,ros_img_header)
             # Now create and publish detection image
             if len(detect_dict_list) > 0:
-                cv2_detection_img = self.apply_detection_overlay(detect_dict_list,cv2_source_img)
-                detection_img_msg = nepi_img.cv2img_to_rosimg(cv2_detection_img, encoding="bgr8")       
-            else:
-                detection_img_msg = source_img_msg
-            self.publishImages(source_img_msg, detection_img_msg)
+                #nepi_msg.publishMsgWarn(self,"Starting detect image: " + str(cv2_img.shape))
+                cv2_detect_img = self.apply_detection_overlay(detect_dict_list,cv2_img)
+                #nepi_msg.publishMsgWarn(self,"Return detect image: " + str(cv2_detect_img.shape))
+                detect_img_msg = nepi_img.cv2img_to_rosimg(cv2_detect_img, encoding="bgr8")
+            #else:
+                #nepi_msg.publishMsgWarn(self,"No detections to add to image")
         else:
             nepi_ros.signal_shutdown("Something went wrong in detection process call")
             nepi_ros.sleep(2)
+        self.publishImages(source_img_msg, detect_img_msg)
         
 
+    def publishImages(self,ros_source_img, ros_detect_img):
+        if not rospy.is_shutdown():
+            self.source_image_pub.publish(ros_source_img)
+            self.detection_image_pub.publish(ros_detect_img)
+
+   
+
+    def apply_detection_overlay(self,detect_dict_list,cv2_img):
+        cv2_detect_img = copy.deepcopy(cv2_img)
+        for detect_dict in detect_dict_list:
+            ###### Apply Image Overlays and Publish Image ROS Message
+            # Overlay adjusted detection boxes on image 
+            class_name = detect_dict['name']
+            xmin = detect_dict['xmin'] + 5
+            ymin = detect_dict['ymin'] + 5
+            xmax = detect_dict['xmax'] - 5
+            ymax = detect_dict['ymax'] - 5
+            start_point = (xmin, ymin)
+            end_point = (xmax, ymax)
+
+
+            class_color = (255,0,0)
+            
+            if class_name in self.classes_list:
+                class_ind = self.classes_list.index(class_name)
+                if class_ind < len(self.classes_color_list):
+                    class_color = tuple(self.classes_color_list[class_ind])
+            class_color =  [int(c) for c in class_color]
+            img_size = cv2_img.shape[:2]
+            line_thickness = 2
+
+            if xmax <= img_size[1] and ymax <= img_size[0]:
+
+                success = False
+                try:
+                    cv2.rectangle(cv2_detect_img, start_point, end_point, class_color, thickness=line_thickness)
+                    success = True
+                except Exception as e:
+                    nepi_msg.publishMsgWarn(self,"Failed to create bounding box rectangle: " + str(e))
+    
+                # Overlay text data on OpenCV image
+                if success == True:
+                    font = cv2.FONT_HERSHEY_DUPLEX
+                    fontScale, thickness  = self.optimal_font_dims(cv2_detect_img,font_scale = 1.5e-3, thickness_scale = 1.5e-3)
+                    fontColor = (0, 255, 0)
+                    lineType = 1
+                    text_size = cv2.getTextSize("Text", 
+                        font, 
+                        fontScale,
+                        thickness)
+                    line_height = text_size[1] * 3
+                    # Overlay Label
+                    text2overlay=class_name
+                    bottomLeftCornerOfText = (xmin + line_thickness,ymin + line_thickness * 2 + line_height)
+                    try:
+                        cv2_detect_img = cv2.putText(cv2_detect_img,text2overlay, 
+                            bottomLeftCornerOfText, 
+                            font, 
+                            fontScale,
+                            fontColor,
+                            thickness,
+                            lineType)
+                    except Exception as e:
+                        nepi_msg.publishMsgWarn(self,"Failed to apply overlay text: " + str(e))
+            else:
+                nepi_msg.publishMsgWarn(self,"xmax or ymax out of range: " + str(img_size)) 
+        return cv2_detect_img
 
     def publishDetectionData(self,detect_dict_list,ros_img_header):
         if len(detect_dict_list) > 0:
             bounding_box_msg_list = []
-            for detection_dict in detect_dict_list:
+            for detect_dict in detect_dict_list:
                 bounding_box_msg = BoundingBox()
-                bounding_box_msg.Class = detection_dict['class_name']
-                bounding_box_msg.id = detection_dict['id']
-                bounding_box_msg.uid = detection_dict['uid']
-                bounding_box_msg.probability = detection_dict['probability']
-                bounding_box_msg.xmin = detection_dict['box_xmin']
-                bounding_box_msg.ymin = detection_dict['box_ymin']
-                bounding_box_msg.xmax = detection_dict['box_xmax']
-                bounding_box_msg.ymax = detection_dict['box_ymax']
+                bounding_box_msg.Class = detect_dict['name']
+                bounding_box_msg.id = detect_dict['id']
+                bounding_box_msg.uid = detect_dict['uid']
+                bounding_box_msg.probability = detect_dict['prob']
+                bounding_box_msg.xmin = detect_dict['xmin']
+                bounding_box_msg.ymin = detect_dict['ymin']
+                bounding_box_msg.xmax = detect_dict['xmax']
+                bounding_box_msg.ymax = detect_dict['ymax']
                 bounding_box_msg_list.append(bounding_box_msg)
             bounding_boxes_msg = BoundingBoxes()
             bounding_boxes_msg.header.stamp = ros_img_header.stamp
@@ -148,57 +221,6 @@ class AiNodeIF:
         if not rospy.is_shutdown():
             self.found_object_pub.publish(found_object_msg)
 
-
-    def publishImages(self,ros_source_img, ros_detection_img):
-        if not rospy.is_shutdown():
-            self.source_image_pub.publish(ros_source_img)
-            self.detection_image_pub.publish(ros_detection_img)
-
-   
-
-    def apply_detection_overlay(self,detect_dict_list,cv2_img):
-        for detection_dict in detect_dict_list:
-            ###### Apply Image Overlays and Publish Image ROS Message
-            # Overlay adjusted detection boxes on image 
-            class_name = detection_dict['class_name']
-            xmin = detection_dict['box_xmin']
-            ymin = detection_dict['box_ymin']
-            xmax = detection_dict['box_xmax']
-            ymax = detection_dict['box_ymax']
-            start_point = (xmin, ymin)
-            end_point = (xmax, ymax)
-
-
-            class_color = (255,0,0)
-            if class_name in self.classes_list:
-                class_ind = self.classes_list.index(class_name)
-                if class_ind < len(self.classes_color_list):
-                    class_color = tuple(self.classes_color_list[class_ind])
-            img_size = cv2_img.shape
-            line_thickness = 2
-            if xmax < img_size[0] and ymax < img_size[1]:
-                cv2.rectangle(cv2_img, start_point, end_point, color=class_color, thickness=line_thickness)
-                # Overlay text data on OpenCV image
-                font = cv2.FONT_HERSHEY_DUPLEX
-                fontScale, thickness  = self.optimal_font_dims(cv2_img,font_scale = 1.2e-3, thickness_scale = 1.5e-3)
-                fontColor = (0, 255, 0)
-                lineType = 1
-                text_size = cv2.getTextSize("Text", 
-                    font, 
-                    fontScale,
-                    thickness)
-                line_height = text_size[1] * 3
-                # Overlay Label
-                text2overlay=class_name
-                bottomLeftCornerOfText = (xmin + line_thickness,ymin + line_thickness * 2 + line_height)
-                cv2.putText(cv2_img,text2overlay, 
-                    bottomLeftCornerOfText, 
-                    font, 
-                    fontScale,
-                    fontColor,
-                    thickness,
-                    lineType)
-        return cv2_img
 
 
     def optimal_font_dims(self, img, font_scale = 2e-3, thickness_scale = 5e-3):
