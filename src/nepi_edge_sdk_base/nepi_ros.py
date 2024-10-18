@@ -366,16 +366,40 @@ def val_in_list(val2check,list2check):
         in_list = True
   return in_list
 
+def get_folder_list(search_path):
+  filelist=os.listdir(search_path + '/')
+  folder_list=[]
+  #print('')
+  #print('Files and Folders in Path:')
+  #print(search_path)
+  #print(filelist)
+  for file in enumerate(filelist):
+    foldername = (search_path + '/' + file[1])
+    #print('Checking file: ')
+    #print(foldername)
+    if os.path.isdir(foldername): # file is a folder
+       folder_list.append(foldername)
+  return folder_list
+
+
 def get_file_list(search_path,ext_str="png"):
-  ind = 0
+  count = 0
   file_list = []
   for f in os.listdir(search_path):
     if f.endswith(ext_str):
       #rospy.loginfo('Found image file')
-      ind = ind + 1
+      count = count + 1
       file = (search_path + '/' + f)
       file_list.append(file)
-  return file_list,ind
+  return file_list,count
+
+def get_file_count(search_path,ext_str="png"):
+  count = 0
+  for f in os.listdir(search_path):
+    if f.endswith(ext_str):
+      #rospy.loginfo('Found image file')
+      count = count + 1
+  return count
 
 def check_make_folder(pathname):
   if not os.path.exists(pathname):

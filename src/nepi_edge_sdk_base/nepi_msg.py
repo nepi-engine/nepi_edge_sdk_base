@@ -18,6 +18,8 @@ from rospy import loginfo, logwarn, logdebug, logerr, logfatal
 from rospy import loginfo_throttle, logwarn_throttle, logdebug_throttle, logerr_throttle, logfatal_throttle
 from rospy import get_name, Publisher
 from std_msgs.msg import String
+from nepi_ros_interfaces.msg import Message
+
 
 
 def printMsg(msg, level = "None"):
@@ -85,8 +87,8 @@ def printMsgFatalThrottle(throttle_s,msg):
   
 def createMsgPublishers(self):
   self.node_str = get_name().split('/')[-1]
-  self.msg_pub = Publisher("~messages", String, queue_size=1)
-  self.msg_pub_sys = Publisher("messages", String, queue_size=1)
+  self.msg_pub = Publisher("~messages", Message, queue_size=1)
+  self.msg_pub_sys = Publisher("messages", Message, queue_size=1)
   time.sleep(1)
     
   
