@@ -265,7 +265,7 @@ def time_from_timestamp(timestamp):
   return rospy.Time.from_sec(timestamp)
   
 def time_from_sec(time_sec):
-  return rospy.time_from_sec(time_sec)
+  return rospy.Time.from_sec(time_sec)
 
 
 def time_now():
