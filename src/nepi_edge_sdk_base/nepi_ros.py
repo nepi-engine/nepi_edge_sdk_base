@@ -282,7 +282,10 @@ def get_rostime():
 # Sleep process that breaks sleep into smaller times for better shutdown
 def sleep(sleep_sec,sleep_steps = None):
   if sleep_steps is None:
-    sleep_steps = int(sleep_sec * 10)
+    if sleep_sec >= 1:
+      sleep_steps = int(sleep_sec * 10)
+    else:
+      sleep_steps = 1
   if sleep_sec > 0 and sleep_steps >= 0:
     if sleep_steps != 0:
       delay_timer = 0
