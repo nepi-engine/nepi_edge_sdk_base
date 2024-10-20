@@ -137,6 +137,18 @@ def find_topic(topic_name):
         break
   return topic
 
+# Function to find a topic
+def find_topics_by_msg(msg_type):
+  topic_list = []
+  topics=get_topic_list()
+  for topic_entry in topics:
+    topic_str = topic_entry[0]
+    msg_str = topic_entry[1]
+    if isinstance(topic_str,str) and isinstance(msg_str,str):
+      if msg_str.find(msg_type) != -1:
+        topic_list.append(topic_str)
+  return topic_list
+
 ### Function to check for a topic 
 def check_for_topic(topic_name):
   topic_exists = True
@@ -265,7 +277,7 @@ def time_from_timestamp(timestamp):
   return rospy.Time.from_sec(timestamp)
   
 def time_from_sec(time_sec):
-  return rospy.time_from_sec(time_sec)
+  return rospy.Time.from_sec(time_sec)
 
 
 def time_now():
