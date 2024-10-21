@@ -60,7 +60,7 @@ class SaveDataIF(object):
             self.save_data_root_directory = response.folder_path
         except Exception as e:
             self.save_data_root_directory = DATA_FOLDER_FALLBACK
-            nepi_msg.publishMsgWarn(self,"Failed to obtain system data folder, falling back to: " + DATA_FOLDER_FALLBACK + " " + str(e))
+            nepi_msg.publishMsgInfo(self,"Failed to obtain system data folder, falling back to: " + DATA_FOLDER_FALLBACK + " " + str(e))
             
         if self.save_data_root_directory is not None:
             # Ensure the data folder exists with proper ownership

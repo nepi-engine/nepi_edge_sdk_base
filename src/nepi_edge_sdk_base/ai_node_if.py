@@ -40,6 +40,10 @@ EXAMPLE_DETECTION_DICT_ENTRY = {
 
 class AiNodeIF:
 
+    img_width = 0 # Updated on receipt of first image
+    img_height = 0 # Updated on receipt of first image
+    img_area = 0
+
 
     def __init__(self,node_name, source_img_topic, pub_sub_namespace, classes_list, setThresholdFunction, processDetectionFunction):
         ####  IF INIT SETUP ####
@@ -103,6 +107,10 @@ class AiNodeIF:
         ros_img_header = source_img_msg.header
         detect_img_msg = source_img_msg
         cv2_img = nepi_img.rosimg_to_cv2img(source_img_msg)
+        cv2_shape = cv2_img.shape
+        self.img_width = cv2_shape[1] 
+        self.img_height = cv2_shape[0] 
+        self.img_area = self.img_height*self.img_width
         try:
             detect_dict_list = self.processDetection(cv2_img) 
             #nepi_msg.publishMsgInfo(self,"AIF got back detect_dict: " + str(detect_dict_list))
@@ -139,6 +147,12 @@ class AiNodeIF:
         if cv2_shape[2] == 1:
             cv2_detect_img = cv2.cvtColor(cv2_detect_img,cv2.COLOR_GRAY2BGR)
         for detect_dict in detect_dict_list:
+            area_pixels = (detect_dict['xmax'] - detect_dict['xmin']) * (detect_dict['ymax'] - detect_dict['ymin'])
+            if self.img_area > 1:
+                area_ratio = area_pixels / self.img_area
+            else:
+                area_ratio = -999
+                
             ###### Apply Image Overlays and Publish Image ROS Message
             # Overlay adjusted detection boxes on image 
             class_name = detect_dict['name']
@@ -210,6 +224,8 @@ class AiNodeIF:
                 bounding_box_msg.ymin = detect_dict['ymin']
                 bounding_box_msg.xmax = detect_dict['xmax']
                 bounding_box_msg.ymax = detect_dict['ymax']
+                bounding_box_msg.area_pixels = area_pixels
+                bounding_box_msg.area_ratio = area_ratio
                 bounding_box_msg_list.append(bounding_box_msg)
             bounding_boxes_msg = BoundingBoxes()
             bounding_boxes_msg.header.stamp = ros_img_header.stamp
