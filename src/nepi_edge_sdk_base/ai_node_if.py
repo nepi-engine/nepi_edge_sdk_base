@@ -135,6 +135,9 @@ class AiNodeIF:
 
     def apply_detection_overlay(self,detect_dict_list,cv2_img):
         cv2_detect_img = copy.deepcopy(cv2_img)
+        cv2_shape = cv2_detect_img.shape
+        if cv2_shape[2] == 1:
+            cv2_detect_img = cv2.cvtColor(cv2_detect_img,cv2.COLOR_GRAY2BGR)
         for detect_dict in detect_dict_list:
             ###### Apply Image Overlays and Publish Image ROS Message
             # Overlay adjusted detection boxes on image 
