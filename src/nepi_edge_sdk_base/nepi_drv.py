@@ -460,6 +460,7 @@ def getDriversActiveOrderedList(drvs_dict):
 
 def getDriverFilesList(drivers_path):
   drivers_list = []
+  file_list = []
   if drivers_path != '':
     if os.path.exists(drivers_path):
       [file_list, num_files] = nepi_ros.get_file_list(drivers_path,"py")
@@ -469,6 +470,7 @@ def getDriverFilesList(drivers_path):
   
 def getDriverPackagesList(install_path):
   pkg_list = []
+  file_list = []
   if install_path != '':
     if os.path.exists(install_path):
       [file_list, num_files] = nepi_ros.get_file_list(install_path,"zip")

@@ -290,6 +290,7 @@ def getAppsRuiActiveList(apps_dict):
 
 def getAppInfoFilesList(apps_path):
   apps_list = []
+  file_list = []
   if apps_path != '':
     if os.path.exists(apps_path):
       [file_list, num_files] = nepi_ros.get_file_list(apps_path,"py")
@@ -300,6 +301,7 @@ def getAppInfoFilesList(apps_path):
   
 def getAppPackagesList(install_path):
   pkg_list = []
+  file_list = []
   if install_path != '':
     if os.path.exists(install_path):
       [file_list, num_files] = nepi_ros.get_file_list(install_path,"zip")

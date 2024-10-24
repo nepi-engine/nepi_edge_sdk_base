@@ -231,6 +231,8 @@ class AiNodeIF:
             bounding_boxes_msg.header.stamp = ros_img_header.stamp
             bounding_boxes_msg.image_header = ros_img_header
             bounding_boxes_msg.image_topic = self.source_img_topic
+            bounding_boxes_msg.image_width = cv2_shape[1]
+            bounding_boxes_msg.image_height = cv2_shape[0]
             bounding_boxes_msg.bounding_boxes = bounding_box_msg_list
             if not rospy.is_shutdown():
                 self.bounding_boxes_pub.publish(bounding_boxes_msg)
