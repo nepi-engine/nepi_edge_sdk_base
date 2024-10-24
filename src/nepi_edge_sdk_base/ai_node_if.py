@@ -110,7 +110,6 @@ class AiNodeIF:
         cv2_shape = cv2_img.shape
         self.img_width = cv2_shape[1] 
         self.img_height = cv2_shape[0] 
-        self.img_area = self.img_height*self.img_width
         try:
             detect_dict_list = self.processDetection(cv2_img) 
             #nepi_msg.publishMsgInfo(self,"AIF got back detect_dict: " + str(detect_dict_list))
@@ -143,15 +142,9 @@ class AiNodeIF:
 
     def apply_detection_overlay(self,detect_dict_list,cv2_img):
         cv2_detect_img = copy.deepcopy(cv2_img)
-        cv2_shape = cv2_detect_img.shape
+        cv2_shape = cv2_img.shape
         if cv2_shape[2] == 1:
             cv2_detect_img = cv2.cvtColor(cv2_detect_img,cv2.COLOR_GRAY2BGR)
-        for detect_dict in detect_dict_list:
-            area_pixels = (detect_dict['xmax'] - detect_dict['xmin']) * (detect_dict['ymax'] - detect_dict['ymin'])
-            if self.img_area > 1:
-                area_ratio = area_pixels / self.img_area
-            else:
-                area_ratio = -999
                 
             ###### Apply Image Overlays and Publish Image ROS Message
             # Overlay adjusted detection boxes on image 
@@ -212,27 +205,36 @@ class AiNodeIF:
         return cv2_detect_img
 
     def publishDetectionData(self,detect_dict_list,ros_img_header):
+        for detect_dict in detect_dict_list:
+            area_pixels = (detect_dict['xmax'] - detect_dict['xmin']) * (detect_dict['ymax'] - detect_dict['ymin'])
+            if self.img_area > 1:
+                area_ratio = area_pixels / self.img_area
+            else:
+                area_ratio = -999
         if len(detect_dict_list) > 0:
             bounding_box_msg_list = []
             for detect_dict in detect_dict_list:
-                bounding_box_msg = BoundingBox()
-                bounding_box_msg.Class = detect_dict['name']
-                bounding_box_msg.id = detect_dict['id']
-                bounding_box_msg.uid = detect_dict['uid']
-                bounding_box_msg.probability = detect_dict['prob']
-                bounding_box_msg.xmin = detect_dict['xmin']
-                bounding_box_msg.ymin = detect_dict['ymin']
-                bounding_box_msg.xmax = detect_dict['xmax']
-                bounding_box_msg.ymax = detect_dict['ymax']
-                bounding_box_msg.area_pixels = area_pixels
-                bounding_box_msg.area_ratio = area_ratio
+                try:
+                    bounding_box_msg = BoundingBox()
+                    bounding_box_msg.Class = detect_dict['name']
+                    bounding_box_msg.id = detect_dict['id']
+                    bounding_box_msg.uid = detect_dict['uid']
+                    bounding_box_msg.probability = detect_dict['prob']
+                    bounding_box_msg.xmin = detect_dict['xmin']
+                    bounding_box_msg.ymin = detect_dict['ymin']
+                    bounding_box_msg.xmax = detect_dict['xmax']
+                    bounding_box_msg.ymax = detect_dict['ymax']
+                    bounding_box_msg.area_pixels = detect_dict['area_pixels']
+                    bounding_box_msg.area_ratio = detect_dict['area_ratio']
+                except Exception as e:
+                    nepi_msg.publishMsgWarn(self,"Failed to get all data from detect dict: " + str(e)) 
                 bounding_box_msg_list.append(bounding_box_msg)
             bounding_boxes_msg = BoundingBoxes()
             bounding_boxes_msg.header.stamp = ros_img_header.stamp
             bounding_boxes_msg.image_header = ros_img_header
             bounding_boxes_msg.image_topic = self.source_img_topic
-            bounding_boxes_msg.image_width = cv2_shape[1]
-            bounding_boxes_msg.image_height = cv2_shape[0]
+            bounding_boxes_msg.image_width = self.img_width
+            bounding_boxes_msg.image_height = self.img_height
             bounding_boxes_msg.bounding_boxes = bounding_box_msg_list
             if not rospy.is_shutdown():
                 self.bounding_boxes_pub.publish(bounding_boxes_msg)
