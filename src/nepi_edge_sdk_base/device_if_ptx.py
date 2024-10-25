@@ -39,6 +39,14 @@ class ROSPTXActuatorIF:
                 'status_update_rate_hz' : 1.0
     }
 
+    has_absolute_positioning = False
+    yaw_now_deg = yaw_now_deg = 0
+    pitch_now_deg = pitch_now_deg = 0
+
+    reverse_yaw = False
+    ryi = 1
+    reverse_pitch = False
+    rpi = 1
 
 
     def __init__(self,  device_info, capSettings, 
@@ -91,6 +99,15 @@ class ROSPTXActuatorIF:
         self.reverse_yaw_control = rospy.get_param("~ptx/reverse_yaw_control", self.factory_controls_dict['reverse_yaw_control'])
         self.reverse_pitch_control = rospy.get_param("~ptx/reverse_pitch_control", self.factory_controls_dict['reverse_pitch_control'])
 
+        # set class reverse int values
+        ryi = 1
+        if self.reverse_yaw_control:
+            ryi = -1
+        self.ryi = ryi
+        rpi = 1
+        if self.reverse_pitch_control:
+            rpi = -1
+        self.rpi = rpi
         
         # Set up status message static values
         self.status_msg = PanTiltStatus()
@@ -113,7 +130,9 @@ class ROSPTXActuatorIF:
         
         # Gather capabilities - Config file takes precedence over parent-supplied defaults
         self.capabilities_report = PTXCapabilitiesQueryResponse()
-        self.capabilities_report.absolute_positioning = rospy.get_param('~ptx/capabilities/has_absolute_positioning', capabilities_dict['has_absolute_positioning'])
+        self.has_absolute_positioning = rospy.get_param('~ptx/capabilities/has_absolute_positioning', capabilities_dict['has_absolute_positioning'])
+        self.capabilities_report.absolute_positioning = self.has_absolute_positioning
+        
         self.capabilities_report.adjustable_speed = rospy.get_param('~ptx/capabilities/has_speed_control', capabilities_dict['has_speed_control'])
         self.capabilities_report.homing = rospy.get_param('ptx/capabilities/has_homing', capabilities_dict['has_homing'])
         self.capabilities_report.waypoints = rospy.get_param('ptx/capabilities/has_waypoints', capabilities_dict['has_waypoints'])
@@ -210,11 +229,6 @@ class ROSPTXActuatorIF:
             self.joint_pub = None
             self.odom_pub = None
 
-        # Hardstop is not adjustable, so just set the status message values once here
-        self.status_msg.yaw_min_hardstop_deg = self.min_yaw_hardstop_deg
-        self.status_msg.yaw_max_hardstop_deg = self.max_yaw_hardstop_deg
-        self.status_msg.pitch_min_hardstop_deg = self.min_pitch_hardstop_deg
-        self.status_msg.pitch_max_hardstop_deg = self.max_pitch_hardstop_deg
 
         # Homing setup
         if self.capabilities_report.homing is True:
@@ -281,16 +295,36 @@ class ROSPTXActuatorIF:
         nepi_msg.publishMsgInfo(self,"Initialization Complete")
 
     def yawRatioToDeg(self, ratio):
-        return  ratio * (self.max_yaw_softstop_deg - self.min_yaw_softstop_deg) + self.min_yaw_softstop_deg
+        yaw_deg = 0
+        if self.reverse_yaw_control == False:
+           yaw_deg =  self.min_yaw_softstop_deg + (1-ratio) * (self.max_yaw_softstop_deg - self.min_yaw_softstop_deg)
+        else:
+           yaw_deg =  self.max_yaw_softstop_deg - (1-ratio)  * (self.max_yaw_softstop_deg - self.min_yaw_softstop_deg)
+        return  yaw_deg
     
     def yawDegToRatio(self, deg):
-        return (deg - self.min_yaw_softstop_deg) / (self.max_yaw_softstop_deg - self.min_yaw_softstop_deg)
-    
+        ratio = 0.5
+        if self.reverse_yaw_control == False:
+          ratio = 1 - (deg - self.min_yaw_softstop_deg) / (self.max_yaw_softstop_deg - self.min_yaw_softstop_deg)
+        else:
+          ratio = (deg - self.min_yaw_softstop_deg) / (self.max_yaw_softstop_deg - self.min_yaw_softstop_deg)
+        return (ratio)
+     
     def pitchDegToRatio(self, deg):
-        return (deg - self.min_pitch_softstop_deg) / (self.max_pitch_softstop_deg - self.min_pitch_softstop_deg)
+        ratio = 0.5
+        if self.reverse_pitch_control == False:
+          ratio = 1 - (deg - self.min_pitch_softstop_deg) / (self.max_pitch_softstop_deg - self.min_pitch_softstop_deg)
+        else:
+          ratio = (deg - self.min_pitch_softstop_deg) / (self.max_pitch_softstop_deg - self.min_pitch_softstop_deg)
+        return ratio
     
     def pitchRatioToDeg(self, ratio):
-        return ratio * (self.max_pitch_softstop_deg - self.min_pitch_softstop_deg) + self.min_pitch_softstop_deg
+        pitch_deg = 0
+        if self.reverse_pitch_control == False:
+           pitch_deg =  self.min_pitch_softstop_deg + (1-ratio) * (self.max_pitch_softstop_deg - self.min_pitch_softstop_deg)
+        else:
+           pitch_deg =  (self.max_pitch_softstop_deg) - (1-ratio) * (self.max_pitch_softstop_deg - self.min_pitch_softstop_deg)
+        return  pitch_deg
 
     def publishJointStateAndStatus(self, _):
             self.publishStatus()
@@ -301,18 +335,43 @@ class ROSPTXActuatorIF:
         
         self.status_msg.reverse_yaw_control = self.reverse_yaw_control
         self.status_msg.reverse_pitch_control = self.reverse_pitch_control
-        self.status_msg.yaw_goal_deg = self.yaw_goal_deg
-        self.status_msg.yaw_home_pos_deg = self.yaw_home_pos_deg
-        self.status_msg.yaw_min_softstop_deg = self.min_yaw_softstop_deg
-        self.status_msg.yaw_max_softstop_deg = self.max_yaw_softstop_deg
-        self.status_msg.pitch_goal_deg = self.pitch_goal_deg
-        self.status_msg.pitch_home_pos_deg = self.pitch_home_pos_deg
-        self.status_msg.pitch_min_softstop_deg = self.min_pitch_softstop_deg
-        self.status_msg.pitch_max_softstop_deg = self.max_pitch_softstop_deg
+
+        self.status_msg.yaw_goal_deg = self.yaw_goal_deg * self.ryi
+        self.status_msg.yaw_home_pos_deg = self.yaw_home_pos_deg * self.ryi
+        if self.reverse_yaw_control:
+            self.status_msg.yaw_min_hardstop_deg = -1 * self.max_yaw_hardstop_deg
+            self.status_msg.yaw_max_hardstop_deg = -1 * self.min_yaw_hardstop_deg
+            self.status_msg.yaw_min_softstop_deg = -1 * self.max_yaw_softstop_deg
+            self.status_msg.yaw_max_softstop_deg = -1 * self.min_yaw_softstop_deg
+
+        else:
+            self.status_msg.yaw_min_hardstop_deg = self.min_yaw_hardstop_deg
+            self.status_msg.yaw_max_hardstop_deg = self.max_yaw_hardstop_deg
+            self.status_msg.yaw_min_softstop_deg = self.min_yaw_softstop_deg
+            self.status_msg.yaw_max_softstop_deg = self.max_yaw_softstop_deg
+
+
+        self.status_msg.pitch_goal_deg = self.pitch_goal_deg  * self.ryi
+        self.status_msg.pitch_home_pos_deg = self.pitch_home_pos_deg  * self.ryi
+        if self.reverse_pitch_control:
+            self.status_msg.pitch_min_hardstop_deg = -1 * self.max_pitch_hardstop_deg
+            self.status_msg.pitch_max_hardstop_deg = -1 * self.min_pitch_hardstop_deg
+            self.status_msg.pitch_min_softstop_deg = -1 * self.max_pitch_softstop_deg
+            self.status_msg.pitch_max_softstop_deg = -1 * self.min_pitch_softstop_deg
+
+        else:
+            self.status_msg.pitch_min_hardstop_deg = self.min_pitch_hardstop_deg
+            self.status_msg.pitch_max_hardstop_deg = self.max_pitch_hardstop_deg
+            self.status_msg.pitch_min_softstop_deg = self.min_pitch_softstop_deg
+            self.status_msg.pitch_max_softstop_deg = self.max_pitch_softstop_deg
+
 
         if self.capabilities_report.absolute_positioning is True:
-            self.status_msg.yaw_now_deg, self.status_msg.pitch_now_deg = self.getCurrentPositionCb()
-        
+            yaw_now_deg, pitch_now_deg = self.getCurrentPositionCb()
+            self.yaw_now_deg = yaw_now_deg
+            self.pitch_now_deg = pitch_now_deg
+            self.status_msg.yaw_now_deg = yaw_now_deg * self.ryi
+            self.status_msg.pitch_now_deg = pitch_now_deg * self.rpi
         if self.capabilities_report.adjustable_speed is True:
             self.status_msg.speed_ratio = self.getSpeedCb()
 
@@ -336,6 +395,7 @@ class ROSPTXActuatorIF:
             self.odom_pub.publish(self.odom_msg)
 
     def positionWithinSoftLimits(self, yaw_deg, pitch_deg):
+
         if (yaw_deg < self.min_yaw_softstop_deg) or (yaw_deg > self.max_yaw_softstop_deg) or \
            (pitch_deg < self.min_pitch_softstop_deg) or (pitch_deg > self.max_pitch_softstop_deg):
             return False
@@ -391,11 +451,11 @@ class ROSPTXActuatorIF:
 
         self.yaw_goal_deg = msg.yaw_deg
         self.pitch_goal_deg = msg.pitch_deg
-        self.gotoPositionCb(yaw_deg = msg.yaw_deg, pitch_deg = msg.pitch_deg,)
-        nepi_msg.publishMsgInfo(self,"Driving to  " + "%.2f" % msg.yaw_deg + " " + "%.2f" % msg.pitch_deg)
+        nepi_msg.publishMsgInfo(self,"Driving to  " + "%.2f" % self.yaw_goal_deg + " " + "%.2f" % self.pitch_goal_deg)
+        self.gotoPositionCb(yaw_deg = (self.yaw_goal_deg * self.ryi), pitch_deg = (self.pitch_goal_deg * self.rpi))
             
     def jogToYawRatioHandler(self, msg):
-        ratio = msg.data if self.reverse_yaw_control is False else (1.0 - msg.data)
+        ratio = msg.data
         if (ratio < 0.0 or ratio > 1.0):
             nepi_msg.publishMsgWarn(self,"Invalid yaw position ratio " + "%.2f" % ratio)
             return
@@ -405,7 +465,7 @@ class ROSPTXActuatorIF:
         self.gotoPositionCb(yaw_deg = self.yaw_goal_deg, pitch_deg = pitch_now_deg)
 
     def jogToPitchRatioHandler(self, msg):
-        ratio = msg.data if self.reverse_pitch_control is False else (1.0 - msg.data)
+        ratio = msg.data
         if (ratio < 0.0 or ratio > 1.0):
             nepi_msg.publishMsgWarn(self,"Invalid pitch position ratio " + "%.2f" % ratio)
             return
@@ -434,10 +494,18 @@ class ROSPTXActuatorIF:
 
     def setReverseYawControl(self, msg):
         self.reverse_yaw_control = msg.data
+        rpi = 1
+        if msg.data:
+            rpi = -1
+        self.rpi = rpi
         nepi_msg.publishMsgInfo(self,"Set yaw control to reverse=" + str(self.reverse_yaw_control))
 
     def setReversePitchControl(self, msg):
         self.reverse_pitch_control = msg.data
+        ryi = 1
+        if msg.data:
+            ryi = -1
+        self.ryi = rpi
         nepi_msg.publishMsgInfo(self,"Set pitch control to reverse=" + str(self.reverse_pitch_control))
 
     def setHomePositionHereHandler(self, _):
