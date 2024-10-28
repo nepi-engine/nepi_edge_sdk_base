@@ -29,6 +29,7 @@ import rostopic
 import rosservice
 import rosparam
 import time
+import subprocess
 
 
 from datetime import datetime
@@ -106,7 +107,13 @@ def kill_node(node_name):
         kill_node = nodes[i].replace("\n","")
         break
   if kill_node != "":
-    os.system("rosnode kill "+ kill_node)
+    os.system("rosnode kill " + kill_node)
+
+def kill_node_namespace(node_namespace):
+  try:
+    subprocess.call(["rosnode","kill", node_namespace])
+  except Exception as e:
+    rospy.logwarn("NEPI_ROS: Failed to kill node_namespace: " + node_namespace + " " + str(e))
 
 def spin():
   rospy.spin()
