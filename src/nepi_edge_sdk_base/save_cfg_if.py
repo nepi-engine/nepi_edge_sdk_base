@@ -60,32 +60,37 @@ class SaveCfgIF(object):
 
     def factoryReset(self):
         reset_proxy = rospy.ServiceProxy('factory_reset', FileReset)
-        ret_val = self.reset(reset_proxy)
-        return ret_val
-
-
-    def userReset(self):
-        reset_proxy = rospy.ServiceProxy('user_reset', FileReset)
-        ret_val = self.reset(reset_proxy)
-        return ret_val
-
-
-    def reset(self,reset_proxy):
-        ret_val = False
-        if (reset_proxy):
-            try:
-            
-                if self.namespace != None:
-                    resp = reset_proxy(self.namespace)
-                else:
-                    resp = reset_proxy(rospy.get_name()) # Need the fully-qualified namespace name here
-                ret_val = resp.success
-            except rospy.ServiceException as e:
-                rospy.logerr("%s: service call failed: %s", rospy.get_name(), e)
+        try:
+            #if self.namespace != None:
+            #    resp = reset_proxy(self.namespace)
+            #else:
+            resp = reset_proxy(rospy.get_name()) # Need the fully-qualified namespace name here
+            ret_val = resp.success
+        except rospy.ServiceException as e:
+            rospy.logerr("%s: service call failed: %s", rospy.get_name(), e)
 
         if (self.paramsModified):
             self.paramsModified() # Callback provided by container class to update based on param server, etc.
 
         return ret_val
+
+
+    def userReset(self):
+        reset_proxy = rospy.ServiceProxy('user_reset', FileReset)
+        try:
+            #if self.namespace != None:
+            #    resp = reset_proxy(self.namespace)
+            #else:
+            resp = reset_proxy(rospy.get_name()) # Need the fully-qualified namespace name here
+            ret_val = resp.success
+        except rospy.ServiceException as e:
+            rospy.logerr("%s: service call failed: %s", rospy.get_name(), e)
+
+        if (self.paramsModified):
+            self.paramsModified() # Callback provided by container class to update based on param server, etc.
+
+        return ret_val
+
+
 
 
