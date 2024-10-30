@@ -77,6 +77,7 @@ class SaveCfgIF(object):
 
     def userReset(self):
         reset_proxy = rospy.ServiceProxy('user_reset', FileReset)
+        ret_val = False
         try:
             #if self.namespace != None:
             #    resp = reset_proxy(self.namespace)
@@ -86,7 +87,7 @@ class SaveCfgIF(object):
         except rospy.ServiceException as e:
             rospy.logerr("%s: service call failed: %s", rospy.get_name(), e)
 
-        if (self.paramsModified):
+        if (self.paramsModified and ret_val == True):
             self.paramsModified() # Callback provided by container class to update based on param server, etc.
 
         return ret_val

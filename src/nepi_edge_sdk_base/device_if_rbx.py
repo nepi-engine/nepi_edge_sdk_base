@@ -40,7 +40,7 @@ from pygeodesy.ellipsoidalKarney import LatLon
 from cv_bridge import CvBridge
 
 from nepi_ros_interfaces.msg import RBXInfo, RBXStatus, AxisControls, RBXErrorBounds, RBXGotoErrors, RBXMotorControl, \
-     RBXGotoPose, RBXGotoPosition, RBXGotoLocation
+     RBXGotoPose, RBXGotoPosition, RBXGotoLocation, RBXMotorControl
 from nepi_ros_interfaces.srv import NavPoseQuery, NavPoseQueryRequest, RBXCapabilitiesQuery, RBXCapabilitiesQueryResponse, \
      NavPoseCapabilitiesQuery, NavPoseCapabilitiesQueryResponse
 
@@ -1603,8 +1603,11 @@ class ROSRBXRobotIF:
     def get_motor_controls_status_msg(self,motor_controls):
       mcs = []
       for i in range(len(motor_controls)):
-        mcs.append([str(i),str(motor_controls[i])])
-      return str(mcs)
+        mc = RBXMotorControl()
+        mc.motor_ind = i
+        mc.speed_ratio = motor_controls[i]
+        mcs.append(mc)
+      return mcs
 
 
        
