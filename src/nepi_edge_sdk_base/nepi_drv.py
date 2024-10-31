@@ -27,72 +27,19 @@ import copy
 from serial.tools import list_ports
 
 from nepi_edge_sdk_base import nepi_ros
-from nepi_edge_sdk_base import nepi_img
-
-
-
-#########################
-### Example Requried File Headers
-## Exaple Node File Header
-'''
-PKG_NAME = 'IDX_GENICAM' # Use in display menus
-FILE_TYPE = 'NODE'
-NODE_DICT = dict(
-description = 'Driver package for generic GenICam camera devices',
-class_name = 'GenicamCamNode', # Should Match Class Name,
-group ='IDX',
-group_id = 'GENICAM' ,
-driver_pkg_name = 'IDX_GENICAM', # 'Required Driver PKG_NAME or 'None'
-discovery_pkg_name = 'IDX_GENICAM' # 'Required Discovery PKG_NAME or 'None'
-)
-'''
-## Exaple Discovery File Header
-'''
-PKG_NAME = 'IDX_GENICAM' # Use in display menus
-FILE_TYPE = 'DISCOVERY'
-DISCOVERY_DICT = dict(
-  class_name = 'GenicamCamDiscovery',
-  process = 'LAUNCH', # 'LAUNCH', 'RUN', or 'CALL'
-  method = 'AUTO',  # 'AUTO', 'MANUAL', or 'OTHER' if managed by seperate application
-  include_ids = [],  # List of string identifiers for discovery process
-  exclude_ids = [], # List of string identifiers for discovery process
-  interfaces = ['USB','IP'], # 'USB','IP','SERIALUSB','SERIAL','CANBUS'
-  option_1_dict = dict(
-    name = 'None',
-    options = [], # List of string options. Selected option passed to driver
-    default_val = 'None'
-  ),
-  option_2_dict = dict(
-    name = 'None',
-    options = [], # List of string options. Selected option passed to driver
-    default_val = 'None'
-  )
-)
-'''
-## Exaple Driver File Header
-'''
-PKG_NAME = 'IDX_GENICAM' # Use in display menus
-FILE_TYPE = 'DRIVER'
-DRIVER_DICT = dict(
-class_name = 'GenicamCamDriver'
-)
-'''
-
+from nepi_edge_sdk_base import nepi_save
 
 
 #######################
 ### Driver Utility Functions
 
-DRIVER_DIR = '/opt/nepi/ros/lib/nepi_drivers'
+DRIVERS_FOLDER = '/opt/nepi/ros/lib/nepi_drivers'
 DRIVER_FILE_TYPES = ['Node','Driver', 'Discovery']
 DRIVER_KEYS = ['node','driver','discovery']
 
 
 def getDriversDict(search_path):
-    node_dict = dict()
-    discovery_dict = dict()
-    driver_dict = dict()
-
+    drvs_dict = dict()
     # Find driver files
     ind = 0
     if os.path.exists(search_path):
@@ -101,146 +48,29 @@ def getDriversDict(search_path):
         sys.path.append(search_path)
         #rospy.loginfo("NEPI_DRV: Searching for drivers in path: " + search_path)
         for f in os.listdir(search_path):
-          if f.endswith(".py"): 
-            module_name = f.split(".")[0]
-            #rospy.loginfo("NEPI_DRV: Will try to import module: " + module_name)
-            open_success = True
-            read_success = True
-            warnings.filterwarnings('ignore', '.*unclosed.*', )
-            try:
-              module = __import__(module_name)
-            except Exception as e:
-              rospy.logwarn("NEPI_DRV: failed to import module %s with exception %s", f, str(e))
-              open_success = False
-            if open_success:
-                try:
-                  module_type = module.FILE_TYPE                
-                except:
-                  rospy.logwarn("NEPI_DRV: No FILE_TYPE in module: " + f)
-                  read_success = False
-                if read_success:
-                  #rospy.logwarn("NEPI_DRV: " + module_type)
-
-                  if module_type == "NODE":
-                    try:
-                      pkg_name = module.PKG_NAME
-                      node_dict[pkg_name] = module.NODE_DICT
-                      node_dict[pkg_name]['pkg_name'] = pkg_name
-                      node_dict[pkg_name]['file_name'] = f
-                      node_dict[pkg_name]['module_name'] = module_name
-                    except Exception as e:
-                      rospy.logwarn("NEPI_DRV: Failed to get Node info from module: " + f +" with exception: " + str(e))
-
-                  elif module_type == "DRIVER":
-                    try:
-                      pkg_name = module.PKG_NAME
-                      driver_dict[pkg_name] = module.DRIVER_DICT
-                      driver_dict[pkg_name]['pkg_name'] = pkg_name
-                      driver_dict[pkg_name]['file_name'] = f
-                      driver_dict[pkg_name]['module_name'] = module_name
-                    except Exception as e:
-                      rospy.logwarn("NEPI_DRV: Failed to get Discovery info from module: " + f +" with exception: " + str(e))
-
-                  elif module_type == "DISCOVERY":
-                    try:
-                      pkg_name = module.PKG_NAME
-                      discovery_dict[pkg_name] = module.DISCOVERY_DICT
-                      discovery_dict[pkg_name]['pkg_name'] = pkg_name
-                      discovery_dict[pkg_name]['file_name'] = f
-                      discovery_dict[pkg_name]['module_name'] = module_name
-                      # Initialize some values
-                      discovery_dict[pkg_name]['option_1_dict']['set_val'] = module.DISCOVERY_DICT['option_1_dict']['default_val']
-                      discovery_dict[pkg_name]['option_2_dict']['set_val'] = module.DISCOVERY_DICT['option_2_dict']['default_val']
-                    except Exception as e:
-                      rospy.logwarn("NEPI_DRV: Failed to get Discovery info from module: " + f + " with exception: " + str(e))
-                else:
-                    rospy.logwarn("NEPI_DRV: Failed to get valid FILE_TYPE from: " + f )
-                if open_success:
+          if f.endswith(".yaml") and f.find("params") != -1: 
                   try:
-                    #sys.modules.pop(module)
-                    if module_name in sys.modules:
-                      del sys.modules[module_name]
-                    del module
-                  except:
-                    rospy.loginfo("NEPI_DRV: Failed to remove module: " + f)
+                    file_path = os.path.join(search_path,f)
+                    new_dict = nepi_save.read_yaml2dict(file_path)
+                    #rospy.logwarn("NEPI_DRVS: Got drvs dict: " + str(new_dict))
+                    new_dict['DEVICE_DICT'] = dict(pkg_name = new_dict['NODE_DICT']['pkg_name'])
+                    new_dict['path'] = DRIVERS_FOLDER
+                    new_dict['order'] = -1
+                    new_dict['active'] = False
+                    new_dict['msg'] = ""
+                    new_dict['users'] = []  # ToDo - Fill this in with dependant packages
+                    if 'option_1_dict' in new_dict['DISCOVERY_DICT'].keys():
+                      new_dict['DISCOVERY_DICT']['option_1_dict']['set_val'] = new_dict['DISCOVERY_DICT']['option_1_dict']['default_val']
+                    if 'option_2_dict' in new_dict['DISCOVERY_DICT'].keys():
+                      new_dict['DISCOVERY_DICT']['option_2_dict']['set_val'] = new_dict['DISCOVERY_DICT']['option_2_dict']['default_val']
+                    drvs_dict[new_dict['NODE_DICT']['pkg_name']] = new_dict
+                  except Exception as e:
+                    rospy.logwarn("NEPI_DRVS: Failed to import param file: " + f + " " + str(e))
+
     else:
         rospy.logwarn("NEPI_DRV: Driver path %s does not exist",  search_path)
-    drvs_dict = dict()
-    pkg_names = list(node_dict.keys())
-    driver_pkg_names = list(driver_dict.keys())
-    discovery_pkg_names = list(discovery_dict.keys())
-    '''
-    rospy.logwarn("NEPI_DRV: pkg_names: " + str(pkg_names))
-    rospy.logwarn("NEPI_DRV: driver_pkg_names: " + str(driver_pkg_names))
-    rospy.logwarn("NEPI_DRV: discovery_pkg_names: " + str(discovery_pkg_names))
-    '''
-    users_dict = dict()
-    for pkg_name in pkg_names:
-      users_dict[pkg_name] = []
-    for pkg_name in pkg_names:
-      drv_dict= dict()
-      driver_pkg_name = node_dict[pkg_name]['driver_pkg_name']
-      discovery_pkg_name = node_dict[pkg_name]['discovery_pkg_name']
-      valid_driver = (driver_pkg_name == 'None' or driver_pkg_name in driver_pkg_names)
-      valid_discovery = (discovery_pkg_name == 'None' or discovery_pkg_name in discovery_pkg_names)   
-      '''  
-      rospy.logwarn("***********************")
-      rospy.logwarn("NEPI_DRV:node name " + pkg_name)
-      rospy.logwarn("NEPI_DRV: driver name: " + driver_pkg_name)
-      rospy.logwarn("NEPI_DRV: valid driver: " + str(valid_driver))
-      rospy.logwarn("NEPI_DRV: discovery name " + discovery_pkg_name)
-      rospy.logwarn("NEPI_DRV: valid discovery " + str(valid_discovery))
-      '''
-      if valid_driver:
-        if valid_discovery: 
-          valid_node_dict = False
-          try:
-            drv_dict['description'] = node_dict[pkg_name]['description']
-            drv_dict['group'] = node_dict[pkg_name]['group']
-            drv_dict['group_id'] = node_dict[pkg_name]['group_id']
-            valid_node_dict = True
 
-            if valid_node_dict:
-              drv_dict['NODE_DICT'] = node_dict[pkg_name]
-              # Update driver and discovery info
-              if (driver_pkg_name != 'None'):
-                drv_dict['DRIVER_DICT'] = driver_dict[driver_pkg_name]
-              else:
-                drv_dict['DRIVER_DICT'] = dict(init = "Init")
-              # Update discovery info
-              if (discovery_pkg_name != 'None'):
-                drv_dict['DISCOVERY_DICT'] = discovery_dict[discovery_pkg_name]
-              else:
-                drv_dict['DISCOVERY_DICT'] = dict(init = "Init")
 
-              drv_dict['DEVICE_DICT'] = dict(init = "Init")
-
-              # Add some defualt dict values
-              drv_dict['path'] = search_path
-              drv_dict['order'] = -1
-              drv_dict['active'] = False
-              drv_dict['msg'] = ""
-              success = True
-          except Exception as e:
-            rospy.logwarn("NEPI_DRV: Driver Node %s has invalid info in headers %s",  pkg_name, str(e))
-            success = False
-          if success:
-            drvs_dict[pkg_name] = drv_dict
-
-          # Add dependancy on other drivers to users dict
-          if driver_pkg_name != 'None' and driver_pkg_name != pkg_name:
-            users_dict[driver_pkg_name].append(pkg_name)
-          if discovery_pkg_name != "None" and discovery_pkg_name != driver_pkg_name and discovery_pkg_name != pkg_name:
-            users_dict[discovery_pkg_name].append(pkg_name)
-        else:
-          rospy.logwarn("NEPI_DRV: Driver Node %s has invalid discovery package",  pkg_name)
-      else:
-        rospy.logwarn("NEPI_DRV: Driver Node %s has invalid driver package",  pkg_name)
-    # Now update from users dict
-    for drv_name in drvs_dict.keys():
-      for key in users_dict.keys():
-        if drv_name == key:
-          drvs_dict[drv_name]['users'] = users_dict[key]
     # Now assign factory orders
     drvs_dict = setFactoryDriverOrder(drvs_dict)
     return drvs_dict
@@ -506,18 +336,21 @@ def disableDriver(drv_name,drvs_dict):
     drvs_dict[drv_name]['active'] = False
     return drvs_dict
 
-def installDriverPkg(pkg_name,drvs_dict,install_from_path,install_to_path):
+def installDriverPkg(pkg_name,drvs_dict,install_from_path,drivers_path,params_path):
     success = True
     if install_from_path[-1] == "/":
       install_from_path = install_from_path[:-1]
-    if install_to_path[-1] == "/":
-      search_path = install_to_path[:-1]
+    if drivers_path[-1] == "/":
+      search_path = drivers_path[:-1]
 
     if os.path.exists(install_from_path) == False:
       rospy.logwarn("NEPI_DRV: Install package source folder does not exist %s", install_from_path)
       return False, drvs_dict
-    if os.path.exists(install_to_path) == False:
-      rospy.logwarn("NEPI_DRV: Install package destination folder does not exist %s", install_to_path)
+    if os.path.exists(drivers_path) == False:
+      rospy.logwarn("NEPI_DRV: Install drivers destination folder does not exist %s", drivers_path)
+      return False, drvs_dict
+    if os.path.exists(params_path) == False:
+      rospy.logwarn("NEPI_DRV: Install params destination folder does not exist %s", params_path)
       return False, drvs_dict
     pkg_list = getDriverPackagesList(install_from_path)
     if pkg_name not in pkg_list:
@@ -525,9 +358,10 @@ def installDriverPkg(pkg_name,drvs_dict,install_from_path,install_to_path):
       return False, drvs_dict
     os_user = getpass.getuser()
     os.system('chown -R ' + 'nepi:nepi' + ' ' + install_from_path)
-    os.system('chown -R ' + 'nepi:nepi' + ' ' + install_to_path)
+    os.system('chown -R ' + 'nepi:nepi' + ' ' + drivers_path)
+    os.system('chown -R ' + 'nepi:nepi' + ' ' + params_path)
     pkg_path = install_from_path + "/" + pkg_name
-    driver_path = install_to_path
+    driver_path = drivers_path
     try:
       pkg = zipfile.ZipFile(pkg_path)
       pkg_files = pkg.namelist()
@@ -539,7 +373,10 @@ def installDriverPkg(pkg_name,drvs_dict,install_from_path,install_to_path):
       # Create a list of files
       driver_files = []
       for pkg_file in pkg_files:
-        driver_file = driver_path + "/" + pkg_file
+        if pkg_file.endswith(".yaml"):
+          driver_file = params_path + "/" + pkg_file
+        else: 
+          driver_file = driver_path + "/" + pkg_file
         driver_files.append(driver_file)
       for file in driver_files:
         if os.path.exists(file):
@@ -555,14 +392,23 @@ def installDriverPkg(pkg_name,drvs_dict,install_from_path,install_to_path):
         # Check for success
         for f in driver_files:
           if os.path.exists(f) == False:
-            os.system('chown -R ' + 'nepi:nepi' + ' ' + f)
             success = False
+          else:
+            os.system('chown -R ' + 'nepi:nepi' + ' ' + f)
+          if f.endswith(".yaml"):
+            new_f = os.path.join(params_path,os.path.basename(f))
+            try:
+              os.rename(f,new_f)
+              os.system('chown -R ' + 'nepi:nepi' + ' ' + new_f)
+            except Exception as e:
+              ospy.logwarn("NEPI_DRV: Failed to move param file to new location: " + new_f + " " + str(e))
+              success = False
     drvs_dict = updateDriversDict(driver_path,drvs_dict)
     return success, drvs_dict 
 
 
 
-def removeDriver(drv_name,drvs_dict,backup_path = None):
+def removeDriver(drv_name,drvs_dict,drivers_path,params_path,backup_path = None):
     success = True   
     if drv_name not in drvs_dict.keys():
       rospy.logwarn("NEPI_DRV: Driver %s for removal request does not exist", drv_name)
@@ -575,11 +421,12 @@ def removeDriver(drv_name,drvs_dict,backup_path = None):
     driver_pkg_names = [node_pkg_name,driver_pkg_name,discovery_pkg_name]
 
     driver_files = []
-    driver_files.append(drv_dict['NODE_DICT']['file_name'])
+    driver_files.append(os.path.join(params_path,drv_name.lower() + "_params.yaml"))
+    driver_files.append(os.path.join(drivers_path,drv_dict['NODE_DICT']['file_name']))
     if driver_pkg_name != "None":
-      driver_files.append(drv_dict['DRIVER_DICT']['file_name'])
+      driver_files.append(os.path.join(drivers_path,drv_dict['DRIVER_DICT']['file_name']))
     if discovery_pkg_name != "None":
-      driver_files.append(drv_dict['DISCOVERY_DICT']['file_name'])
+      driver_files.append(os.path.join(drivers_path,drv_dict['DISCOVERY_DICT']['file_name']))
 
     path = drv_dict['path']
 
@@ -587,12 +434,11 @@ def removeDriver(drv_name,drvs_dict,backup_path = None):
     driver_file_list = []
     for i,driver_file in enumerate(driver_files):
       if driver_file != 'None' and driver_pkg_names[i] == drv_name:
-        file = driver_files[i]
-        filepath = path + '/' + file
+        filepath = driver_files[i]
         if os.path.exists(filepath) == False:
           success = False
         if success:
-          os.system('chown -R ' + 'nepi:nepi' + ' ' + path)
+          os.system('chown -R ' + 'nepi:nepi' + ' ' + filepath)
           driver_file_list.append(filepath)
           # Create an install package from driver files
     rospy.loginfo("NEPI_DRV: Removing driver files: " + str(driver_file_list))      
@@ -616,10 +462,6 @@ def removeDriver(drv_name,drvs_dict,backup_path = None):
           if os.path.exists(zip_file) == True:
             try:
               zip.close()
-            except Exception as e:
-              rospy.logwarn(str(e))
-            try:
-              os.remove(file_path)
             except Exception as e:
               rospy.logwarn(str(e))
         for file_path in driver_file_list:
@@ -762,40 +604,6 @@ def checkSerialPorts(port_str):
 
 
 
-#***************************
-# IDX utility functions
 
-#Factory Control Values 
-DEFAULT_CONTROLS_DICT = dict( controls_enable = True,
-    auto_adjust = False,
-    brightness_ratio = 0.5,
-    contrast_ratio =  0.5,
-    threshold_ratio =  0.5,
-    resolution_mode = 1, # LOW, MED, HIGH, MAX
-    framerate_mode = 1, # LOW, MED, HIGH, MAX
-    start_range_ratio = 0.0,
-    stop_range_ratio = 1.0,
-    min_range_m = 0.0,
-    max_range_m = 1.0,
-    zoom_ratio = 0.5, 
-    rotate_ratio = 0.5,
-    frame_3d = 'nepi_center_frame'
-    )
-
-def applyIDXControls2Image(cv2_img,IDXcontrols_dict=DEFAULT_CONTROLS_DICT,current_fps=20):
-    if IDXcontrols_dict.get("controls_enable"): 
-        resolution_ratio = IDXcontrols_dict.get("resolution_mode")/3
-        [cv2_img,new_res] = nepi_img.adjust_resolution(cv2_img, resolution_ratio)
-        if IDXcontrols_dict.get("auto_adjust") is False:
-            cv2_img = nepi_img.adjust_brightness(cv2_img,IDXcontrols_dict.get("brightness_ratio"))
-            cv2_img = nepi_img.adjust_contrast(cv2_img,IDXcontrols_dict.get("contrast_ratio"))
-            cv2_img = nepi_img.adjust_sharpness(cv2_img,IDXcontrols_dict.get("threshold_ratio"))
-        else:
-            cv2_img = nepi_img.adjust_auto(cv2_img,0.3)
-        ##  Need to get current framerate setting
-        ##  Hard Coded for now
-        framerate_ratio = IDXcontrols_dict.get("framerate_mode")/3
-        [cv2_img,new_rate] = nepi_img.adjust_framerate(cv2_img, current_fps, framerate_ratio)
-    return cv2_img
 
   

@@ -27,10 +27,11 @@ import copy
 from serial.tools import list_ports
 
 from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_save
   
 #***************************
 # NEPI Apps utility functions
-APPS_INFO_PATH = '/opt/nepi/ros/share/nepi_apps'
+APPS_SHARE_PATH = '/opt/nepi/ros/share/nepi_apps'
 
 NEPI_PKG_FOLDER = '/opt/nepi/ros/lib/'
 
@@ -44,53 +45,24 @@ def getAppsDict(search_path):
         sys.path.append(search_path)
         rospy.loginfo("NEPI_APPS: Searching for Apps in path: " + search_path)
         for f in os.listdir(search_path):
-          if f.endswith(".py"): 
-            module_name = f.split(".")[0]
-            #rospy.loginfo("NEPI_APPS: Will try to import module: " + module_name)
-            open_success = True
-            read_success = True
-            warnings.filterwarnings('ignore', '.*unclosed.*', )
-            try:
-              module = __import__(module_name)
-            except Exception as e:
-              #rospy.logwarn("NEPI_APPS: failed to import module %s with exception %s", f, str(e))
-              open_success = False
-            if open_success:
-                try:
-                  app_name = module.APP_NAME                
-                except:
-                  #rospy.logwarn("NEPI_APPS: No APP_NAME in module: " + f)
-                  read_success = False
-                if read_success:
-                  #rospy.logwarn("NEPI_APPS: " + app_name)
-                  try:
-                    apps_dict[app_name] = {
-                      'APP_DICT': module.APP_DICT,
-                      'RUI_DICT': module.RUI_DICT,
-                      'order': -1,
-                      'subprocess': "",
-                      'active': False,
-                      'msg': ""
-                      }
-                  except Exception as e:
-                    try:
-                      del apps_dict[app_name]
-                    except:
-                      pass
-                    rospy.logwarn("NEPI_APPS: Failed to get info from module: " + f +" with exception: " + str(e))
-                else:
-                    rospy.logwarn("NEPI_APPS: Failed to get valid APP_NAME from: " + f )
-                if open_success:
-                  try:
-                    #sys.modules.pop(module)
-                    if module_name in sys.modules:
-                      del sys.modules[module_name]
-                    del module
-                  except:
-                    rospy.loginfo("NEPI_APPS: Failed to remove module: " + f)
+          if f.endswith(".yaml") and f.find("params") != -1: 
+              file_path = os.path.join(search_path,f)
+              #rospy.logwarn("NEPI_APPS: Loading app dict from file: " + str(file_path))
+              try:
+                new_dict = nepi_save.read_yaml2dict(file_path)
+                #rospy.logwarn("NEPI_APPS: Got app dict: " + str(new_dict))
+                new_dict['order'] = -1
+                new_dict['subprocess'] = ""
+                new_dict['active'] = False
+                new_dict['msg'] = ""
+                app_name = new_dict['APP_DICT']['pkg_name']
+                apps_dict[app_name] = new_dict   
+              except Exception as e:
+                rospy.logwarn("NEPI_APPS: Failed to import param file: " + file_path + " " + str(e))
     else:
         rospy.logwarn("NEPI_APPS: App path %s does not exist",  search_path)
     # Check for node file
+
     purge_list = []
     for app_name in apps_dict.keys():
       pkg_name = apps_dict[app_name]['APP_DICT']['pkg_name']
@@ -282,8 +254,9 @@ def getAppsRuiActiveList(apps_dict):
   rui_active_list =[]
   for app_name in ordered_name_list:
     active = apps_dict[app_name]['active']
-    if active and apps_dict[app_name]['RUI_DICT']['rui_menu_name'] != "None":
-      rui_active_list.append(app_name)
+    rui_name = apps_dict[app_name]['RUI_DICT']['rui_menu_name']
+    if active and rui_name != "None":
+      rui_active_list.append(rui_name)
   return rui_active_list
 
 

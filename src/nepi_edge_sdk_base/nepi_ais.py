@@ -27,11 +27,11 @@ import copy
 from serial.tools import list_ports
 
 from nepi_edge_sdk_base import nepi_ros
-from nepi_edge_sdk_base import nepi_img
+from nepi_edge_sdk_base import nepi_save
   
 #***************************
 # NEPI AIs utility functions
-AIS_INFO_PATH = '/opt/nepi/ros/share/nepi_ai_ifs'
+AIS_SHARE_PATH = '/opt/nepi/ros/share/nepi_aifs'
 
 NEPI_PKG_FOLDER = '/opt/nepi/ros/lib/'
 
@@ -45,56 +45,30 @@ def getAIsDict(search_path):
         sys.path.append(search_path)
         rospy.loginfo("NEPI_AIS: Searching for AIs in path: " + search_path)
         for f in os.listdir(search_path):
-          if f.endswith(".py"): 
-            module_name = f.split(".")[0]
-            #rospy.loginfo("NEPI_AIS: Will try to import module: " + module_name)
-            open_success = True
-            read_success = True
-            warnings.filterwarnings('ignore', '.*unclosed.*', )
+          if f.endswith(".yaml") and f.find("params") != -1: 
             try:
-              module = __import__(module_name)
+              file_path = os.path.join(search_path,f)
+              new_dict = nepi_save.read_yaml2dict(file_path)
+              #rospy.logwarn("NEPI_AIS: Got ais dict: " + str(new_dict))
+              new_dict['if_path'] = search_path
+              new_dict['active'] = True
+              ais_dict[new_dict['pkg_name']] = new_dict
             except Exception as e:
-              rospy.logwarn("NEPI_AIS: failed to import module %s with exception %s", f, str(e))
-              open_success = False
-            if open_success:
-                try:
-                  ai_name = module.AI_NAME                
-                except:
-                  rospy.logwarn("NEPI_AIS: No AI_NAME in module: " + f)
-                  read_success = False
-                if read_success:
-                  #rospy.logwarn("NEPI_AIS: " + ai_name)
-                  try:
-                    ais_dict[ai_name] = module.AI_DICT
-                    ais_dict[ai_name]['if_file'] = f
-                    ais_dict[ai_name]['if_path'] = search_path
-                    ais_dict[ai_name]['module_name'] = module_name
-                    ais_dict[ai_name]['active'] = True
-                  except Exception as e:
-                    try:
-                      del ais_dict[ai_name]
-                    except:
-                      pass
-                    rospy.logwarn("NEPI_AIS: Failed to get info from module: " + f +" with exception: " + str(e))
-                else:
-                    rospy.logwarn("NEPI_AIS: Failed to get valid AI_NAME from: " + f )
-                if open_success:
-                  try:
-                    if module_name in sys.modules:
-                      del sys.modules[module_name]
-                    del module
-                  except:
-                    rospy.loginfo("NEPI_AIS: Failed to remove module: " + f)
+              rospy.logwarn("NEPI_AIS: Failed to import param file: " + f + " " + str(e))
     else:
-        rospy.logwarn("NEPI_AIS: AI path %s does not exist",  search_path)
-    # Check for launch file
+        rospy.logwarn("NEPI_AIS: AIF search path %s does not exist",  search_path)
+    # Check for node file   
+
     purge_list = []
     for ai_name in ais_dict.keys():
+      purge = False
       pkg_name = ais_dict[ai_name]['pkg_name']
-      node_file = ais_dict[ai_name]['node_file']
-      node_file_path = NEPI_PKG_FOLDER + pkg_name + "/" + node_file
-      if os.path.exists(node_file_path) == False:
-        rospy.logwarn("NEPI_AIS: Could not find ai file: " + node_file_path)
+      if_file = ais_dict[ai_name]['if_file_name']
+      if_file_path = os.path.join(search_path,if_file)
+      if os.path.exists(if_file_path) == False:
+        rospy.logwarn("NEPI_AIS: Could not find ai file: " + if_file_path)
+        purge = True
+      if purge == True:
         purge_list.append(ai_name)
     for ai_name in purge_list:
       del ais_dict[ai_name]
@@ -451,8 +425,8 @@ def importAIClass(file_name,file_path,module_name,class_name):
       module_class = None
       success = False
       msg = "failed"
-      file_list = os.listdir(file_path)
-      if file_name in file_list:
+      file_path = os.path.join(file_path,file_name)
+      if os.path.exists(file_path):
         sys.path.append(file_path)
         try:
           module = importlib.import_module(module_name)

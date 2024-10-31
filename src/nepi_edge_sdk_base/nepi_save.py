@@ -26,6 +26,36 @@ from nepi_edge_sdk_base import nepi_pc
 from nepi_edge_sdk_base import nepi_img 
   
 #***************************
+# Misc file read write utilities
+
+def read_yaml2dict(file_path):
+    dict_from_file = dict()
+    if os.path.exists(file_path):
+        try:
+            with open(file_path) as f:
+                dict_from_file = yaml.load(f, Loader=yaml.FullLoader)
+        except:
+            nepi_msg.publishMsgWarn(self,"Failed to get dict from file: " + file_path + " " + str(e))
+    else:
+        nepi_msg.publishMsgWarn(self,"Failed to find dict file: " + file_path)
+    return dict_from_file
+
+def write_dict2yaml(dict_2_save,file_path,defaultFlowStyle=False,sortKeys=False):
+    success = False
+    path = os.path.dirname(file_path)
+    if os.path.exists(path):
+        try:
+            with open(file_path, "w") as f:
+                yaml.dump(dict_2_save, stream=f, default_flow_style=defaultFlowStyle, sort_keys=sortKeys)
+            success = True
+        except:
+            nepi_msg.publishMsgWarn(self,"Failed to write dict: " + str(dict_2_save) + " to file: " + file_path + " " + str(e))
+    else:
+        nepi_msg.publishMsgWarn(self,"Failed to find file path: " + path)
+    return success
+  
+  
+#***************************
 # NEPI data saving utility functions
 
 def save_data2file(self,data_product,data,ros_timestamp,device_name = '',save_check=True):
