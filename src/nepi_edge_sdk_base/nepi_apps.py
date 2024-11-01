@@ -254,9 +254,11 @@ def getAppsRuiActiveList(apps_dict):
   rui_active_list =[]
   for app_name in ordered_name_list:
     active = apps_dict[app_name]['active']
-    rui_name = apps_dict[app_name]['RUI_DICT']['rui_menu_name']
-    if active and rui_name != "None":
-      rui_active_list.append(rui_name)
+    if 'rui_menu_name' in apps_dict[app_name]['RUI_DICT'].keys():
+      rui_name = apps_dict[app_name]['RUI_DICT']['rui_menu_name']
+    else:
+      rui_name = "None"
+    rui_active_list.append(rui_name)
   return rui_active_list
 
 

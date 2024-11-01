@@ -61,8 +61,8 @@ def UPDATE_NONE_SETTINGS_FUNCTION():
 def GET_NONE_SETTINGS_FUNCTION():
   return nepi_nex.NONE_SETTINGS
         
-def parse_cap_settings_msg_data(msg_data):
-  cap_settings = msg_data.setting_caps_list
+def parse_cap_settings_msg_data(cap_settings_msg):
+  cap_settings = cap_settings_msg.setting_caps_list
   settings = dict()
   for entry in cap_settings:
     cap_setting = dict()
@@ -84,8 +84,8 @@ def get_cap_setting_msgs_list(cap_settings):
   for cap_setting_name in cap_settings.keys():
     cap_setting = cap_settings[cap_setting_name]
     cap_setting_msg = SettingCap()
-    cap_setting_msg.name_str = cap_setting_name
     cap_setting_msg.type_str = cap_setting['type']
+    cap_setting_msg.name_str = cap_setting['name']
     if 'options' in cap_setting.keys():
       cap_setting_msg.options_list = cap_setting['options']
     else:
@@ -95,14 +95,13 @@ def get_cap_setting_msgs_list(cap_settings):
 
 
 
-def parse_settings_msg_data(msg_data):
-  settings = msg_data.setting_caps_list
+def parse_settings_msg_data(settings_msg):
   settings = dict()
-  for entry in settings:
+  for entry in settings_msg.settings_list:
     setting = dict()
     setting['name'] = entry.name_str
     setting['type'] = entry.type_str
-    setting['options'] = entry.options_list
+    setting['value'] = entry.value_str
     settings[entry.name_str] = setting
   return(settings)
 
@@ -111,18 +110,15 @@ def create_msg_data_from_settings(settings):
   settings_list = []
   for setting_name in settings.keys():
     setting = settings[setting_name]
-    setting_msg = Setting()
-    setting_msg.name_str = setting_name
-    setting_msg.type_str = setting['type']
-    setting_msg.value_str = setting['value']
+    setting_msg = create_msg_from_setting(setting)
     settings_list.append(setting_msg)
   settings_msg.settings_list = settings_list
   settings_msg.settings_count = len(settings_list)
   return settings_msg
 
-def create_update_msg_from_setting(setting):
+def create_msg_from_setting(setting):
   update_msg = Setting()
-  update_msg.type_str = setting
+  update_msg.type_str = setting['type']
   update_msg.name_str = setting['name']
   update_msg.value_str = setting['value']
   return update_msg

@@ -174,11 +174,11 @@ class ROSRBXRobotIF:
           axis_controls.yaw = False
         self.capabilities_report.control_support = axisControls
         
-        self.capabilities_report.state_options = str(states)
-        self.capabilities_report.mode_options = str(modes)
-        self.capabilities_report.setup_action_options = str(setup_actions)
-        self.capabilities_report.go_action_options = str(go_actions)
-        self.capabilities_report.data_products = str(self.data_products)
+        self.capabilities_report.state_options = states
+        self.capabilities_report.mode_options = modes
+        self.capabilities_report.setup_action_options = setup_actions
+        self.capabilities_report.go_action_options = go_actions
+        self.capabilities_report.data_products = self.data_products
         
         # Initialize Home location value
         self.init_home_location = rospy.get_param('~rbx/home_location', self.FACTORY_HOME_LOCATION)
@@ -893,6 +893,7 @@ class ROSRBXRobotIF:
         nepi_msg.publishMsgInfo(self,msg)
         rospy.set_param('~rbx/fake_gps_enabled', msg.data)
         self.setFakeGPSFunction(msg.data)
+        self.publishStatus()
         self.publishInfo()
 
     ### Setup a regular background navpose get and update navpose data
@@ -1005,6 +1006,7 @@ class ROSRBXRobotIF:
         self.rbx_status.current_yaw = self.current_orientation_ned_degs[2]
 
         self.rbx_status.last_cmd_string = self.last_cmd_string
+        self.rbx_status.fake_gps_enabled = rospy.get_param('~rbx/fake_gps_enabled', self.init_fake_gps_enabled)
 
         ## Update Control Info
         if self.manualControlsReadyFunction is not None:

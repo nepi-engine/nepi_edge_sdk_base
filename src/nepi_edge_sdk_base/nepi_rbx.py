@@ -20,6 +20,7 @@ import rosnode
 import time
 import sys
 from nepi_edge_sdk_base import nepi_ros
+from nepi_edge_sdk_base import nepi_settings
 
 from std_msgs.msg import Empty, Int8, UInt32, Int32, Bool, String, Float32, Float64, Float64MultiArray
 from nav_msgs.msg import Odometry
@@ -29,7 +30,7 @@ from geographic_msgs.msg import GeoPoint, GeoPose, GeoPoseStamped
 from mavros_msgs.msg import State, AttitudeTarget
 from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest, CommandTOL, CommandHome
 from nepi_ros_interfaces.msg import RBXInfo, RBXStatus, AxisControls, RBXErrorBounds, RBXGotoErrors, \
-    RBXGotoPose, RBXGotoPosition, RBXGotoLocation, Setting
+    RBXGotoPose, RBXGotoPosition, RBXGotoLocation, Setting, Settings, SettingCap, SettingCaps
 from nepi_ros_interfaces.srv import NavPoseQuery, NavPoseQueryRequest, RBXCapabilitiesQuery, \
      RBXCapabilitiesQueryResponse, NavPoseCapabilitiesQuery, NavPoseCapabilitiesQueryResponse
 
@@ -68,10 +69,10 @@ def rbx_initialize(self, rbx_namespace):
   time.sleep(1)
   rbx_caps = rbx_caps_service()
   rospy.loginfo(rbx_caps)
-  self.rbx_cap_states = eval(rbx_caps.state_options)
-  self.rbx_cap_modes = eval(rbx_caps.mode_options)
-  self.rbx_cap_setup_actions = eval(rbx_caps.setup_action_options)
-  self.rbx_cap_go_actions = eval(rbx_caps.go_action_options)
+  self.rbx_cap_states = (rbx_caps.state_options)
+  self.rbx_cap_modes = (rbx_caps.mode_options)
+  self.rbx_cap_setup_actions = (rbx_caps.setup_action_options)
+  self.rbx_cap_go_actions = (rbx_caps.go_action_options)
   # rospy.loginfo some results
   rospy.loginfo("NEPI_RBX: RBX State Options: ")
   for state in self.rbx_cap_states:
@@ -92,7 +93,7 @@ def rbx_initialize(self, rbx_namespace):
   nepi_ros.wait_for_topic(self.NEPI_RBX_SETTINGS_TOPIC)
   rbx_settings_pub = rospy.Publisher(NEPI_ROBOT_NAMESPACE + 'publish_settings', Empty, queue_size=1)
   rospy.loginfo("DRONE_INSPECT: Starting rbx settings scubscriber callback")
-  rospy.Subscriber(self.NEPI_RBX_SETTINGS_TOPIC, String, self.rbx_settings_callback, queue_size=None)
+  rospy.Subscriber(self.NEPI_RBX_SETTINGS_TOPIC, Settings, self.rbx_settings_callback, queue_size=None)
   while self.rbx_settings is None and not rospy.is_shutdown():
     rospy.loginfo("DRONE_INSPECT: Waiting for current rbx settings to publish")
     time.sleep(1)
@@ -174,7 +175,7 @@ def rbx_initialize(self, rbx_namespace):
 #######################
 ### RBX Settings, Info, and Status Callbacks
 def rbx_settings_callback(self, msg):
-  self.rbx_settings = nepi_ros.parse_settings_msg_data(msg.data)
+  self.rbx_settings = nepi_settings.parse_settings_msg_data(msg)
 
 
 def rbx_info_callback(self, msg):
