@@ -236,7 +236,7 @@ class ROSPTXActuatorIF:
             self.setHomePositionCb = setHomePositionCb
             self.setHomePositionHereCb = setHomePositionHereCb
         
-            if self.goHomeCb is None and self.capabilities_report.absolute_positiong is False:
+            if self.goHomeCb is None and self.capabilities_report.absolute_positioning is False:
                 nepi_msg.publishMsgWarn(self,'Inconsistent capabilities: homing reports true, but no goHome callback provided and no absolute positioning')
                 self.capabilities_report.homing = False
                 
@@ -294,7 +294,7 @@ class ROSPTXActuatorIF:
         ## Initiation Complete
         nepi_msg.publishMsgInfo(self,"Initialization Complete")
 
-    def yawRatioToDeg(self, ratio):
+    def yawRatioToDeg(self, ratio, ):
         yaw_deg = 0
         if self.reverse_yaw_control == False:
            yaw_deg =  self.min_yaw_softstop_deg + (1-ratio) * (self.max_yaw_softstop_deg - self.min_yaw_softstop_deg)
