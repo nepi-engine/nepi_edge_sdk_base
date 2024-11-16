@@ -124,6 +124,16 @@ class ROSIDXSensorIF:
     last_odom_timestamp = None
     last_heading_timestamp = None
 
+
+
+    cl_img_has_subs = False
+    bw_img_has_subs = False
+    dm_img_has_subs = False
+    di_img_has_subs = False
+    pc_img_has_subs = False
+    pc_has_subs = False
+    
+
     def __init__(self, device_info, capSettings=None, 
                  factorySettings=None, settingUpdateFunction=None, getSettingsFunction=None,
                  factoryControls = None, setControlsEnable=None, setAutoAdjust=None,
@@ -243,6 +253,8 @@ class ROSIDXSensorIF:
             self.data_products.append('color_2d_image')
             self.color_img_thread = threading.Thread(target=self.runColorImgThread)
             self.color_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            self.color_img_subs_thread = threading.Thread(target=self.runColorImgSubsThread)
+            self.color_img_subs_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopColor2DImgAcquisition = stopColor2DImgAcquisition
             self.capabilities_report.has_color_2d_image = True
         else:
@@ -255,6 +267,8 @@ class ROSIDXSensorIF:
             self.data_products.append('bw_2d_image')
             self.bw_img_thread = threading.Thread(target=self.runBWImgThread)
             self.bw_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            self.bw_img_subs_thread = threading.Thread(target=self.runBwImgSubsThread)
+            self.bw_img_subs_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopBW2DImgAcquisition = stopBW2DImgAcquisition
             self.capabilities_report.has_bw_2d_image = True
         else:
@@ -267,6 +281,8 @@ class ROSIDXSensorIF:
             self.data_products.append('depth_map')
             self.depth_map_thread = threading.Thread(target=self.runDepthMapThread)
             self.depth_map_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            self.depth_map_subs_thread = threading.Thread(target=self.runDepthMapImgSubsThread)
+            self.depth_map_subs_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopDepthMapAcquisition = stopDepthMapAcquisition
             self.capabilities_report.has_depth_map = True
         else:
@@ -278,6 +294,8 @@ class ROSIDXSensorIF:
             self.data_products.append('depth_image')
             self.depth_img_thread = threading.Thread(target=self.runDepthImgThread)
             self.depth_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            self.depth_img_subs_thread = threading.Thread(target=self.runDepthImgSubsThread)
+            self.depth_img_subs_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopDepthImgAcquisition = stopDepthImgAcquisition
             self.capabilities_report.has_depth_image = True
         else:
@@ -289,6 +307,8 @@ class ROSIDXSensorIF:
             self.data_products.append('pointcloud')
             self.pointcloud_thread = threading.Thread(target=self.runPointcloudThread)
             self.pointcloud_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            self.pointcloud_subs_thread = threading.Thread(target=self.runPointcloudSubsThread)
+            self.pointcloud_subs_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopPointcloudAcquisition = stopPointcloudAcquisition
             self.capabilities_report.has_pointcloud = True
         else:
@@ -300,6 +320,8 @@ class ROSIDXSensorIF:
             self.data_products.append('pointcloud_image')
             self.pointcloud_img_thread = threading.Thread(target=self.runPointcloudImgThread)
             self.pointcloud_img_thread.daemon = True # Daemon threads are automatically killed on shutdown
+            self.pointcloud_img_subs_thread = threading.Thread(target=self.runPointcloudImgSubsThread)
+            self.pointcloud_img_subs_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopPointcloudImgAcquisition = stopPointcloudImgAcquisition
             self.capabilities_report.has_pointcloud_image = True
 
@@ -359,28 +381,33 @@ class ROSIDXSensorIF:
         if getGPSMsg != None or getOdomMsg != None or getHeadingMsg != None:
             rospy.Timer(rospy.Duration(self.update_navpose_interval_sec), self.navposeCb)
 
-
         # Launch the acquisition and saving threads
         if (self.getColor2DImg is not None):
             self.color_img_thread.start()
+            self.color_img_subs_thread.start()
 
         if (self.getBW2DImg is not None):
             self.bw_img_thread.start()
+            self.bw_img_subs_thread.start()
 
 
         if (self.getDepthMap is not None):
             self.depth_map_thread.start()
+            self.depth_map_subs_thread.start()
   
         
         if (self.getDepthImg is not None):
             self.depth_img_thread.start()
+            self.depth_img_subs_thread.start()
  
         
         if (self.getPointcloud is not None):
             self.pointcloud_thread.start()
+            self.pointcloud_subs_thread.start()
  
         if (self.getPointcloudImg is not None):
            self.pointcloud_img_thread.start()
+           self.pointcloud_img_subs_thread.start()
  
         # Update and Publish Status Message
         self.publishStatus()
@@ -814,7 +841,7 @@ class ROSIDXSensorIF:
 
   
     # Image from img_get_function can be CV2 or ROS image.  Will be converted as needed in the thread
-    def image_thread_proccess(self,data_product,img_get_function,img_stop_function,img_publisher):
+    def image_thread_proccess(self,data_product,img_get_function,img_stop_function,img_publisher,has_subs_var_str):
         image = None
         cv2_img = None
         ros_img = None
@@ -822,8 +849,8 @@ class ROSIDXSensorIF:
             nepi_msg.publishMsgInfo(self,rospy.get_name() + ": starting " + data_product + " acquisition thread")
             acquiring = False
             while (not rospy.is_shutdown()):
+                has_subscribers = eval('self.' + has_subs_var_str) #(img_publisher.get_num_connections() > 0)
                 saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-                has_subscribers = (img_publisher.get_num_connections() > 0)
                 snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
                 if (has_subscribers is True) or (saving_is_enabled is True) or (snapshot_enabled is True):
                     acquiring = True
@@ -850,7 +877,7 @@ class ROSIDXSensorIF:
                             cv2_img = image
                         elif isinstance(image,Image): # ROS Image. Convert to CV2 Image
                             cv2_img = nepi_img.rosimg_to_cv2img(image, encoding=encoding)
-                        nepi_save.save_img2file(self,data_product,cv2_img,ros_timestamp)
+                        nepi_save.save_img2file(self,data_product,cv2_img,ros_timestamp,save_check=False)
                 elif acquiring is True:
                     if img_stop_function is not None:
                         nepi_msg.publishMsgInfo(self,"Stopping " + data_product + " acquisition")
@@ -865,7 +892,7 @@ class ROSIDXSensorIF:
 
     
     # Pointcloud from pointcloud_get_function can be open3D or ROS pointcloud.  Will be converted as needed in the thread
-    def pointcloud_thread_proccess(self,data_product,pc_get_function,pc_stop_function,pc_publisher):
+    def pointcloud_thread_proccess(self,data_product,pc_get_function,pc_stop_function,pc_publisher,has_subs_var_str):
         pc = None
         o3d_pc = None
         ros_pc = None
@@ -873,8 +900,8 @@ class ROSIDXSensorIF:
             nepi_msg.publishMsgInfo(self,rospy.get_name() + ": starting " + data_product + " acquisition thread")
             acquiring = False
             while (not rospy.is_shutdown()):
+                has_subscribers = eval('self.' + has_subs_var_str) #(img_publisher.get_num_connections() > 0)
                 saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
-                has_subscribers = (pc_publisher.get_num_connections() > 0)
                 snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
                 if (has_subscribers is True) or (saving_is_enabled is True) or (snapshot_enabled is True):
                     acquiring = True
@@ -919,7 +946,7 @@ class ROSIDXSensorIF:
                                     o3d_pc = pc
                                 elif isinstance(pc,PointCloud2): # ROS Pointcloud. Convert to Open3d pointcloud
                                     o3d_pc = nepi_pc.rospc_to_o3dpc(pc, remove_nans=True)
-                            nepi_save.save_pc2file(self,data_product,o3d_pc,ros_timestamp)
+                            nepi_save.save_pc2file(self,data_product,o3d_pc,ros_timestamp, save_check=False)
                 elif acquiring is True:
                     if pc_stop_function is not None:
                         nepi_msg.publishMsgInfo(self,"Stopping " + data_product + " acquisition")
@@ -930,6 +957,14 @@ class ROSIDXSensorIF:
                     rospy.sleep(0.25)
                 rospy.sleep(0.01) # Yield
                 
+
+    # check for subscribers thread
+    def subs_thread_proccess(self,publisher,has_subs_var_str):
+        while (not rospy.is_shutdown()):
+            has_subscribers = (publisher.get_num_connections() > 0)
+            setattr(self,has_subs_var_str,has_subscribers)
+            nepi_ros.sleep(1)
+
 
     def transformPointcloud(self, o3d_pc, transform):
         x = transform[0]
@@ -946,23 +981,41 @@ class ROSIDXSensorIF:
 
 
     def runColorImgThread(self):
-        self.image_thread_proccess('color_2d_image', self.getColor2DImg, self.stopColor2DImgAcquisition, self.color_img_pub)
+        self.image_thread_proccess('color_2d_image', self.getColor2DImg, self.stopColor2DImgAcquisition, self.color_img_pub, "cl_img_has_subs")
         
     def runBWImgThread(self):
-        self.image_thread_proccess('bw_2d_image', self.getBW2DImg, self.stopBW2DImgAcquisition, self.bw_img_pub)
+        self.image_thread_proccess('bw_2d_image', self.getBW2DImg, self.stopBW2DImgAcquisition, self.bw_img_pub, "bw_img_has_subs" )
 
     def runDepthMapThread(self):
-        self.image_thread_proccess('depth_map', self.getDepthMap, self.stopDepthMapAcquisition, self.depth_map_pub)
+        self.image_thread_proccess('depth_map', self.getDepthMap, self.stopDepthMapAcquisition, self.depth_map_pub, "dm_img_has_subs")
 
     def runDepthImgThread(self):
-        self.image_thread_proccess('depth_image', self.getDepthImg, self.stopDepthImgAcquisition, self.depth_img_pub)
+        self.image_thread_proccess('depth_image', self.getDepthImg, self.stopDepthImgAcquisition, self.depth_img_pub, "di_img_has_subs")
 
     def runPointcloudThread(self):
-        self.pointcloud_thread_proccess('pointcloud', self.getPointcloud, self.stopPointcloudAcquisition, self.pointcloud_pub)
+        self.pointcloud_thread_proccess('pointcloud', self.getPointcloud, self.stopPointcloudAcquisition, self.pointcloud_pub, "pc_has_subs")
 
     def runPointcloudImgThread(self):
-        self.image_thread_proccess('pointcloud_image', self.getPointcloudImg, self.stopPointcloudImgAcquisition, self.pointcloud_img_pub)
+        self.image_thread_proccess('pointcloud_image', self.getPointcloudImg, self.stopPointcloudImgAcquisition, self.pointcloud_img_pub, "pc_img_has_subs")
 
+
+    def runColorImgSubsThread(self):
+        self.subs_thread_proccess(self.color_img_pub, "cl_img_has_subs")
+        
+    def runBwImgSubsThread(self):
+        self.subs_thread_proccess(self.bw_img_pub, "bw_img_has_subs")
+
+    def runDepthMapSubsThread(self):
+        self.subs_thread_proccess(self.depth_map_pub, "dm_img_has_subs")
+
+    def runDepthImgSubsThread(self):
+        self.subs_thread_proccess(self.depth_img_pub, "di_img_has_subs")
+
+    def runPointcloudSubsThread(self):
+        self.subs_thread_proccess(self.pointcloud_pub, "pc_has_subs")
+
+    def runPointcloudImgSubsThread(self):
+        self.subs_thread_proccess(self.pointcloud_img_pub, "pc_img_has_subs")
 
 
                 
