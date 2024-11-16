@@ -281,7 +281,7 @@ class ROSIDXSensorIF:
             self.data_products.append('depth_map')
             self.depth_map_thread = threading.Thread(target=self.runDepthMapThread)
             self.depth_map_thread.daemon = True # Daemon threads are automatically killed on shutdown
-            self.depth_map_subs_thread = threading.Thread(target=self.runDepthMapImgSubsThread)
+            self.depth_map_subs_thread = threading.Thread(target=self.runDepthMapSubsThread)
             self.depth_map_subs_thread.daemon = True # Daemon threads are automatically killed on shutdown
             self.stopDepthMapAcquisition = stopDepthMapAcquisition
             self.capabilities_report.has_depth_map = True
