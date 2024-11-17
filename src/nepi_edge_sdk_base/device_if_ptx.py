@@ -147,6 +147,9 @@ class ROSPTXActuatorIF:
         self.min_pitch_softstop_deg = 0.0
         self.max_pitch_softstop_deg = 0.0
 
+
+        rospy.Subscriber('~reset_device', Empty, self.resetAppHandler, queue_size=1)
+
         # Stop motion setup
         self.stopMovingCb = stopMovingCb
         rospy.Subscriber('~ptx/stop_moving', Empty, self.stopMovingHandler, queue_size=1)
@@ -192,12 +195,14 @@ class ROSPTXActuatorIF:
             self.min_yaw_hardstop_deg = rospy.get_param('~ptx/limits/min_yaw_hardstop_deg', self.defaultSettings['min_yaw_hardstop_deg'])
             self.max_pitch_hardstop_deg = rospy.get_param('~ptx/limits/max_pitch_hardstop_deg', self.defaultSettings['max_pitch_hardstop_deg'])
             self.min_pitch_hardstop_deg = rospy.get_param('~ptx/limits/min_pitch_hardstop_deg', self.defaultSettings['min_pitch_hardstop_deg'])
-                        
+            rospy.Subscriber('~ptx/set_hard_limits', PanTiltLimits, self.setHardstopHandler, queue_size=1)
+   
             # Soft limits
             self.max_yaw_softstop_deg = rospy.get_param('~ptx/limits/max_yaw_softstop_deg', self.defaultSettings['max_yaw_softstop_deg'])
             self.min_yaw_softstop_deg = rospy.get_param('~ptx/limits/min_yaw_softstop_deg', self.defaultSettings['min_yaw_softstop_deg'])
             self.max_pitch_softstop_deg = rospy.get_param('~ptx/limits/max_pitch_softstop_deg', self.defaultSettings['max_pitch_softstop_deg'])
             self.min_pitch_softstop_deg = rospy.get_param('~ptx/limits/min_pitch_softstop_deg', self.defaultSettings['min_pitch_softstop_deg'])
+            rospy.Subscriber('~ptx/set_soft_limits', PanTiltLimits, self.setHardstopHandler, queue_size=1)
 
             # Jog to position
             rospy.Subscriber('~ptx/jog_to_position', PanTiltPosition, self.jogToPositionHandler, queue_size=1)
@@ -294,7 +299,11 @@ class ROSPTXActuatorIF:
         ## Initiation Complete
         nepi_msg.publishMsgInfo(self,"Initialization Complete")
 
-    def yawRatioToDeg(self, ratio, ):
+
+
+
+
+    def yawRatioToDeg(self, ratio):
         yaw_deg = 0
         if self.reverse_yaw_control == False:
            yaw_deg =  self.min_yaw_softstop_deg + (1-ratio) * (self.max_yaw_softstop_deg - self.min_yaw_softstop_deg)
@@ -402,6 +411,55 @@ class ROSPTXActuatorIF:
         
         return True
 
+
+    def setHardstopHandler(self.msg):
+        min_yaw = msg.min_yaw_deg
+        max_yaw = msg.max_yaw_deg
+        min_pitch = msg.min_pitch_deg
+        max_pitch = msg.max_pitch_deg
+
+        valid = False
+        if min_yaw < max_yaw and min_pitch < max_pitch:
+            if min_yaw >= self.defaultSettings['min_yaw_hardstop_deg'] and max_yaw <= self.defaultSettings['max_yaw_hardstop_deg']:
+                if min_pitch >= self.defaultSettings['min_pitch_hardstop_deg'] and max_pitch <= self.defaultSettings['min_max_hardstop_deg']:
+                    rospy.set_param('~ptx/limits/max_yaw_hardstop_deg', max_yaw)
+                    rospy.set_param('~ptx/limits/min_yaw_hardstop_deg', min_yaw)
+                    rospy.set_param('~ptx/limits/max_pitch_hardstop_deg', max_pitch)
+                    rospy.set_param('~ptx/limits/min_pitch_hardstop_deg', min_pitch)
+                    valid = True
+        if valid == False:
+            nepi_msg.publishMsgWarn(self,"Invalid hardstop requested " + str(msg))
+
+
+    def setSoftstopHandler(self.msg):
+        min_yaw = msg.min_yaw_deg
+        max_yaw = msg.max_yaw_deg
+        min_pitch = msg.min_pitch_deg
+        max_pitch = msg.max_pitch_deg
+
+        max_yaw_hs = rospy.get_param('~ptx/limits/max_yaw_hardstop_deg', self.defaultSettings['max_yaw_hardstop_deg'])
+        min_yaw_hs = rospy.get_param('~ptx/limits/min_yaw_hardstop_deg', self.defaultSettings['min_yaw_hardstop_deg'])
+        max_pitch_hs = rospy.get_param('~ptx/limits/max_pitch_hardstop_deg', self.defaultSettings['max_pitch_hardstop_deg'])
+        min_pitch_hs = rospy.get_param('~ptx/limits/min_pitch_hardstop_deg', self.defaultSettings['min_pitch_hardstop_deg'])
+
+        valid = False
+        if min_yaw < max_yaw and min_pitch < max_pitch:
+            if min_yaw >= min_yaw_hs and max_yaw <= max_yaw_hs:
+                if min_pitch >= min_pitch_hs and max_pitch <= max_pitch_hs:
+                    rospy.set_param('~ptx/limits/max_yaw_softstop_deg', max_yaw)
+                    rospy.set_param('~ptx/limits/min_yaw_softstop_deg', min_yaw)
+                    rospy.set_param('~ptx/limits/max_pitch_softstop_deg', max_pitch)
+                    rospy.set_param('~ptx/limits/min_pitch_softstop_deg', min_pitch)
+                    valid = True
+        if valid == False:
+            nepi_msg.publishMsgWarn(self,"Invalid softstop requested " + str(msg))
+
+
+
+
+
+
+
     def setSpeedRatioHandler(self, msg):
         speed_ratio = msg.data
         if (speed_ratio < 0.0) or (speed_ratio > 1.0):
@@ -439,6 +497,14 @@ class ROSPTXActuatorIF:
         self.min_pitch_softstop_deg = msg.min_pitch_softstop_deg
         self.max_pitch_softstop_deg = msg.max_pitch_softstop_deg
         nepi_msg.publishMsgInfo(self,"Updated softstop limits")
+
+            self.max_yaw_hardstop_deg = rospy.get_param('~ptx/limits/max_yaw_hardstop_deg', self.defaultSettings['max_yaw_hardstop_deg'])
+            self.min_yaw_hardstop_deg = rospy.get_param('~ptx/limits/min_yaw_hardstop_deg', self.defaultSettings['min_yaw_hardstop_deg'])
+            self.max_pitch_hardstop_deg = rospy.get_param('~ptx/limits/max_pitch_hardstop_deg', self.defaultSettings['max_pitch_hardstop_deg'])
+            self.min_pitch_hardstop_deg = rospy.get_param('~ptx/limits/min_pitch_hardstop_deg', self.defaultSettings['min_pitch_hardstop_deg'])
+
+
+
 
     def goHomeHandler(self, _):
         if self.goHomeCb is not None:
@@ -548,6 +614,44 @@ class ROSPTXActuatorIF:
     def provideCapabilities(self, _):
         return self.capabilities_report
     
+
+    def resetAppHandler(self,msg):
+        self.resetParamServer()
+
+
+    def resetParamServer(self):
+        rospy.set_param('~status_update_rate_hz', self.factory_controls_dict['status_update_rate_hz'])
+
+        rospy.set_param('~ptx/frame_id', self.frame_id)
+        rospy.set_param("~ptx/yaw_joint_name", self.factory_controls_dict['frame_id'])
+        rospy.set_param("~ptx/pitch_joint_name", self.factory_controls_dict['pitch_joint_name'])
+        rospy.set_param("~ptx/reverse_yaw_control", self.factory_controls_dict['reverse_yaw_control'])
+        rospy.set_param("~ptx/reverse_pitch_control", self.factory_controls_dict['reverse_pitch_control'])
+
+        rospy.set_param('~ptx/capabilities/has_speed_control', self.capabilities_report.adjustable_speed)
+        rospy.set_param('~ptx/capabilities/has_absolute_positioning', self.capabilities_report.absolute_positioning)
+        rospy.set_param('~ptx/capabilities/has_homing', self.capabilities_report.homing)
+        rospy.set_param('~ptx/capabilities/has_waypoints', self.capabilities_report.waypoints)
+
+        if (self.capabilities_report.adjustable_speed is True):
+            rospy.set_param("~ptx/speed_ratio", self.getSpeedCb()) # This one comes from the parent
+        
+        if (self.capabilities_report.absolute_positioning is True):
+            rospy.set_param('~ptx/limits/max_yaw_hardstop_deg', self.defaultSettings['max_yaw_hardstop_deg'])
+            rospy.set_param('~ptx/limits/min_yaw_hardstop_deg', self.defaultSettings['min_yaw_hardstop_deg'])
+            rospy.set_param('~ptx/limits/max_pitch_hardstop_deg', self.defaultSettings['max_pitch_hardstop_deg'])
+            rospy.set_param('~ptx/limits/min_pitch_hardstop_deg', self.defaultSettings['min_pitch_hardstop_deg'])
+            rospy.set_param('~ptx/limits/max_yaw_softstop_deg', self.defaultSettings['max_yaw_hardstop_deg'])
+            rospy.set_param('~ptx/limits/min_yaw_softstop_deg', self.defaultSettings['min_yaw_hardstop_deg'])
+            rospy.set_param('~ptx/limits/max_pitch_softstop_deg', self.defaultSettings['max_pitch_hardstop_deg'])
+            rospy.set_param('~ptx/limits/min_pitch_softstop_deg', self.defaultSettings['min_pitch_hardstop_deg'])
+
+        if (self.capabilities_report.homing is True):
+            rospy.set_param('~ptx/home_position/yaw_deg', 0.0)
+            rospy.set_param('~ptx/home_position/pitch_deg', 0.0)
+
+
+
     def initializeParamServer(self):
         rospy.set_param('~status_update_rate_hz', self.status_update_rate)
 
