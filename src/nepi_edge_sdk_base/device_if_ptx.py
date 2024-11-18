@@ -426,6 +426,11 @@ class ROSPTXActuatorIF:
                     rospy.set_param('~ptx/limits/min_yaw_hardstop_deg', min_yaw)
                     rospy.set_param('~ptx/limits/max_pitch_hardstop_deg', max_pitch)
                     rospy.set_param('~ptx/limits/min_pitch_hardstop_deg', min_pitch)
+
+                    rospy.set_param('~ptx/limits/max_yaw_softstop_deg', max_yaw)
+                    rospy.set_param('~ptx/limits/min_yaw_softstop_deg', min_yaw)
+                    rospy.set_param('~ptx/limits/max_pitch_softstop_deg', max_pitch)
+                    rospy.set_param('~ptx/limits/min_pitch_softstop_deg', min_pitch)
                     valid = True
         if valid == False:
             nepi_msg.publishMsgWarn(self,"Invalid hardstop requested " + str(msg))
