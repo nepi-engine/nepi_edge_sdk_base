@@ -412,7 +412,7 @@ class ROSPTXActuatorIF:
         return True
 
 
-    def setHardstopHandler(self.msg):
+    def setHardstopHandler(self, msg):
         min_yaw = msg.min_yaw_deg
         max_yaw = msg.max_yaw_deg
         min_pitch = msg.min_pitch_deg
@@ -436,7 +436,7 @@ class ROSPTXActuatorIF:
             nepi_msg.publishMsgWarn(self,"Invalid hardstop requested " + str(msg))
 
 
-    def setSoftstopHandler(self.msg):
+    def setSoftstopHandler(self, msg):
         min_yaw = msg.min_yaw_deg
         max_yaw = msg.max_yaw_deg
         min_pitch = msg.min_pitch_deg
@@ -455,6 +455,7 @@ class ROSPTXActuatorIF:
                     rospy.set_param('~ptx/limits/min_yaw_softstop_deg', min_yaw)
                     rospy.set_param('~ptx/limits/max_pitch_softstop_deg', max_pitch)
                     rospy.set_param('~ptx/limits/min_pitch_softstop_deg', min_pitch)
+
                     valid = True
         if valid == False:
             nepi_msg.publishMsgWarn(self,"Invalid softstop requested " + str(msg))
@@ -489,27 +490,6 @@ class ROSPTXActuatorIF:
         
         nepi_msg.publishMsgInfo(self,"Updated home position to " + "%.2f" % self.home_yaw_deg + " " + "%.2f" %  self.home_pitch_deg)
     
-    def setSoftLimitsHandler(self, msg):
-        if (msg.min_yaw_softstop_deg < self.min_yaw_hardstop_deg) or \
-           (msg.max_yaw_softstop_deg < self.max_yaw_hardstop_deg) or \
-           (msg.min_pitch_softstop_deg < self.min_pitch_hardstop_deg) or \
-           (msg.max_pitch_softstop_deg < self.max_pitch_hardstop_deg):
-            nepi_msg.publishMsgWarn(self,"Soft limits cannot exceed hard limits... ignoring")
-            return
-        
-        self.min_yaw_softstop_deg = msg.min_yaw_softstop_deg
-        self.max_yaw_softstop_deg = msg.max_yaw_softstop_deg
-        self.min_pitch_softstop_deg = msg.min_pitch_softstop_deg
-        self.max_pitch_softstop_deg = msg.max_pitch_softstop_deg
-        nepi_msg.publishMsgInfo(self,"Updated softstop limits")
-
-            self.max_yaw_hardstop_deg = rospy.get_param('~ptx/limits/max_yaw_hardstop_deg', self.defaultSettings['max_yaw_hardstop_deg'])
-            self.min_yaw_hardstop_deg = rospy.get_param('~ptx/limits/min_yaw_hardstop_deg', self.defaultSettings['min_yaw_hardstop_deg'])
-            self.max_pitch_hardstop_deg = rospy.get_param('~ptx/limits/max_pitch_hardstop_deg', self.defaultSettings['max_pitch_hardstop_deg'])
-            self.min_pitch_hardstop_deg = rospy.get_param('~ptx/limits/min_pitch_hardstop_deg', self.defaultSettings['min_pitch_hardstop_deg'])
-
-
-
 
     def goHomeHandler(self, _):
         if self.goHomeCb is not None:
