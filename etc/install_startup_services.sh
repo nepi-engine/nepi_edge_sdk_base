@@ -17,8 +17,8 @@ cp /opt/nepi/ros/etc/roslaunch.service $SYSTEMD_SERVICE_PATH
 systemctl enable roslaunch
 #systemctl status roslaunch # Some status printout
 
-cp /opt/nepi/ros/etc/num_gpsd.service $SYSTEMD_SERVICE_PATH
-systemctl enable num_gpsd
-#systemctl status num_gpsd # Some status printout
+#cp /opt/nepi/ros/etc/nepi_gpsd.service $SYSTEMD_SERVICE_PATH
+#systemctl enable nepi_gpsd
+#systemctl status nepi_gpsd # Some status printout
 
 echo "Script complete... you must still edit /opt/nepi/sys_env.bash in order to launch NEPI"

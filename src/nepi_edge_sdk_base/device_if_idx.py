@@ -417,7 +417,7 @@ class ROSIDXSensorIF:
     ###############################################################################################
 
     def resetFactoryCb(self, msg):
-        nepi_msg.publishMsgInfo(self,msg)
+        nepi_msg.publishMsgInfo(self,"Recived update message: " + str(msg))
         nepi_msg.publishMsgInfo(self,"Factory Resetting IDX Sensor Controls")
         self.resetFactory()
 
@@ -442,7 +442,7 @@ class ROSIDXSensorIF:
         self.publishStatus()
 
     def updateDeviceNameCb(self, msg):
-        #nepi_msg.publishMsgInfo(self,msg)
+        nepi_msg.publishMsgInfo(self,"Recived update message: " + str(msg))
         nepi_msg.publishMsgInfo(self,"Received Device Name update msg")
         new_device_name = msg.data
         self.updateDeviceName(new_device_name)
@@ -462,7 +462,7 @@ class ROSIDXSensorIF:
 
 
     def resetDeviceNameCb(self,msg):
-        #nepi_msg.publishMsgInfo(self,msg)
+        nepi_msg.publishMsgInfo(self,"Recived update message: " + str(msg))
         nepi_msg.publishMsgInfo(self,"Received Device Name reset msg")
         self.resetDeviceName()
 
@@ -474,7 +474,7 @@ class ROSIDXSensorIF:
 
 
     def resetControlsCb(self, msg):
-        nepi_msg.publishMsgInfo(self,msg)
+        nepi_msg.publishMsgInfo(self,"Recived update message: " + str(msg))
         nepi_msg.publishMsgInfo(self,"Resetting IDX Sensor Controls")
         self.resetParamServer(do_updates = True)
 
@@ -552,6 +552,7 @@ class ROSIDXSensorIF:
 
     # Define local IDX Control callbacks
     def setControlsEnableCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived IDX Controls enable update message: " + str(msg))
         new_controls_enable = msg.data
         nepi_msg.publishMsgInfo(self,"new_controls_enable")
         if self.setControlsEnable is not None:
@@ -583,6 +584,7 @@ class ROSIDXSensorIF:
 
             
     def setAutoAdjustCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Auto Adjust update message: " + str(msg))
         new_auto_adjust = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
             nepi_msg.publishMsgInfo(self,"Ignoring Set Auto Adjust request. Controls disabled")
@@ -607,6 +609,7 @@ class ROSIDXSensorIF:
 
 
     def setBrightnessCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Brightness update message: " + str(msg))
         new_brightness = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
             nepi_msg.publishMsgInfo(self,"Ignoring Set Brightness request. Controls disabled")
@@ -631,6 +634,7 @@ class ROSIDXSensorIF:
         self.publishStatus(do_updates=False) # Updated inline here
 
     def setContrastCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Contrast update message: " + str(msg))
         new_contrast = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
             nepi_msg.publishMsgInfo(self,"Ignoring Set Contrast request. Controls disabled")
@@ -658,6 +662,7 @@ class ROSIDXSensorIF:
 
 
     def setThresholdingCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Threshold update message: " + str(msg))
         new_thresholding = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
             nepi_msg.publishMsgInfo(self,"Ignoring Set Thresholding request. Controls disabled")
@@ -684,6 +689,7 @@ class ROSIDXSensorIF:
         self.publishStatus(do_updates=False) # Updated inline here
 
     def setResolutionModeCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Resolution update message: " + str(msg))
         new_resolution = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
             nepi_msg.publishMsgInfo(self,"Ignoring Set Resolution request. Controls disabled")
@@ -709,6 +715,7 @@ class ROSIDXSensorIF:
 
         
     def setFramerateModeCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Framerate update message: " + str(msg))
         new_framerate = msg.data
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
             nepi_msg.publishMsgInfo(self,"Ignoring Set Framerate request. Controls disabled")    
@@ -733,7 +740,8 @@ class ROSIDXSensorIF:
 
  
     def setRangeCb(self, msg):
-        nepi_msg.publishMsgInfo(self,msg)
+        nepi_msg.publishMsgInfo(self,"Recived Range update message: " + str(msg))
+        nepi_msg.publishMsgInfo(self,"Recived update message: " + str(msg))
         new_start_range_ratio = msg.start_range
         new_stop_range_ratio = msg.stop_range
         if rospy.get_param('~idx/controls_enable', self.init_controls_enable) is False:
@@ -760,6 +768,7 @@ class ROSIDXSensorIF:
         self.publishStatus(do_updates=False) # Updated inline here       
 
     def setZoomCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Zoom update message: " + str(msg))
         new_zoom = msg.data
         if (new_zoom < 0.0 and new_zoom != -1.0) or (new_zoom > 1.0):
             rospy.logerr("Zoom value out of bounds")
@@ -772,6 +781,7 @@ class ROSIDXSensorIF:
         self.publishStatus(do_updates=False) # Updated inline here
 
     def setRotateCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Rotate update message: " + str(msg))
         new_rotate = msg.data
         if (new_rotate < 0.0 and new_rotate != -1.0) or (new_rotate > 1.0):
             rospy.logerr("rotate value out of bounds")
@@ -796,6 +806,7 @@ class ROSIDXSensorIF:
         self.publishStatus(do_updates=False) # Updated inline here  
 
     def setFrame3dTransformCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived 3D Transform update message: " + str(msg))
         new_transform_msg = msg
         self.setFrame3dTransform(new_transform_msg)
 
@@ -813,6 +824,7 @@ class ROSIDXSensorIF:
         self.publishStatus(do_updates=False) # Updated inline here 
 
     def clearFrame3dTransformCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Clear 3D Transform update message: " + str(msg))
         new_transform_msg = msg
         self.clearFrame3dTransform()
 
@@ -823,6 +835,7 @@ class ROSIDXSensorIF:
         self.publishStatus(do_updates=False) # Updated inline here 
 
     def setFrame3dCb(self, msg):
+        nepi_msg.publishMsgInfo(self,"Recived Set 3D Transform update message: " + str(msg))
         new_frame_3d = msg.data
         self.setFrame3d(new_frame_3d)
 

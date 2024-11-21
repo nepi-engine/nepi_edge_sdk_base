@@ -124,8 +124,12 @@ def spin():
 
 # Function to get list of active topics
 def get_topic_list():
-  pubs, subs =rostopic.get_topic_list()
-  topic_list = pubs + subs
+  topic_list = []
+  try:
+    pubs, subs =rostopic.get_topic_list()
+    topic_list = pubs + subs
+  except:
+    pass
   return topic_list
 
 def get_published_topics():
@@ -134,7 +138,11 @@ def get_published_topics():
 # Function to find a topic
 def find_topic(topic_name):
   topic = ""
-  topic_list=get_topic_list()
+  topic_list = []
+  try:
+    topic_list=get_topic_list()
+  except:
+    pass
   for topic_entry in topic_list:
     topic_str = topic_entry[0]
     if isinstance(topic_str,str):
@@ -147,13 +155,16 @@ def find_topic(topic_name):
 # Function to find a topic
 def find_topics_by_msg(msg_type):
   topic_list = []
-  topics=get_topic_list()
-  for topic_entry in topics:
-    topic_str = topic_entry[0]
-    msg_str = topic_entry[1]
-    if isinstance(topic_str,str) and isinstance(msg_str,str):
-      if msg_str.find(msg_type) != -1:
-        topic_list.append(topic_str)
+  try:
+    topics=get_topic_list()
+    for topic_entry in topics:
+      topic_str = topic_entry[0]
+      msg_str = topic_entry[1]
+      if isinstance(topic_str,str) and isinstance(msg_str,str):
+        if msg_str.find(msg_type) != -1:
+          topic_list.append(topic_str)
+  except:
+    pass
   return topic_list
 
 ### Function to check for a topic 

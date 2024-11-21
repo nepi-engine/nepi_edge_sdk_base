@@ -164,7 +164,7 @@ class ROSLSXDeviceIF:
         self.capabilities_report.has_on_off_control = self.has_on_off_control
         self.capabilities_report.has_intensity_control = self.has_intensity_control
         self.capabilities_report.has_color_control = self.has_color_control
-        self.capabilities_report.color_options_list = str(self.color_options_list)
+        self.capabilities_report.color_options_list = self.color_options_list
         self.capabilities_report.has_kelvin_control = self.has_kelvin_control
         self.capabilities_report.kelvin_min = self.kelvin_limits_list[0]
         self.capabilities_report.kelvin_max = self.kelvin_limits_list[1]
