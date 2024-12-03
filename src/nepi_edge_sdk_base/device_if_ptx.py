@@ -48,7 +48,6 @@ class ROSPTXActuatorIF:
     reverse_pitch = False
     rpi = 1
 
-
     def __init__(self,  device_info, capSettings, 
                  factorySettings, settingUpdateFunction, getSettingsFunction,
                  factoryControls , # Dictionary to be supplied by parent, specific key set is required
@@ -190,6 +189,7 @@ class ROSPTXActuatorIF:
                 
         self.defaultSettings = defaultSettings
         if self.capabilities_report.absolute_positioning is True:
+            self.has_position_feedback = True
             # Hard limits
             self.max_yaw_hardstop_deg = rospy.get_param('~ptx/limits/max_yaw_hardstop_deg', self.defaultSettings['max_yaw_hardstop_deg'])
             self.min_yaw_hardstop_deg = rospy.get_param('~ptx/limits/min_yaw_hardstop_deg', self.defaultSettings['min_yaw_hardstop_deg'])
@@ -289,7 +289,6 @@ class ROSPTXActuatorIF:
         # Set up service providers
         rospy.Service('~ptx/capabilities_query', PTXCapabilitiesQuery, self.provideCapabilities)
 
-
         self.settings_if = SettingsIF(capSettings, factorySettings, settingUpdateFunction, getSettingsFunction)
         self.save_cfg_if = SaveCfgIF(updateParamsCallback=self.initializeParamServer, paramsModifiedCallback=self.updateFromParamServer)
 
@@ -298,9 +297,6 @@ class ROSPTXActuatorIF:
         self.publishStatus()
         ## Initiation Complete
         nepi_msg.publishMsgInfo(self,"Initialization Complete")
-
-
-
 
 
     def yawRatioToDeg(self, ratio):
@@ -384,7 +380,6 @@ class ROSPTXActuatorIF:
         if self.capabilities_report.adjustable_speed is True:
             self.status_msg.speed_ratio = self.getSpeedCb()
 
-        #self.status_msg.error_msgs = ??? # TODO
         self.status_pub.publish(self.status_msg)
 
         yaw_rad = 0.01745329 * self.status_msg.yaw_now_deg
@@ -461,11 +456,7 @@ class ROSPTXActuatorIF:
             nepi_msg.publishMsgWarn(self,"Invalid softstop requested " + str(msg))
 
 
-
-
-
-
-
+   
     def setSpeedRatioHandler(self, msg):
         speed_ratio = msg.data
         if (speed_ratio < 0.0) or (speed_ratio > 1.0):
@@ -651,6 +642,7 @@ class ROSPTXActuatorIF:
         rospy.set_param('~ptx/capabilities/has_homing', self.capabilities_report.homing)
         rospy.set_param('~ptx/capabilities/has_waypoints', self.capabilities_report.waypoints)
 
+
         if (self.capabilities_report.adjustable_speed is True):
             rospy.set_param("~ptx/speed_ratio", self.getSpeedCb()) # This one comes from the parent
         
@@ -663,6 +655,7 @@ class ROSPTXActuatorIF:
             rospy.set_param('~ptx/limits/min_yaw_softstop_deg', self.min_yaw_softstop_deg)
             rospy.set_param('~ptx/limits/max_pitch_softstop_deg', self.max_pitch_softstop_deg)
             rospy.set_param('~ptx/limits/min_pitch_softstop_deg', self.min_pitch_softstop_deg)
+
 
         if (self.capabilities_report.homing is True):
             rospy.set_param('~ptx/home_position/yaw_deg', self.home_yaw_deg)

@@ -54,7 +54,7 @@ class ROSLSXDeviceIF:
     color_options_list = ["None"]
     has_kelvin_control = False
     kelvin_limits_list = [1000,10000]
-    has_blink_control = False
+    supports_blinking = False
     has_hw_strobe = False
     reports_temp = False
     reports_power = False
@@ -76,8 +76,8 @@ class ROSLSXDeviceIF:
                  setIntensityRatioFunction = None, 
                  color_options_list =  None, setColorFunction = None,
                  kelvin_limits_list = None, setKelvinFunction = None,
-                 blinkOnOffFunction = None,
                  enableStrobeFunction = None,
+                 supportsBlinking = False,
                  reports_temp = False, reports_power = False
                  ):
         
@@ -139,11 +139,12 @@ class ROSLSXDeviceIF:
             set_kelvin_sub = rospy.Subscriber("~lsx/set_kelvin", Int32, self.setKelvinCb, queue_size = 1)
 
 
-        self.blinkOnOffFunction = blinkOnOffFunction
-        if self.blinkOnOffFunction is not None:
-            self.has_blink_control = True
+        self.supports_blinking = supportsBlinking
+        if self.supports_blinking == True:
             blink_on_off_sub = rospy.Subscriber("~lsx/blink_on_off", Bool, self.blinkOnOffCb, queue_size = 1)
             set_blink_int_sub = rospy.Subscriber("~lsx/set_blink_interval", Float32, self.setBlinkIntervalCb, queue_size = 1)
+            interval = rospy.get_param('~lsx/blink_interval_sec', self.init_blink_interval_sec)
+            rospy.Timer(rospy.Duration(interval), self.blinkTimerThread, oneshot = True)
 
         self.enableStrobeFunction = enableStrobeFunction
         if self.enableStrobeFunction is not None:
@@ -168,7 +169,7 @@ class ROSLSXDeviceIF:
         self.capabilities_report.has_kelvin_control = self.has_kelvin_control
         self.capabilities_report.kelvin_min = self.kelvin_limits_list[0]
         self.capabilities_report.kelvin_max = self.kelvin_limits_list[1]
-        self.capabilities_report.has_blink_control = self.has_blink_control
+        self.capabilities_report.has_blink_control = self.supports_blinking
         self.capabilities_report.has_hw_strobe = self.has_hw_strobe
         self.capabilities_report.reports_temperature = self.reports_temp
         self.capabilities_report.reports_power = self.reports_power
@@ -284,9 +285,6 @@ class ROSLSXDeviceIF:
         if self.enableStrobeFunction is not None:
           val = rospy.get_param('~lsx/strobe_enbled', self.init_strobe_enbled)
           self.enableStrobeFunction(val)
-        if self.blinkOnOffFunction is not None:
-          self.updateBlinkThread()
-
         self.resetParamServer()
         
 
@@ -307,6 +305,7 @@ class ROSLSXDeviceIF:
       if self.getStatusFunction is not None:
         status_msg=self.getStatusFunction()
         status_msg.user_name = rospy.get_param('~lsx/device_name', self.init_device_name)
+        status_msg.on_off_state = rospy.get_param('~lsx/on_off_state', self.init_on_off_state)
         status_msg.blink_state = rospy.get_param('~lsx/blink_enabled', self.init_blink_enabled)
         status_msg.blink_interval = rospy.get_param('~lsx/blink_interval_sec', self.init_blink_interval_sec)
         if not rospy.is_shutdown():
@@ -361,6 +360,10 @@ class ROSLSXDeviceIF:
       on_off=on_off_msg.data
       self.turnOnOffFunction(on_off)
       rospy.set_param('~lsx/on_off_state', on_off)
+      blink_enabled = rospy.get_param('~lsx/blink_enabled', self.init_blink_enabled)
+      if blink_enabled == True:
+        interval = rospy.get_param('~lsx/blink_interval_sec', self.init_blink_interval_sec)
+        rospy.Timer(rospy.Duration(interval), self.blinkTimerThread, oneshot = True)
       self.publish_status()
 
     ### Set intensity callback
@@ -400,53 +403,45 @@ class ROSLSXDeviceIF:
     def blinkOnOffCb(self, on_off_msg):
       nepi_msg.publishMsgInfo(self,"Recieved blink on off message: (" + str(on_off_msg) + ")")
       on_off=on_off_msg.data
-      cur_on_off = rospy.get_param('~lsx/blink_enabled', self.init_blink_enabled)
       rospy.set_param('~lsx/blink_enabled', on_off)
-      if on_off != cur_on_off:
-        self.updateBlinkThread()
+      if on_off == True:
+        interval = rospy.get_param('~lsx/blink_interval_sec', self.init_blink_interval_sec)
+        rospy.Timer(rospy.Duration(interval), self.blinkTimerThread, oneshot = True)
       self.publish_status() 
 
     ### Set blink interval callback
     def setBlinkIntervalCb(self, blink_int_msg):
       nepi_msg.publishMsgInfo(self,"Recieved blink interval message (" + str(blink_int_msg) + ")")
       blink_int = blink_int_msg.data
-      cur_int = rospy.get_param('~lsx/blink_interval_sec', self.init_blink_interval_sec)
-      if blink_int > 0 and blink_int < 10 and blink_int != cur_int:
-        rospy.set_param('~lsx/blink_interval_sec', blink_int)
-        self.publish_status()
-        self.updateBlinkThread()
-
-    def updateBlinkThread(self):
-        enabled = rospy.get_param('~lsx/blink_enabled', self.init_blink_enabled)
-        interval = rospy.get_param('~lsx/blink_interval_sec', self.init_blink_interval_sec)
-        #self.publishMsg("Got blink process with enabled: " + str(enabled) + " and interval_sec: " + str(interval))
-        if enabled == True:
-          if self.blink_timer_thread is not None:
-            nepi_msg.publishMsgInfo(self,"Killing blink process")
-            self.blink_timer_thread.shutdown()
-            self.blink_timer_thread = None
-            nepi_ros.sleep(interval,100)
-          nepi_msg.publishMsgInfo(self,"Starting blink process with enabled: " + str(enabled) + " and interval_sec: " + str(interval))
-          self.blink_timer_thread = rospy.Timer(rospy.Duration(interval), self.blinkTimerThread)
-        if enabled == False and self.blink_timer_thread is not None:
-          nepi_msg.publishMsgInfo(self,"Killing blink process")
-          self.blink_timer_thread.shutdown()
-          self.blink_timer_thread = None
+      if blink_int < 0.25:
+        blink_int = 0.25
+      if blink_int > 10:
+        blink_int = 10
+      rospy.set_param('~lsx/blink_interval_sec', blink_int)
+      self.publish_status()
 
     def blinkTimerThread(self,timer):
-        new_state = self.last_blink_state == False
-        self.last_blink_state = new_state
-        #self.publishMsg("Setting blink to: " + str(new_state))
-        self.blinkOnOffFunction(new_state)
+        on_off = rospy.get_param('~lsx/on_off_state', self.init_on_off_state)
+        blink_enabled = rospy.get_param('~lsx/blink_enabled', self.init_blink_enabled)
+        interval = rospy.get_param('~lsx/blink_interval_sec', self.init_blink_interval_sec)
+        if on_off == False:
+          self.turnOnOffFunction(False)
+        else:
+          if blink_enabled == False:
+            self.turnOnOffFunction(True)
+          else:
+            new_state = self.last_blink_state == False
+            self.last_blink_state = new_state
+            #self.publishMsg("Setting blink to: " + str(new_state))
+            self.turnOnOffFunction(new_state)
+            rospy.Timer(rospy.Duration(interval), self.blinkTimerThread, oneshot = True)
 
-
-    
+   
         
     def publishMsg(self,msg):
       msg_str = (self.node_name + ": " + str(msg))
       nepi_msg.publishMsgInfo(self,msg_str)
-      if self.msg_pub.get_num_connections() > 0:
-        self.msg_pub.publish(msg_str)
+      self.msg_pub.publish(msg_str)
 
 
     
