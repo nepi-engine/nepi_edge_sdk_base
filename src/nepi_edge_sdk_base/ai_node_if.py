@@ -211,7 +211,7 @@ class AiNodeIF:
                     #nepi_msg.publishMsgWarn(self,"Text Size: " + str(text_size))
                     line_height = text_size[0][1]
                     line_width = text_size[0][0]
-                    bottomLeftCornerOfText = (xmin + line_thickness,ymin + line_thickness * 2 + line_height)
+                    bottomLeftCornerOfText = (xmin,ymin - line_thickness * 2 - line_height)
                     # Create Text Background Box
                     padding = int(line_height*0.4)
                     start_point = (bottomLeftCornerOfText[0]-padding, bottomLeftCornerOfText[1]-line_height-padding)
