@@ -504,7 +504,7 @@ def create_img_renderer(img_width=1280,img_height=720,fov=50,background=[0, 0, 0
     img_renderer.scene.show_axes(show_axis)
     return img_renderer
 
-def create_img_renderer_mtl(base_color = [1.0, 1.0, 1.0, 1.0],shader = "defaultUnlit"):
+def create_img_renderer_mtl(base_color = [1.0, 1.0, 1.0, 1.0],shader = "defaultUnlit"): # "defaultLit"
     img_renderer_mtl = o3d.visualization.rendering.MaterialRecord()  # or MaterialRecord(), for later versions of Open3D
     # Define a simple unlit Material.
     # (The base color does not replace the arrows' own colors.)
