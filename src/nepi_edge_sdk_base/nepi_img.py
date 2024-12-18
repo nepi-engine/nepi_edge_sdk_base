@@ -201,14 +201,11 @@ def adjust_resolution(cv2_img, resolution_ratio = 1):
     cv2_img = cv2.resize(cv2_img,(new_resolution), 0, 0, interpolation = cv2.INTER_NEAREST)
   return cv2_img,cv2_img.shape
 
-def adjust_framerate(cv2_img, current_fps, framerate_ratio = 1):
-  current_interval_sec = float(1)/current_fps
-  delay_sec = 0
-  if framerate_ratio != 1:
-    delay_sec = current_interval_sec * 10 * (1-framerate_ratio)**3
-    nepi_ros.sleep(delay_sec,10)
-  new_rate = float(1)/(current_interval_sec + delay_sec)
-  return cv2_img, new_rate
+def adjust_framerate(current_fps,fr_mode):
+  adj_fr = current_fps
+  if fr_mode < 3:
+    adj_fr = (fr_mode + 1)/4 * float(1)/(3-fr_mode) *  current_fps
+  return adj_fr
 
 def get_contours(cv2_img):
   """ Calculate image contours

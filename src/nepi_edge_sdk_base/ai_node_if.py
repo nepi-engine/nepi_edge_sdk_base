@@ -51,7 +51,11 @@ class AiNodeIF:
     last_img_msg = None
     img_lock = threading.Lock()
 
-    def __init__(self,node_name, source_img_topic, pub_sub_namespace, classes_list, setThresholdFunction, processDetectionFunction):
+    last_time = time.time()
+
+    def __init__(self,node_name, source_img_topic, pub_sub_namespace, classes_list, \
+                setThresholdFunction, setMaxRateFunction, getMaxRateFunction, \
+                processDetectionFunction):
         ####  IF INIT SETUP ####
         self.node_name = nepi_ros.get_node_name()
         self.base_namespace = nepi_ros.get_base_namespace()
@@ -65,6 +69,8 @@ class AiNodeIF:
             pub_sub_namespace = pub_sub_namespace[:-1]
         self.pub_sub_namespace = pub_sub_namespace
         self.setThreshold = setThresholdFunction
+        self.setMaxRate = setMaxRateFunction
+        self.getMaxRate = getMaxRateFunction
         self.processDetection = processDetectionFunction
         self.source_img_topic = source_img_topic
 
@@ -88,8 +94,10 @@ class AiNodeIF:
         time.sleep(1)
 
         # Create AI Node Subscribers
-        THRSHOLD_SUB_TOPIC = self.pub_sub_namespace + '/set_threshold'
-        self.set_threshold_sub = rospy.Subscriber(THRSHOLD_SUB_TOPIC, Float32, self.setThresholdCb, queue_size=1)
+        THRESHOLD_SUB_TOPIC = self.pub_sub_namespace + '/set_threshold'
+        self.set_threshold_sub = rospy.Subscriber(THRESHOLD_SUB_TOPIC, Float32, self.setThresholdCb, queue_size=1)
+        MAX_RATE_SUB_TOPIC = self.pub_sub_namespace + '/set_max_rate'
+        self.set_threshold_sub = rospy.Subscriber(MAX_RATE_SUB_TOPIC, Float32, self.setMaxRateCb, queue_size=1)
 
         IMAGE_SUB_TOPIC = self.source_img_topic
         self.set_threshold_sub = rospy.Subscriber(IMAGE_SUB_TOPIC, Image, self.imageCb, queue_size=1)
@@ -101,15 +109,22 @@ class AiNodeIF:
                 
     def setThresholdCb(self,msg):
         threshold = msg.data
+        nepi_msg.publishMsgInfo(self,"Received Threshold Update: " + str(threshold))
         if (threshold < 0):
             threshold = 0
         elif (threshold > 1):
             threshold = 1
         self.setThreshold(threshold)
 
+    def setMaxRateCb(self,msg):
+        rate = msg.data
+        nepi_msg.publishMsgInfo(self,"Received Max Rate Update: " + str(rate))
+        if (rate > 0):
+            self.setMaxRate(rate)
 
 
-    def imageCb(self,image_msg):    
+
+    def imageCb(self,image_msg):   
         self.img_lock.acquire()
         self.img_msg = copy.deepcopy(self.last_img_msg)
         self.img_lock.release()
@@ -117,42 +132,49 @@ class AiNodeIF:
 
 
     def updateDetectionCb(self,timer):
-        detect_dict_list = None
-        img_in_msg = None
-        self.img_lock.acquire()
-        img_in_msg = copy.deepcopy(self.img_msg) 
-        self.img_msg = None # Clear the last image        
-        self.img_lock.release()
-        if img_in_msg is not None:
-            ros_img_header = img_in_msg.header
-            detect_img_msg = img_in_msg
-            cv2_img = nepi_img.rosimg_to_cv2img(img_in_msg)
-            cv2_shape = cv2_img.shape
-            self.img_width = cv2_shape[1] 
-            self.img_height = cv2_shape[0] 
-            try:
-                detect_dict_list = self.processDetection(cv2_img) 
-                #nepi_msg.publishMsgInfo(self,"AIF got back detect_dict: " + str(detect_dict_list))
-                success = True
-            except Exception as e:
-                nepi_msg.publishMsgWarn(self,"Failed to process detection img with exception: " + str(e))
+        current_rate = self.getMaxRate()
+        delay_time = float(1) / current_rate
+        current_time = time.time()
+        timer = current_time - self.last_time
+        #nepi_msg.publishMsgWarn(self,"Delay and Timer: " + str(delay_time) + " " + str(timer))
+        if timer > delay_time:
+            self.last_time = current_time
+            detect_dict_list = None
+            img_in_msg = None
+            self.img_lock.acquire()
+            img_in_msg = copy.deepcopy(self.img_msg) 
+            self.img_msg = None # Clear the last image        
+            self.img_lock.release()
+            if img_in_msg is not None:
+                ros_img_header = img_in_msg.header
+                detect_img_msg = img_in_msg
+                cv2_img = nepi_img.rosimg_to_cv2img(img_in_msg)
+                cv2_shape = cv2_img.shape
+                self.img_width = cv2_shape[1] 
+                self.img_height = cv2_shape[0] 
+                try:
+                    detect_dict_list = self.processDetection(cv2_img) 
+                    #nepi_msg.publishMsgInfo(self,"AIF got back detect_dict: " + str(detect_dict_list))
+                    success = True
+                except Exception as e:
+                    nepi_msg.publishMsgWarn(self,"Failed to process detection img with exception: " + str(e))
 
-            if detect_dict_list is not None:
-                self.publishDetectionData(detect_dict_list,ros_img_header)
-                # Now create and publish detection image
-                if len(detect_dict_list) > 0:
-                    #nepi_msg.publishMsgWarn(self,"Starting detect image: " + str(cv2_img.shape))
-                    cv2_detect_img = self.apply_detection_overlay(detect_dict_list,cv2_img)
-                    #nepi_msg.publishMsgWarn(self,"Return detect image: " + str(cv2_detect_img.shape))
-                    detect_img_msg = nepi_img.cv2img_to_rosimg(cv2_detect_img, encoding="bgr8")
-                #else:
-                    #nepi_msg.publishMsgWarn(self,"No detections to add to image")
-            else:
-                nepi_ros.signal_shutdown("Something went wrong in detection process call")
-                nepi_ros.sleep(2)
-            if not rospy.is_shutdown():
-                self.detection_image_pub.publish(detect_img_msg)
-        rospy.Timer(rospy.Duration(.1), self.updateDetectionCb, oneshot = True)
+                if detect_dict_list is not None:
+                    self.publishDetectionData(detect_dict_list,ros_img_header)
+                    # Now create and publish detection image
+                    if len(detect_dict_list) > 0:
+                        #nepi_msg.publishMsgWarn(self,"Starting detect image: " + str(cv2_img.shape))
+                        cv2_detect_img = self.apply_detection_overlay(detect_dict_list,cv2_img)
+                        #nepi_msg.publishMsgWarn(self,"Return detect image: " + str(cv2_detect_img.shape))
+                        detect_img_msg = nepi_img.cv2img_to_rosimg(cv2_detect_img, encoding="bgr8")
+                    #else:
+                        #nepi_msg.publishMsgWarn(self,"No detections to add to image")
+                else:
+                    nepi_ros.signal_shutdown("Something went wrong in detection process call")
+                    nepi_ros.sleep(2)
+                if not rospy.is_shutdown():
+                    self.detection_image_pub.publish(detect_img_msg)
+        rospy.Timer(rospy.Duration(.01), self.updateDetectionCb, oneshot = True)
 
    
 

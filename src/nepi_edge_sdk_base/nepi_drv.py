@@ -59,22 +59,37 @@ def getDriversDict(search_path):
                     new_dict['active'] = False
                     new_dict['msg'] = ""
                     new_dict['users'] = []  # ToDo - Fill this in with dependant packages
-                    if 'option_1_dict' in new_dict['DISCOVERY_DICT'].keys():
-                      new_dict['DISCOVERY_DICT']['option_1_dict']['set_val'] = new_dict['DISCOVERY_DICT']['option_1_dict']['default_val']
-                    if 'option_2_dict' in new_dict['DISCOVERY_DICT'].keys():
-                      new_dict['DISCOVERY_DICT']['option_2_dict']['set_val'] = new_dict['DISCOVERY_DICT']['option_2_dict']['default_val']
+                    new_dict = formatOptions(new_dict)
                     drvs_dict[new_dict['NODE_DICT']['pkg_name']] = new_dict
                   except Exception as e:
                     rospy.logwarn("NEPI_DRVS: Failed to import param file: " + f + " " + str(e))
-
     else:
         rospy.logwarn("NEPI_DRV: Driver path %s does not exist",  search_path)
-
-
     # Now assign factory orders
     drvs_dict = setFactoryDriverOrder(drvs_dict)
     return drvs_dict
 
+def formatOptions(drv_dict):
+  if 'DISCOVERY_DICT' in drv_dict.keys():
+    if 'option_1_dict' in drv_dict['DISCOVERY_DICT'].keys():
+      options = drv_dict['DISCOVERY_DICT']['option_1_dict']['options']
+      options_strs = []
+      for option in options:
+        options_strs.append(str(option))
+      drv_dict['DISCOVERY_DICT']['option_1_dict']['options'] = options_strs
+      option = str(drv_dict['DISCOVERY_DICT']['option_1_dict']['default_val'])
+      drv_dict['DISCOVERY_DICT']['option_1_dict']['default_val'] = option
+      drv_dict['DISCOVERY_DICT']['option_1_dict']['set_val'] = option
+    if 'option_2_dict' in drv_dict['DISCOVERY_DICT'].keys():
+      options = drv_dict['DISCOVERY_DICT']['option_2_dict']['options']
+      options_strs = []
+      for option in options:
+        options_strs.append(str(option))
+      drv_dict['DISCOVERY_DICT']['option_2_dict']['options'] = options_strs
+      option = str(drv_dict['DISCOVERY_DICT']['option_2_dict']['default_val'])
+      drv_dict['DISCOVERY_DICT']['option_2_dict']['default_val'] = option
+      drv_dict['DISCOVERY_DICT']['option_2_dict']['set_val'] = option                    
+  return drv_dict
 
 def printDict(drvs_dict):
   rospy.logwarn('NEPI_DRV: ')
@@ -112,16 +127,34 @@ def refreshDriversDict(drivers_path,drvs_dict):
   if drivers_path[-1] == "/":
       drivers_path = drivers_path[:-1]
   get_drvs_dict = getDriversDict(drivers_path)
+  #rospy.logwarn('NEPI_DRV: Updating Drvs Dict: ' + str(drvs_dict))
+  #rospy.logwarn('NEPI_DRV: From Get Dict: ' + str(get_drvs_dict))
   for drv_name in get_drvs_dict.keys():
-    if drv_name not in drvs_dict.keys():
+    if drv_name in drvs_dict.keys():
+      #rospy.logwarn('NEPI_DRV: ')
+      #rospy.logwarn('NEPI_DRV: Updating drv: ' + drv_name)
+      #rospy.logwarn('NEPI_DRV: Updating drv: ' + str(drvs_dict[drv_name]))
+
       if drvs_dict[drv_name]['NODE_DICT']["discovery_pkg_name"] != "None":
-        current_set_val = drvs_dict[drv_name]['DISCOVERY_DICT']['option_1_dict']['set_val']
-        get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_1_dict']['set_val'] = current_set_val
-        current_set_val = drvs_dict[drv_name]['DISCOVERY_DICT']['option_2_dict']['set_val']
-        get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_2_dict']['set_val'] = current_set_val
-      get_drvs_dict[drv_name]['order'] = drvs_dict[drv_name]['order']
-      get_drvs_dict[drv_name]['active'] = drvs_dict[drv_name]['active']
-  return drvs_dict
+        try:
+          options = get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_1_dict']['options'] 
+          current_set_val = drvs_dict[drv_name]['DISCOVERY_DICT']['option_1_dict']['set_val']
+          if current_set_val in options:
+            get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_1_dict']['set_val'] = current_set_val
+          else:
+            get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_1_dict']['set_val'] = get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_1_dict']['default_val']
+          options = get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_2_dict']['options'] 
+          current_set_val = drvs_dict[drv_name]['DISCOVERY_DICT']['option_2_dict']['set_val']
+          if current_set_val in options:
+            get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_2_dict']['set_val'] = current_set_val
+          else:
+            get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_2_dict']['set_val'] = get_drvs_dict[drv_name]['DISCOVERY_DICT']['option_2_dict']['default_val']
+        except Exception as e:
+            rospy.logwarn("NEPI_DRVS: Failed to refresh driver: " + drv_name + " " + str(e))
+      #get_drvs_dict[drv_name]['order'] = drvs_dict[drv_name]['order']
+      #get_drvs_dict[drv_name]['active'] = drvs_dict[drv_name]['active']
+  #rospy.logwarn('NEPI_DRV: Updated to: ' + str(get_drvs_dict))
+  return get_drvs_dict
 
 def initDriversActive(active_list,drvs_dict):
   rvs_list = list(reversed(active_list))  
