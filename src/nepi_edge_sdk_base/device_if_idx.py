@@ -808,6 +808,8 @@ class ROSIDXSensorIF:
                 has_subscribers = eval('self.' + has_subs_var_str) #(img_publisher.get_num_connections() > 0)
                 saving_is_enabled = self.save_data_if.data_product_saving_enabled(data_product)
                 snapshot_enabled = self.save_data_if.data_product_snapshot_enabled(data_product)
+                #if (data_product == "color_2d_image"):
+                    #nepi_msg.publishMsgWarn(self,rospy.get_name() + ": Img should save: " + str(saving_is_enabled))
                 if (has_subscribers is True) or (saving_is_enabled is True) or (snapshot_enabled is True):
                     acquiring = True
                     if data_product != "pointcloud_image":
@@ -828,7 +830,8 @@ class ROSIDXSensorIF:
                         if ros_img is not None:
                             # Publish image
                             img_publisher.publish(ros_img)
-                    if (saving_is_enabled is True or snapshot_enabled is True ):
+                    should_save = self.save_data_if.data_product_should_save(data_product)
+                    if ((saving_is_enabled is True and should_save is True) or snapshot_enabled is True ):
                         if isinstance(image,np.ndarray):  # CV2 image. Passthrough   
                             cv2_img = image
                         elif isinstance(image,Image): # ROS Image. Convert to CV2 Image
@@ -896,7 +899,8 @@ class ROSIDXSensorIF:
                             if ros_pc is not None:
                                 # Publish Pointcloud
                                 pc_publisher.publish(ros_pc)
-                        if (saving_is_enabled is True or snapshot_enabled is True ):
+                    should_save = self.save_data_if.data_product_should_save(data_product)
+                    if ((saving_is_enabled is True and should_save is True) or snapshot_enabled is True ):
                             if o3d_pc == None:
                                 if isinstance(pc,o3d.geometry.PointCloud):  # Open3d pointcloud. Passthrough   
                                     o3d_pc = pc
