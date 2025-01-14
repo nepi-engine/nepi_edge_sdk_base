@@ -67,7 +67,7 @@ def getAppsDict(search_path):
     for app_name in apps_dict.keys():
       pkg_name = apps_dict[app_name]['APP_DICT']['pkg_name']
       app_file = apps_dict[app_name]['APP_DICT']['app_file']
-      app_file_path = NEPI_PKG_FOLDER + pkg_name + "/" + app_file
+      app_file_path = os.path.join(NEPI_PKG_FOLDER ,pkg_name, app_file)
       if os.path.exists(app_file_path) == False:
         rospy.logwarn("NEPI_APPS: Could not find app file: " + app_file_path)
         purge_list.append(app_name)

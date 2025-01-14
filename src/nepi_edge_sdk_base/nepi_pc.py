@@ -19,6 +19,8 @@
 
 import numpy as np
 import ros_numpy
+import os
+os.environ['EGL_PLATFORM'] = 'surfaceless'   # Ubuntu 20.04+
 import open3d as o3d
 import rospy
 import math

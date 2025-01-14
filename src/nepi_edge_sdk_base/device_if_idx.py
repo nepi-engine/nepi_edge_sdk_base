@@ -41,7 +41,7 @@ from nepi_edge_sdk_base import nepi_pc
 # IDX utility functions
 
 #Factory Control Values 
-DEFAULT_CONTROLS_DICT = dict( controls_enable = False,
+DEFAULT_CONTROLS_DICT = dict( controls_enable = True,
     auto_adjust = False,
     brightness_ratio = 0.5,
     contrast_ratio =  0.5,

@@ -491,6 +491,18 @@ def copy_files_from_folder(src_path,dest_path):
     success = False
   return success, files_copied, files_not_copied
 
+def check_if_container():
+  first_line = ""
+  in_cn = False
+  try:
+      with open("/proc/mounts", 'r') as f:
+          first_line = f.readline().strip()
+  except Exception as e:
+      print("Failed to open proc/mount file for container check")
+  if first_line.find("overlay") != -1:
+      in_cn = True
+  return in_cn
+
 
 
  
