@@ -104,6 +104,10 @@ def updateAIsDict(ais_path,ais_dict):
     if ai_name not in ais_dict.keys():
       ais_dict[ai_name] = get_ais_dict[ai_name]
       ais_dict[ai_name]['active'] = True
+    else:
+      active = ais_dict[ai_name]['active']
+      ais_dict[ai_name] = get_ais_dict[ai_name]
+      ais_dict[ai_name]['active'] = active
   return ais_dict
 
   

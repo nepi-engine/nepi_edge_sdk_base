@@ -55,6 +55,10 @@ def getAppsDict(search_path):
                 new_dict['subprocess'] = ""
                 new_dict['active'] = False
                 new_dict['msg'] = ""
+                if 'license_type' not in new_dict['APP_DICT'].keys():
+                  new_dict['APP_DICT']['license_type'] = "Not Provided"
+                if 'license_link' not in new_dict['APP_DICT'].keys():
+                  new_dict['APP_DICT']['license_link'] = ""
                 app_name = new_dict['APP_DICT']['pkg_name']
                 apps_dict[app_name] = new_dict   
               except Exception as e:
@@ -111,6 +115,10 @@ def updateAppsDict(apps_path,apps_dict):
       apps_dict[app_name] = get_apps_dict[app_name]
       apps_dict[app_name]['active'] = True
       apps_dict = moveAppBottom(app_name,apps_dict)
+    else:
+      active = apps_dict[app_name]['active']
+      apps_dict[app_name]=get_apps_dict[app_name]
+      apps_dict[app_name]['active'] = active
   return apps_dict
 
 def initAppsActiveOrder(active_list,apps_dict):
